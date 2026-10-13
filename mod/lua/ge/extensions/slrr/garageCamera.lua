@@ -37,6 +37,7 @@ local flip = 0                  -- 180 degrees when the car is parked facing the
 local rate = 9                  -- how eagerly the smoothed values chase their targets
 local lastDist = 5              -- how far from its target the camera really was last frame
 local lastPos                   -- where the camera was last frame
+local blocked = 1               -- share of its arm the camera may use before it would be behind something
 local filmPos                   -- where the camera stands while a drive-in or drive-out is filmed
 
 local function smooth(current, target, r, dt)
@@ -107,6 +108,18 @@ function M.update(dt)
   else
     local k = roomLimit(sFocus, offset)
     offset = offset * (1 + (k - 1) * wallWeight)
+    -- a pillar or a workbench between the camera and what it looks at: come round in front of it
+    local length = offset:length()
+    if length > 1.2 and wallWeight > 0.5 then
+      local from = sFocus + vec3(0, 0, 0.35)
+      local hit = castRayStatic(from, offset / length, length + 0.3)
+      if hit < length + 0.3 then
+        blocked = smooth(blocked, clamp((hit - 0.35) / length, 0.25, 1), 12, dt)
+      else
+        blocked = smooth(blocked, 1, 5, dt)
+      end
+      offset = offset * blocked
+    end
     pos = sFocus + offset
   end
   lastDist = offset:length()
@@ -128,7 +141,7 @@ function M.setup(_site, centerFn, length, facingOut)
 end
 
 local function workingView()
-  return rad(-145) + flip, rad(14), clamp(carLength * 1.25, distMin, distMax)
+  return rad(site and site.viewYaw or -145) + flip, rad(14), clamp(carLength * 1.25, distMin, distMax)
 end
 
 -- the drive-in: look at the front of the car from inside. The camera's
@@ -138,7 +151,7 @@ function M.startFilm(pos)
   active, filming, settleT, lift = true, true, nil, false
   focus, sFocus = nil, nil
   filmPos = pos
-  yaw, pitch, dist, fov = rad(-194) + flip, rad(5), 30, FILM_FOV
+  yaw, pitch, dist, fov = rad(site and site.viewYaw or -145) + flip, rad(5), 30, FILM_FOV
   sYaw, sPitch, sDist, sFov = yaw, pitch, dist, FILM_FOV
   wallWeight, wallTarget = 1, 1
   rate = 1.6

@@ -457,13 +457,13 @@ end
 
 -- where the camera stands to film the drive in: across the room from the door the car uses
 local function filmSpot()
-  local side = math.min(site.halfWidth - 0.9, 2.4)
+  local side = math.min(site.halfWidth - 0.9, 2.4) * (site.filmSide or 1)
   if viaSide and site.exit == 'side' then
     return sites.point(site, site.exitTurnAlong - 0.6, side, 1.55)       -- right-hand wall, facing the side door
   elseif viaSide then
     return sites.point(site, math.max(site.doorDist + 1.4, -6.5), -side, 1.5)   -- on the front-door side, facing the back door
   end
-  return sites.point(site, math.min(site.backDist - 0.6, 6.5), -side, 1.5)       -- on the far side, facing the front door
+  return sites.point(site, site.filmAlong or math.min(site.backDist - 0.6, 6.5), -side, 1.5)       -- on the far side, facing the front door
 end
 
 -- how far the underside of the car is off the floor, from its jbeam: lowest node of the body

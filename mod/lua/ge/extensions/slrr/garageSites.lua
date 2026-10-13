@@ -12,6 +12,21 @@ local M = {}
 --   "through" straight on, out of a back door on the same axis (you can come in there too)
 --   "reverse" there is only the one door: the car backs out the way it came
 M.sites = {
+  utah = {
+    {
+      id = "utahServiceCenter",
+      name = "Canyon Service Center",
+      spot = vec3(796.44, -181.10, 144.43),       -- the one bay of the repair shop whose door stands open
+      dir = vec3(-0.988, -0.154, 0),
+      doorDist = -7.5,
+      halfWidth = 3.4,
+      backDist = 5.4,
+      ceiling = 4.3,
+      exit = "reverse",
+      viewYaw = -40,          -- the bay's own columns stand ahead of the car: work from its rear quarter,
+      filmAlong = 2.4,        -- and film the drive-in from beside the spot
+    },
+  },
   west_coast_usa = {
     {
       id = "belascoCityGarage",
