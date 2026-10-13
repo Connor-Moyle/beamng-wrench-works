@@ -19,6 +19,8 @@ A hands-on garage for [B]West Coast USA[/B]. Roll up to a garage door, the car d
 [*][B]Damage stays.[/B] A bent bumper is still bent when you refit it, visit after visit, unless you pay for the repair.
 [*][B]Tuning per part.[/B] Click a tyre and you get its pressure, click the suspension and you get its alignment.
 [*][B]Paint booth.[/B] The car disappears in a cloud of the new colour.
+[*][B]Job sheet, saved builds and a dyno sheet.[/B] Drive out shows what the visit changed and cost. Save the car as it stands and fit that build again later. Car info plots the engine's power and torque.
+[*][B]A used-parts lock-up.[/B] A pick of second-hand parts that changes daily: cheap, and bent until you repair them.
 [*][B]Money.[/B] Career money in career mode. In freeroam a wallet that goes up and down as you buy and sell, or unlimited money if you prefer.
 [/LIST]
 
@@ -40,6 +42,7 @@ Shops (blue markers, stop on them):
 [*][B]Smash Auto Repairs[/B] - body panels, lights, glass, spoilers, body kits
 [*][B]Jerry Riggs[/B] - suspension, brakes, steering, chassis bracing
 [*][B]Belasco Auto[/B] - interiors, trim, paint designs, accessories
+[*][B]Rent-A-Box Lock-up Sale[/B] - used parts of every kind, 35-65% off
 [/LIST]
 
 [IMG]https://raw.githubusercontent.com/Connor-Moyle/beamng-wrench-works/main/docs/screenshots/05_catalog.jpg[/IMG]
@@ -66,7 +69,7 @@ Prices, delivery charges and times (standard and express), the shop discount, th
 [SIZE=5][B]Good to know[/B][/SIZE]
 [LIST]
 [*]Made for BeamNG.drive 0.39. West Coast USA only for now.
-[*]The mod is silent: it ships without sounds.
+[*]Sounds are the game's own; nothing extra to install.
 [*]Career mode uses your career money; the garage does not touch career's own part inventory.
 [*]Shelf previews step aside while the camera is moving and come back when it rests.
 [*]Source and issue tracker: [URL]https://github.com/Connor-Moyle/beamng-wrench-works[/URL]

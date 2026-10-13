@@ -22,7 +22,7 @@ Built on BeamNG.drive 0.39.4.
 | Alder Dragway Garage | a tent with one entrance: drive in, and the car backs out |
 | Industrial Garage | drive-through hall, either direction |
 
-The mod ships without sounds and is simply quiet. `tools/install.ps1` can copy a set of interface sounds from a Street Legal Racing: Redline install you own, if you want them.
+Sounds are the game's own. A `.wav` dropped into `art/sound/slrr_garage/` under one of the names in `garage.lua` replaces the matching sound; `tools/install.ps1` can copy such a set from a Street Legal Racing: Redline install you own.
 
 ## In the garage
 
@@ -39,9 +39,9 @@ Every part comes off except the body shell itself. Take off what you like and dr
 
 The icon bar along the top:
 
-- **Drive out** – builds the car as you left it and drives it out of the other door.
+- **Drive out** – shows the job sheet (what was fitted, taken off and spent this visit), then builds the car as you left it and drives it out of the other door.
 - **Catalog** – every part that fits the car, in five sections (Engine, Body, Running Gear, Interior, Paint) split into small chapters such as Front Bumpers, Rear Suspension or Front Tyres, with a search box per chapter. Parts go on a shopping list; you pay when you confirm it, and they are delivered to the shelf (see below).
-- **Car info** – specs, part count and value, damage and repair cost.
+- **Car info** – specs, part count and value, damage and repair cost, the engine's power and torque curve, and your saved builds.
 - **Mechanic (wrench)** – the default mode: fit and remove parts.
 - **Tune (screwdriver)** – click a door, hood or boot to open it; click any other part and it is outlined and a small panel pops up with just that part's adjustments (tyre pressure for a tyre, camber for the suspension, and so on). The full list is in the drawer on the right. Adjustments take effect when you drive out.
 - **Lift** – every garage has a two-post lift. The car parks between its posts, the arms swing in under the sills, and this button carries the car about 1.3 m up, camera and all.
@@ -49,6 +49,10 @@ The icon bar along the top:
 - **Test engine**, **Advance time**, **Whole car** (camera reset) and **Settings**.
 
 The mechanic's buttons sit left of the shelf: **Repair part**, **Repair car**, **Sell part**, **Sell everything** (asks first), and four toggles that hide the engine, body, running gear or interior so you can reach what is behind them.
+
+## Saved builds
+
+In Car info, "Save the car as it stands" stores the parts and tuning that are on the car now under a name. Fitting a build later puts those parts back: from the shelf where you still have them, bought where you do not (the list shows what that would cost). What comes off goes to the shelf.
 
 ## Ordering parts, delivery and shops
 
@@ -64,6 +68,7 @@ The mechanic's buttons sit left of the shelf: **Repair part**, **Repair car**, *
 | Smash Auto Repairs | body panels, lights, glass, spoilers, body kits |
 | Jerry Riggs | suspension, brakes, steering, chassis bracing |
 | Belasco Auto | interiors, trim, paint designs, accessories |
+| Rent-A-Box Lock-up Sale | used parts of every kind: a pick that changes daily, 35-65% under list price, and bent. The dent goes on when the car is next built and can be repaired like any damage |
 
 Delivery times (standard and express), delivery charges, the express surcharge and the shop discount can all be changed under Delivery in Settings.
 
@@ -92,7 +97,8 @@ Changing a part in BeamNG normally rebuilds the whole vehicle, which freezes the
 
 - The shelf (per car model), parts on order and your freeroam money are saved in `settings/slrr_garage/save.json` in your BeamNG user folder. "Keep parts and money between sessions" in Settings switches that off, so each time you start the game you begin from scratch.
 - Two actions can be bound under Options > Controls > Gameplay: enter the nearest garage, and drive out. Handy when the car cannot drive itself to the door.
-- Career mode: only money is wired up. The garage does not know about career's own parts inventory.
+- Career mode: the garage spends your career money, and after the car is rebuilt on the way out it asks career to re-read the car, so career's record of it matches. Parts you take off live on this garage's shelf, not in career's own parts store.
+- "Work takes time" in Settings makes taking parts off and fitting them take a moment, longer for heavy parts. It is off by default.
 - More garages and shops can be added in `lua/ge/extensions/slrr/garageSites.lua` (a garage needs its parking spot, direction, door and wall distances and the way out; a shop needs a position and the catalog chapters it sells).
 - `docs/beamng_post.txt` is the forum post for the mod, in BBCode.
 
