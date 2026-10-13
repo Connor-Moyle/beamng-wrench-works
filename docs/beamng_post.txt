@@ -52,7 +52,7 @@ Shops (blue markers, stop on them):
 [*]The icon bar along the top: drive out, catalog, car info, mechanic, tune, lift, paint booth, test engine, advance time, whole car, settings.
 [*]Left of the shelf: repair part, repair car, sell part, sell everything, and four toggles that hide the engine, body, running gear or interior.
 [/LIST]
-Prices, delivery charges and times, the shop discount, the entry speed, camera direction and more are in the Settings screen.
+Prices, delivery charges and times (standard and express), the shop discount, the entry speed, camera direction, whether your parts and money are kept between sessions, and more are in the Settings screen.
 
 [IMG]https://raw.githubusercontent.com/Connor-Moyle/beamng-slrr-garage/main/docs/screenshots/04_paint.jpg[/IMG]
 

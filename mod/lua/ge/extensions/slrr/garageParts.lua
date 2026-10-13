@@ -50,6 +50,8 @@ local slotInfoCache = {}
 -- persistence
 
 local function loadSave()
+  -- with saving switched off every session starts from nothing
+  if not settings.get('saveBetweenSessions') then return end
   local data = jsonReadFile(SAVE_FILE)
   if type(data) == 'table' then
     save.inventory = type(data.inventory) == 'table' and data.inventory or {}
@@ -60,8 +62,12 @@ local function loadSave()
 end
 
 local function writeSave()
+  if not settings.get('saveBetweenSessions') then return end
   jsonWriteFile(SAVE_FILE, save, true)
 end
+
+-- saving was just switched on: what there is now is what is kept
+function M.saveNow() writeSave() end
 
 local function inventory()
   if not model then return {} end
@@ -103,7 +109,7 @@ end
 -- put the freeroam wallet at a set amount (the "freeroam money" setting was changed)
 function M.setWallet(amount)
   save.wallet = math.max(0, tonumber(amount) or 0)
-  jsonWriteFile(SAVE_FILE, save, true)
+  writeSave()
 end
 
 -- catalog price of something worth `value` in the game's own part data
@@ -1208,7 +1214,7 @@ local function shippingOptions(inShop)
   local standard = settings.get('deliveryMinutes') * 60
   return {
     { id = 'standard', title = 'Standard delivery', factor = 1, seconds = standard },
-    { id = 'express', title = 'Express delivery', factor = settings.get('expressMultiplier'), seconds = standard * 0.1 },
+    { id = 'express', title = 'Express delivery', factor = settings.get('expressMultiplier'), seconds = settings.get('expressMinutes') * 60 },
   }
 end
 

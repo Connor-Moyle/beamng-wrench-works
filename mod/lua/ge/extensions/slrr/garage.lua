@@ -1281,6 +1281,8 @@ end
 local function setSetting(key, value)
   if key == '__reset' then settings.reset() else settings.set(key, value) end
   if key == 'freeroamMoney' then parts.setWallet(settings.get('freeroamMoney')) end
+  if key == 'saveBetweenSessions' then parts.saveNow() end
+  if phase == 'catalog' or phase == 'shop' then sendCart() end
   if not settings.get('highlight') then parts.setHighlight(nil) end
   sendSettings()
   sendState()

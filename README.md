@@ -63,7 +63,7 @@ The mechanic's buttons sit left of the shelf: **Repair part**, **Repair car**, *
 | Jerry Riggs | suspension, brakes, steering, chassis bracing |
 | Belasco Auto | interiors, trim, paint designs, accessories |
 
-Delivery charges, the express surcharge, delivery time and the shop discount can all be changed in Settings.
+Delivery times (standard and express), delivery charges, the express surcharge and the shop discount can all be changed under Delivery in Settings.
 
 ![The lift](docs/screenshots/03_lift.jpg)
 
@@ -88,7 +88,7 @@ Changing a part in BeamNG normally rebuilds the whole vehicle, which freezes the
 
 ## Good to know
 
-- The shelf is saved per car model in `settings/slrr_garage/save.json` in your BeamNG user folder.
+- The shelf (per car model), parts on order and your freeroam money are saved in `settings/slrr_garage/save.json` in your BeamNG user folder. "Keep parts and money between sessions" in Settings switches that off, so each time you start the game you begin from scratch.
 - Two actions can be bound under Options > Controls > Gameplay: enter the nearest garage, and drive out. Handy when the car cannot drive itself to the door.
 - Career mode: only money is wired up. The garage does not know about career's own parts inventory.
 - More garages and shops can be added in `lua/ge/extensions/slrr/garageSites.lua` (a garage needs its parking spot, direction, door and wall distances and the way out; a shop needs a position and the catalog chapters it sells).
