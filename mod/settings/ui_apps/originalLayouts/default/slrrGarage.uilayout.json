@@ -1,0 +1,19 @@
+{
+  "version":0.53,
+  "apps":[
+    {
+      "appName":"slrrGarage",
+      "placement":{
+        "position":"absolute",
+        "left":"0px",
+        "top":"0px",
+        "right":"",
+        "bottom":"",
+        "width":"100%",
+        "height":"100%"
+      }
+    }
+  ],
+  "title":"SLRR Garage",
+  "type":"slrrGarage"
+}

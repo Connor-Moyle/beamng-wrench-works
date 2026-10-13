@@ -1,0 +1,191 @@
+-- SLRR Garage: the camera.
+-- One orbit rig does everything, so nothing ever cuts: during the drive-in it trails the car
+-- through the door, and once the car has stopped it swings round in a single move to the
+-- garage's working view - an orbit you turn with the right mouse button and zoom with the
+-- wheel, with the soft follow of Street Legal Racing: Redline's garage camera.
+
+local M = {}
+
+local sites = require('slrr/garageSites')
+
+local min, max, sin, cos, rad, exp = math.min, math.max, math.sin, math.cos, math.rad, math.exp
+
+local ORBIT_FOV = 60
+local FILM_FOV = 46
+local PITCH_MIN, PITCH_MAX = rad(-4), rad(62)
+local PITCH_MIN_LIFT = rad(-24)     -- with the car on the lift you may look up at it from below
+local WALL_MARGIN = 0.45
+local SETTLE_TIME = 2.6             -- seconds for the swing from the film view to the working view
+
+local active = false
+local site
+local getCarCenter
+local carLength = 4.5
+
+-- orbit state (yaw 0 looks along the garage axis, from the door towards the back wall)
+local yaw, pitch, dist, fov = 0, 0, 5, ORBIT_FOV
+local sYaw, sPitch, sDist, sFov = 0, 0, 5, ORBIT_FOV
+local distMin, distMax = 2.5, 7
+local focus, sFocus             -- point the camera looks at (nil = the car's centre)
+local wallWeight = 1            -- 0 = ignore the garage walls (car still outside), 1 = stay inside
+local wallTarget = 1
+local filming = false
+local settleT                   -- running time of the swing into the working view (nil = done)
+local lift = false
+local rate = 9                  -- how eagerly the smoothed values chase their targets
+
+local function smooth(current, target, r, dt)
+  return current + (target - current) * (1 - exp(-r * dt))
+end
+
+local function carCenter()
+  return (getCarCenter and getCarCenter()) or (site and site.spot + vec3(0, 0, 0.6)) or vec3()
+end
+
+-- how far along its arm the camera may sit before it would leave the room (1 = all the way)
+local function roomLimit(target, offset)
+  if not site then
+    local len = offset:length()
+    if len < 0.01 then return 1 end
+    local hit = castRayStatic(target, offset / len, len + WALL_MARGIN)
+    if hit < len + WALL_MARGIN then return max(0.15, (hit - WALL_MARGIN) / len) end
+    return 1
+  end
+  local tAlong, tSide, tUp = sites.toAxis(site, target)
+  local oAlong, oSide = offset:dot(site.dir), offset:dot(vec3(site.dir.y, -site.dir.x, 0))
+  local oUp = offset.z
+  local k = 1
+  local function limit(t, o, lo, hi)
+    if o > 0 and t + o > hi then k = min(k, max(0, (hi - t) / o)) end
+    if o < 0 and t + o < lo then k = min(k, max(0, (lo - t) / o)) end
+  end
+  limit(tAlong, oAlong, site.doorDist + WALL_MARGIN, site.backDist - WALL_MARGIN)
+  limit(tSide, oSide, -site.halfWidth + WALL_MARGIN, site.halfWidth - WALL_MARGIN)
+  limit(tUp, oUp, 0.25, site.ceiling - 0.35)
+  return k
+end
+
+local function orbitOffset(y, p, d)
+  local dir = site and site.dir or vec3(0, 1, 0)
+  local right = vec3(dir.y, -dir.x, 0)
+  -- the camera sits opposite to where it looks
+  local flat = dir * (-cos(y)) + right * (-sin(y))
+  return (flat * cos(p) + vec3(0, 0, sin(p))) * d
+end
+
+-- called by the camera mode every frame
+function M.update(dt)
+  if not active then return nil end
+  dt = min(dt or 0.016, 0.1)
+
+  if settleT then
+    settleT = settleT + dt
+    -- ease the chase rate up as the swing progresses, so it starts gently and still arrives
+    rate = 1.4 + 7.6 * min(1, settleT / SETTLE_TIME) ^ 2
+    if settleT >= SETTLE_TIME then settleT = nil; rate = 9 end
+  end
+
+  sYaw = smooth(sYaw, yaw, rate, dt)
+  sPitch = smooth(sPitch, pitch, rate, dt)
+  sDist = smooth(sDist, dist, rate * 0.7, dt)
+  sFov = smooth(sFov, fov, filming and 3 or 1.2, dt)
+  wallWeight = smooth(wallWeight, wallTarget, 2.2, dt)
+
+  local wanted = focus or carCenter()
+  sFocus = sFocus and (sFocus + (wanted - sFocus) * (1 - exp(-(filming and 14 or 5) * dt))) or wanted
+
+  local offset = orbitOffset(sYaw, sPitch, sDist)
+  local k = roomLimit(sFocus, offset)
+  offset = offset * (1 + (k - 1) * wallWeight)
+  local pos = sFocus + offset
+  return pos, quatFromDir((sFocus - pos):normalized(), vec3(0, 0, 1)), sFov, sFocus
+end
+
+function M.setup(_site, centerFn, length)
+  site = _site
+  getCarCenter = centerFn
+  carLength = max(2.5, length or 4.5)
+  distMin = max(2.0, carLength * 0.5)
+  distMax = max(distMin + 2, carLength * 1.75)
+end
+
+local function workingView()
+  return rad(-145), rad(14), clamp(carLength * 1.25, distMin, distMax)
+end
+
+-- the drive-in: sit behind the car, a little above, and trail it through the door
+function M.startFilm()
+  active, filming, settleT, lift = true, true, nil, false
+  focus, sFocus = nil, nil
+  yaw, pitch, dist, fov = rad(0), rad(9), carLength * 1.45, FILM_FOV
+  sYaw, sPitch, sDist, sFov = yaw + rad(16), pitch + rad(5), dist * 1.25, FILM_FOV + 6
+  wallWeight, wallTarget = 0, 0
+  rate = 1.6
+end
+
+-- the car has stopped: swing round to the working view in one move and hand over the controls
+function M.startOrbit(fromFilm)
+  active = true
+  local y, p, d = workingView()
+  yaw, pitch, dist, fov = y, p, d, ORBIT_FOV
+  wallTarget = 1
+  focus = nil
+  if fromFilm and filming then
+    settleT = 0
+    rate = 1.4
+  else
+    sYaw, sPitch, sDist, sFov = yaw, pitch, dist, ORBIT_FOV - 14
+    sFocus = nil
+    wallWeight = 1
+    settleT = nil
+    rate = 9
+  end
+  filming = false
+end
+
+function M.stop()
+  active, filming, settleT, lift = false, false, nil, false
+  site, getCarCenter, focus, sFocus = nil, nil, nil, nil
+end
+
+function M.isActive() return active end
+function M.isFilming() return filming end
+
+-- input -------------------------------------------------------------------------------------
+
+function M.rotate(dxPixels, dyPixels)
+  if not active or filming then return end
+  if settleT then settleT = nil; rate = 9 end
+  yaw = yaw + dxPixels * 0.0055
+  pitch = clamp(pitch - dyPixels * 0.0045, lift and PITCH_MIN_LIFT or PITCH_MIN, PITCH_MAX)
+end
+
+function M.zoom(steps)
+  if not active or filming then return end
+  dist = clamp(dist * (1 - steps * 0.11), focus and 0.8 or distMin, distMax)
+end
+
+-- look at a point on the car (nil goes back to the whole car)
+function M.setFocus(pos, radius)
+  if not active or filming then return end
+  focus = pos
+  if pos and radius then dist = clamp(max(distMin * 0.6, radius * 3.2), 1.2, distMax) end
+  if not pos then dist = clamp(carLength * 1.25, distMin, distMax) end
+end
+
+function M.hasFocus() return focus ~= nil end
+
+-- "lift": the camera may drop below the floor and look up at the underside
+function M.setLift(on)
+  lift = on == true
+  if lift then
+    pitch = rad(-6)
+  else
+    pitch = clamp(pitch, PITCH_MIN, PITCH_MAX)
+    if pitch < rad(8) then pitch = rad(14) end
+  end
+end
+
+function M.isLift() return lift end
+
+return M

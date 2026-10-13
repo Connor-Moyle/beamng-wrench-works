@@ -1,0 +1,13 @@
+{
+  "domElement": "<slrr-garage></slrr-garage>",
+  "name": "SLRR Garage",
+  "description": "The garage screen of the SLRR Garage mod: parts shelf, info line and catalog. Shown automatically inside the garage.",
+  "author": "Connor",
+  "version": "1.0",
+  "directive": "slrrGarage",
+  "category": "Gameplay",
+  "preview": "preview.png",
+  "isAuxiliary": true,
+  "interactive": "yes",
+  "css": { "left": "0px", "top": "0px", "width": "100%", "height": "100%" }
+}
