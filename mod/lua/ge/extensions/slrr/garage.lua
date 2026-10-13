@@ -77,10 +77,32 @@ local function veh()
   return vehId and getObjectByID(vehId)
 end
 
+-- Sounds are the game's own. A .wav of the same name in art/sound/slrr_garage/ takes its place.
+local soundEvents = {
+  ['wrench.wav'] = 'event:>Vehicle>Latches>Special>tailgate_01_open',     -- a part comes off
+  ['screw.wav'] = 'event:>Vehicle>Latches>Special>tailgate_01_close',     -- a part goes on
+  ['dragdrop.wav'] = 'event:>Vehicle>Latches>Special>tailgate_01_open',
+  ['money.wav'] = 'event:>UI>Career>Buy_01',
+  ['warn.wav'] = 'event:>UI>Career>Drift_Canceled',
+  ['flip.wav'] = 'event:>UI>Bigmap>Whoosh_In',
+  ['mnuback.wav'] = 'event:>UI>Bigmap>Whoosh_Out',
+  ['mnuselect.wav'] = 'event:>UI>Main>select',
+  ['mnumove.wav'] = 'event:>UI>Main>hover_02',
+  ['ok.wav'] = 'event:>UI>Missions>Checkpoint',
+  ['spray.wav'] = 'event:>UI>Career>Fueling_Petrol_Simple',
+  ['repair.wav'] = 'event:>UI>Missions>Vehicle_Recover',
+  ['trash.wav'] = 'event:>UI>Career>Drift_Canceled',
+  ['entergarage.wav'] = 'event:>UI>Missions>Info_Open',
+  ['leavegarage.wav'] = 'event:>UI>Bigmap>Whoosh_Out',
+}
+
 local function playSound(name, volume)
+  if not settings.get('sounds') then return end
   local file = SOUND_DIR .. name
   if FS:fileExists(file) then
     Engine.Audio.playOnce('AudioGui', file, { volume = volume or 1 })
+  elseif soundEvents[name] then
+    Engine.Audio.playOnce('AudioGui', soundEvents[name], { volume = volume or 1 })
   end
 end
 
@@ -157,7 +179,7 @@ local function sendState()
     tool = tool,
     fade = fade,
     garage = (shop and shop.name) or (site and site.name) or nil,
-    shop = shop and { name = shop.name, trade = shop.trade, discount = settings.get('shopDiscount') } or nil,
+    shop = shop and { name = shop.name, trade = shop.trade, discount = (not shop.yard) and settings.get('shopDiscount') or 0, yard = shop.yard } or nil,
     car = carName(),
     money = parts.getMoney(),
     unlimited = parts.isUnlimited(),
@@ -645,6 +667,20 @@ local function cleanup()
   site = nil
 end
 
+-- Career mode keeps its own record of what is on each car you own. After the car has been
+-- rebuilt, career is asked to read it again, so its record (and the saved car) match what
+-- left the garage. Parts taken off live on this garage's shelf, not in career's own store.
+local function syncCareer()
+  if not parts.inCareer() or not career_modules_inventory or not career_modules_partInventory then return end
+  local ok, err = pcall(function()
+    local inventoryId = career_modules_inventory.getInventoryIdFromVehicleId(vehId)
+    if inventoryId and career_modules_partInventory.updatePartsToMatchSpawnedVehicle then
+      career_modules_partInventory.updatePartsToMatchSpawnedVehicle(inventoryId)
+    end
+  end)
+  if not ok then log('W', logTag, 'could not update the career record of this car: ' .. tostring(err)) end
+end
+
 local function leaveJob(job)
   local missing = parts.missingEssentials()
   local v = veh()
@@ -662,6 +698,7 @@ local function leaveJob(job)
   if parts.isDirty() then
     respawnWithDesired(job, true)
     job.sleep(0.2)
+    syncCareer()
   elseif parts.paintsDirty() and core_vehicle_partmgmt then
     -- the new colours are already on the car; make them part of its config too
     core_vehicle_partmgmt.setConfigPaints(parts.getPaints(), false)
@@ -717,8 +754,17 @@ local function leaveJob(job)
   end
 end
 
-local function leave()
+-- Drive out. First the job sheet: what was done to the car this visit and what it cost.
+local function leave(confirmed)
   if phase ~= 'garage' then return end
+  if settings.get('jobSheet') and confirmed ~= true then
+    local sheet = parts.visitSummary()
+    if #sheet.fitted > 0 or #sheet.removed > 0 or sheet.net ~= 0 or sheet.tuned or sheet.painted then
+      playSound('flip.wav')
+      guihooks.trigger('slrrGarageJobSheet', sheet)
+      return
+    end
+  end
   phase = 'leaving'
   setHover(nil)
   sendState()
@@ -819,6 +865,27 @@ end
 ----------------------------------------------------------------------------------------------
 -- things the UI asks for
 
+-- With labour switched on, taking a part off or fitting it takes time, more for heavy parts.
+local function work(what, weight, fn)
+  if not settings.get('labour') then
+    fn()
+    return
+  end
+  local seconds = clamp(0.6 + (weight or 2) * 0.04, 0.6, 9) / settings.get('labourSpeed')
+  phase = 'busy'
+  setHover(nil)
+  sendState()
+  guihooks.trigger('slrrGarageWork', { what = what, seconds = seconds })
+  core_jobsystem.create(function(job)
+    job.sleep(seconds)
+    guihooks.trigger('slrrGarageWork', {})
+    if phase ~= 'busy' then return end
+    phase = 'garage'
+    fn()
+    sendState()
+  end)
+end
+
 -- left click on the 3D view
 local function click()
   if phase ~= 'garage' or not hoverPath then return end
@@ -838,17 +905,27 @@ local function click()
     tuneClick(hoverPath)
     return
   end
-  local item, err = parts.removePart(hoverPath)
-  if not item then
+  local path = hoverPath
+  local d = parts.describe(path)
+  if not d then return end
+  if not d.removable then
     playSound('warn.wav', 0.6)
-    say(err or "That cannot come off.")
+    say(d.reason or "That cannot come off.")
     return
   end
-  playSound('wrench.wav')
-  hoverPath = nil
-  sendHover()
-  sendState()
-  guihooks.trigger('slrrGarageItemAdded', { id = item.id })
+  work('Taking off the ' .. d.name, parts.partWeight(d.partName), function()
+    local item, err = parts.removePart(path)
+    if not item then
+      playSound('warn.wav', 0.6)
+      say(err or "That cannot come off.")
+      return
+    end
+    playSound('wrench.wav')
+    hoverPath = nil
+    sendHover()
+    sendState()
+    guihooks.trigger('slrrGarageItemAdded', { id = item.id })
+  end)
 end
 
 local function sell(itemId)
@@ -899,18 +976,25 @@ local function install(itemId)
     core_jobsystem.create(applyInGarage)   -- the part may be loaded on the car, hidden; straighten that copy too
     return
   end
-  local ok, text, needsLoad = parts.installItem(tonumber(itemId))
-  if not ok then
-    playSound('warn.wav', 0.6)
-    say(text)
-    return
+  local wanted
+  for _, item in ipairs(parts.getInventory()) do
+    if item.id == tonumber(itemId) then wanted = item end
   end
-  playSound('screw.wav')
-  if needsLoad then
-    core_jobsystem.create(applyInGarage)
-  else
-    sendState()
-  end
+  if not wanted then return end
+  work('Fitting the ' .. wanted.name, parts.partWeight(wanted.part), function()
+    local ok, text, needsLoad = parts.installItem(tonumber(itemId))
+    if not ok then
+      playSound('warn.wav', 0.6)
+      say(text)
+      return
+    end
+    playSound('screw.wav')
+    if needsLoad then
+      core_jobsystem.create(applyInGarage)
+    else
+      sendState()
+    end
+  end)
 end
 
 local function setTool(name)
@@ -959,7 +1043,8 @@ local function sendCatalog()
   local sells
   if shop then
     sells = {}
-    for _, key in ipairs(shop.sells) do sells[key] = true end
+    for _, key in ipairs(shop.sells or {}) do sells[key] = true end
+    if shop.yard then sells = nil end              -- the yard sells anything it happens to have
   end
   local out = {}
   for _, section in ipairs(parts.getSections()) do
@@ -1062,7 +1147,8 @@ local function enterShop(_shop, id)
   v:queueLuaCommand('controller.setFreeze(1) input.event("throttle", 0, FILTER_DIRECT) if electrics.setIgnitionLevel then electrics.setIgnitionLevel(0) end')
   parts.attach(vehId, false)
   parts.cartClear()
-  parts.setCounterDiscount(settings.get('shopDiscount') / 100)
+  parts.setCounterDiscount(shop.yard and 0 or settings.get('shopDiscount') / 100)
+  parts.setYard(shop.yard == true)
   shapes.setup(parts.resolvePart, parts.getSkin())
   preview.setup(parts.getModel(), sendPreview, sendPreviewLive)
   preview.setPaintFrom(v)
@@ -1078,6 +1164,7 @@ leaveShop = function()
   playSound('mnuback.wav')
   parts.cartClear()
   parts.setCounterDiscount(0)
+  parts.setYard(false)
   preview.clear()
   shapes.release()
   parts.detach()
@@ -1202,6 +1289,7 @@ end
 local function sendInfo()
   local info = parts.getCarInfo()
   info.name = carName()
+  info.builds = parts.getBuilds()
   local details = core_vehicles.getCurrentVehicleDetails and core_vehicles.getCurrentVehicleDetails() or {}
   local cfg, mdl = details.configs or {}, details.model or {}
   local rows = {}
@@ -1219,6 +1307,8 @@ local function sendInfo()
   row('Top speed', cfg['Top Speed'] and math.floor(cfg['Top Speed'] * 3.6 + 0.5), ' km/h')
   row('0-100 km/h', cfg['0-100 km/h'] and string.format('%.1f', cfg['0-100 km/h']), ' s')
   info.rows = rows
+  local v = veh()
+  if v then v:queueLuaCommand('extensions.load("slrrGarageVeh") slrrGarageVeh.dyno()') end   -- the power curve follows
   info.note = (parts.isDirty() or parts.paintsDirty()) and 'Figures are for the car as it came in; your changes take effect when you drive out.' or nil
   guihooks.trigger('slrrGarageInfo', info)
 end
@@ -1613,6 +1703,7 @@ M.onClientEndMission = onClientEndMission
 M.onExtensionLoaded = onExtensionLoaded
 M.onExtensionUnloaded = onExtensionUnloaded
 M.onDamageCaptured = onDamageCaptured
+M.onDyno = function(id, data) if id == vehId then guihooks.trigger('slrrGarageDyno', data) end end
 
 M.enter = enterNearest
 M.leave = leave
@@ -1620,6 +1711,24 @@ M.abort = abort
 M.click = click
 M.install = install
 M.sell = sell
+M.saveBuild = function(name)
+  if phase ~= 'garage' then return end
+  local ok, saved = parts.saveBuild(name)
+  if ok then playSound('ok.wav') say('Saved as "' .. saved .. '".', 2.5) end
+  sendInfo()
+end
+M.deleteBuild = function(index)
+  parts.deleteBuild(tonumber(index) or 0)
+  sendInfo()
+end
+M.loadBuild = function(index)
+  if phase ~= 'garage' then return end
+  local ok, text = parts.loadBuild(tonumber(index) or 0)
+  playSound(ok and 'screw.wav' or 'warn.wav', ok and 1 or 0.6)
+  say(text, 4)
+  sendState()
+  sendInfo()
+end
 M.sellAll = sellAll
 M.setTool = setTool
 M.setMode = setMode

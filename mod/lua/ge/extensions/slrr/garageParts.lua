@@ -43,6 +43,8 @@ local visitNet = 0                 -- money spent minus money earned during this
 local save = { inventory = {}, nextId = 1, orders = {} }
 local cart = {}                    -- the shopping list: { slotPath, part } until the order is confirmed
 local freightCache = {}
+local yardStock                    -- at the used-parts yard: slotPath..part -> { discount, dent }
+local deferStandins = false        -- several parts are being fitted in one go; work out the stand-ins once at the end
 local partInfoCache = {}
 local slotInfoCache = {}
 
@@ -58,6 +60,7 @@ local function loadSave()
     save.nextId = tonumber(data.nextId) or 1
     save.orders = type(data.orders) == 'table' and data.orders or {}
     save.wallet = tonumber(data.wallet)
+    save.builds = type(data.builds) == 'table' and data.builds or nil
   end
 end
 
@@ -600,7 +603,7 @@ function M.installItem(itemId)
   slot.decisionMethod = 'user'
   table.remove(inventory(), idx)
   reindex()
-  if M.needsLoad() then loadStandins() end
+  if M.needsLoad() and not deferStandins then loadStandins() end
   walk(slot, function(node, parent) slotInfo(node, parent or parentOf[node]) end)
   applyVisibility()
   writeSave()
@@ -796,6 +799,27 @@ function M.isHeadlessLoad() return headlessLoad end
 
 -- What is the car leaving without? Nothing stops you driving out stripped - this is only so
 -- the garage can say so on the way out.
+-- the job sheet: what this visit changed on the car, and what it cost so far
+function M.visitSummary()
+  local was, now = {}, {}
+  local function collect(tree, into)
+    walk(tree or {}, function(node)
+      if isChosen(node) and node.partPath then into[node.partPath] = partInfo(node.chosenPartName).name end
+    end)
+  end
+  collect(entryTree, was)
+  collect(desired, now)
+  local fitted, removed = {}, {}
+  for path, name in pairs(now) do if not was[path] then fitted[#fitted + 1] = name end end
+  for path, name in pairs(was) do if not now[path] then removed[#removed + 1] = name end end
+  table.sort(fitted)
+  table.sort(removed)
+  return {
+    fitted = fitted, removed = removed, net = visitNet, missing = M.missingEssentials(),
+    tuned = M.varsDirty(), painted = M.paintsDirty(), money = M.getMoney(), unlimited = M.isUnlimited(),
+  }
+end
+
 function M.missingEssentials()
   if not entryTree or not desired then return nil end
   local missing = {}
@@ -869,6 +893,108 @@ function M.sellItem(itemId)
   table.remove(inventory(), idx)
   writeSave()
   return true, item, value
+end
+
+----------------------------------------------------------------------------------------------
+-- saved builds: the car as it stands, to go back to later
+
+local function builds()
+  save.builds = save.builds or {}
+  local list = save.builds[model]
+  if not list then list = {}; save.builds[model] = list end
+  return list
+end
+
+-- Make the car match a build, slot by slot from the top. Where a slot differs, what is there
+-- goes to the shelf and the build's part comes off the shelf if there is one, or is bought.
+-- dry = true only adds up what would have to be bought.
+local function reconcile(buildNode, dry, state)
+  local cur = slotIndex[buildNode.path]
+  if not cur then return end
+  local want = isChosen(buildNode) and buildNode.chosenPartName or ''
+  local have = isChosen(cur) and cur.chosenPartName or ''
+  if want == have then
+    for _, child in pairs(buildNode.children or {}) do reconcile(child, dry, state) end
+    return
+  end
+  if cur.partPath and cur.partPath == chassisPath then return end
+  local item
+  if want ~= '' then
+    for _, candidate in ipairs(inventory()) do
+      if candidate.part == want and candidate.slotId == cur.id and not state.used[candidate.id] then item = candidate break end
+    end
+    if item then
+      state.used[item.id] = true
+    else
+      state.cost = state.cost + priced(subtreeValue(buildNode))
+      state.bought = state.bought + 1
+    end
+  end
+  if dry then return end
+  if have ~= '' then M.removePart(cur.partPath) end
+  if want == '' then return end
+  local fromShelf = item ~= nil
+  if not item then
+    item = newItem(deepcopy(buildNode), slotInfo(cur, parentOf[cur]).description)
+    item.new = true
+    table.insert(inventory(), item)
+  end
+  item.slotPath = buildNode.path
+  M.installItem(item.id)
+  if fromShelf then
+    for _, child in pairs(buildNode.children or {}) do reconcile(child, dry, state) end
+  end
+end
+
+function M.getBuilds()
+  local out = {}
+  if not desired then return out end
+  for i, build in ipairs(builds()) do
+    local state = { cost = 0, bought = 0, used = {} }
+    reconcile(build.tree, true, state)
+    out[i] = { name = build.name, cost = state.cost, toBuy = state.bought }
+  end
+  return out
+end
+
+function M.saveBuild(name)
+  if not desired then return false end
+  name = tostring(name or ''):gsub('^%s+', ''):gsub('%s+$', ''):sub(1, 40)
+  if name == '' then name = 'Build ' .. (#builds() + 1) end
+  local list = builds()
+  for i, build in ipairs(list) do
+    if build.name == name then table.remove(list, i) break end       -- saving under the same name replaces it
+  end
+  list[#list + 1] = { name = name, tree = deepcopy(desired), vars = deepcopy(desiredVars or {}) }
+  writeSave()
+  return true, name
+end
+
+function M.deleteBuild(index)
+  if builds()[index] then
+    table.remove(builds(), index)
+    writeSave()
+  end
+end
+
+-- returns ok, message
+function M.loadBuild(index)
+  local build = builds()[index]
+  if not build or not desired then return false, "That build is gone." end
+  local plan = { cost = 0, bought = 0, used = {} }
+  reconcile(build.tree, true, plan)
+  if not spend(plan.cost, 'Parts for ' .. build.name) then
+    return false, string.format("That build needs $%d of parts you do not have.", plan.cost)
+  end
+  deferStandins = true
+  local ok, err = pcall(reconcile, build.tree, false, { cost = 0, bought = 0, used = {} })
+  deferStandins = false
+  if not ok then log('E', 'slrr_garage', 'loading a build failed: ' .. tostring(err)) end
+  desiredVars = deepcopy(build.vars or desiredVars)
+  if M.needsLoad() then loadStandins() end
+  applyVisibility()
+  writeSave()
+  return true, plan.bought > 0 and string.format('%s is on the car. %d parts were bought for $%d.', build.name, plan.bought, plan.cost) or (build.name .. ' is on the car.')
 end
 
 -- sell everything on the shelf; returns how many parts and for how much
@@ -1145,6 +1271,30 @@ function M.buildCatalog()
       }
     end
   end)
+  if yardStock then
+    -- The yard has whatever came in this week: a pick of the catalog that changes from day to
+    -- day, well under list price, and none of it straight.
+    yardStock = {}
+    local day = tostring(os.date('%Y%j'))
+    local total = 0
+    for _, list in pairs(bySub) do total = total + #list end
+    for key, list in pairs(bySub) do
+      local kept = {}
+      for _, entry in ipairs(list) do
+        local h = stringHash(entry.part .. entry.slotPath .. day)
+        if entry.price > 0 and h % 1000 < 1000 * math.min(1, 48 / math.max(1, total)) then
+          local discount = 0.35 + (math.floor(h / 1000) % 31) / 100
+          local dent = 0.012 + (math.floor(h / 31000) % 30) / 1000
+          yardStock[entry.slotPath .. entry.part] = { discount = discount, dent = dent, seed = h % 100000 }
+          entry.listPrice = entry.price
+          entry.price = math.floor(entry.price * (1 - discount) + 0.5)
+          entry.used = math.floor(discount * 100 + 0.5)
+          kept[#kept + 1] = entry
+        end
+      end
+      bySub[key] = kept
+    end
+  end
   for _, list in pairs(bySub) do
     table.sort(list, function(a, b)
       if a.slot ~= b.slot then return a.slot < b.slot end
@@ -1208,6 +1358,10 @@ local function freight(partName)
   return weight, size
 end
 
+function M.partWeight(partName)
+  return (freight(partName))
+end
+
 -- ways to get an order: collect (only in a shop, you carry it out yourself), standard, express
 local function shippingOptions(inShop)
   if inShop then return { { id = 'collect', title = 'Take it with you', factor = 0, seconds = 0 } } end
@@ -1227,8 +1381,27 @@ end
 function M.cartAdd(slotPath, partName)
   local slot = slotIndex[slotPath]
   if not slot or not fits(slot, partName) then return false, "That part does not fit this car." end
-  cart[#cart + 1] = { slotPath = slotPath, part = partName }
+  local used = yardStock and yardStock[slotPath .. partName]
+  if yardStock and not used then return false, "The yard has not got one of those." end
+  if used then
+    for _, entry in ipairs(cart) do
+      if entry.slotPath == slotPath and entry.part == partName then return false, "There is only the one." end
+    end
+  end
+  cart[#cart + 1] = { slotPath = slotPath, part = partName, used = used }
   return true
+end
+
+-- the used-parts yard is open (or shut again)
+function M.setYard(open)
+  yardStock = open and {} or nil
+end
+
+-- what a cart entry costs: list price, or what the yard asks for its second-hand one
+local function cartPrice(entry)
+  local price = priced(partInfo(entry.part).value)
+  if entry.used then price = math.floor(price * (1 - entry.used.discount) + 0.5) end
+  return price
 end
 
 function M.cartRemove(index)
@@ -1245,8 +1418,8 @@ function M.cartSummary(inShop)
     local info = partInfo(entry.part)
     local weight, size = freight(entry.part)
     local fee = deliveryFee(entry.part)
-    local price = priced(info.value)
-    out.items[i] = { name = info.name, part = entry.part, price = price, weight = math.floor(weight * 10 + 0.5) / 10, size = math.floor(size * 100 + 0.5) / 100, fee = math.floor(fee + 0.5) }
+    local price = cartPrice(entry)
+    out.items[i] = { name = info.name .. (entry.used and ' (used)' or ''), part = entry.part, price = price, weight = math.floor(weight * 10 + 0.5) / 10, size = math.floor(size * 100 + 0.5) / 100, fee = math.floor(fee + 0.5) }
     out.subtotal = out.subtotal + price
     base = base + fee
   end
@@ -1277,8 +1450,16 @@ function M.checkout(shippingId, inShop)
     local item = newPart(entry.slotPath, entry.part)
     if item then
       items[#items + 1] = item
-      subtotal = subtotal + priced(item.value)
+      subtotal = subtotal + cartPrice(entry)
       base = base + deliveryFee(entry.part)
+      if entry.used then
+        -- second-hand: worth what was paid for it, and bent - the dent is put on the part when
+        -- the car is next built with it, and can be repaired like any other damage
+        local path = entry.slotPath .. entry.part
+        item.value = item.value * (1 - entry.used.discount)
+        item.used, item.new = true, nil
+        item.damage = { nodes = {}, beams = { { dent = entry.used.dent, seed = entry.used.seed, pa = path, pb = path } } }
+      end
     end
   end
   local total = subtotal + math.floor(base * option.factor + 0.5)

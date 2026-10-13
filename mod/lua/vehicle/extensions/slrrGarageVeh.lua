@@ -83,7 +83,7 @@ local function capture()
       end
       for _, rec in ipairs(carried.beams or {}) do
         local ca, cb = byName[rec.a], byName[rec.b]
-        if ca and cb and nodes[ca].partPath == rec.pa and nodes[cb].partPath == rec.pb and not seen[rec.a .. '|' .. rec.b .. '|' .. rec.i] then
+        if rec.a and ca and cb and nodes[ca].partPath == rec.pa and nodes[cb].partPath == rec.pb and not seen[rec.a .. '|' .. rec.b .. '|' .. rec.i] then
           data.beams[#data.beams + 1] = rec
           touched[ca], touched[cb] = true, true
         end
@@ -128,6 +128,34 @@ local function apply(data)
     if cid then obj:setNodePosition(cid, o + x * rec.x + y * rec.y + z * rec.z) end
   end
   local applied = 0
+  -- A second-hand part arrives bent: its nodes are nudged out of place and the beams between
+  -- them take that shape. From then on it is ordinary damage.
+  for _, rec in ipairs(data.beams or {}) do
+    if rec.dent then
+      local moved, seed = {}, rec.seed or 1
+      local function rnd()
+        seed = (seed * 1103515245 + 12345) % 2147483648
+        return seed / 2147483648 * 2 - 1
+      end
+      for cid, node in pairs(nodes) do
+        if node.partPath == rec.pa and not node.wheelID then
+          local p = obj:getNodePosition(cid) + vec3(rnd(), rnd(), rnd()) * rec.dent
+          obj:setNodePosition(cid, p)
+          moved[cid] = p
+        end
+      end
+      for cid = 0, tableSizeC(beams) - 1 do
+        local beam = beams[cid]
+        if beam and (moved[beam.id1] or moved[beam.id2]) and not obj:beamIsBroken(cid) then
+          local length = (obj:getNodePosition(beam.id1) - obj:getNodePosition(beam.id2)):length()
+          if length > 0.001 then
+            obj:setBeamLength(cid, length)
+            applied = applied + 1
+          end
+        end
+      end
+    end
+  end
   for _, rec in ipairs(data.beams or {}) do
     local ca, cb = nodeFor(rec.a, rec.pa), nodeFor(rec.b, rec.pb)
     if ca and cb then
@@ -231,6 +259,29 @@ local function onExtensionLoaded()
   if not baseline and (beamstate.damage or 0) < 1 then takeBaseline() end
 end
 
+-- The engine's power curve, as the game itself computes it for this car, thinned to a point
+-- every 250 rpm, sent to the garage for its car info sheet.
+local function dyno()
+  local out
+  for _, dev in pairs(powertrain.getDevices()) do
+    local ok, td = pcall(function() return dev.getTorqueData and dev:getTorqueData() or dev.torqueData end)
+    if ok and type(td) == 'table' and type(td.curves) == 'table' and (not out or (td.maxPower or 0) > out.maxPower) then
+      local curve = td.curves[td.finalCurveName] or select(2, next(td.curves))
+      if curve and curve.torque and curve.power then
+        local maxRPM = math.floor(td.maxRPM or #curve.torque)
+        out = { name = dev.name, maxRPM = maxRPM, maxTorque = td.maxTorque or 0, maxPower = td.maxPower or 0,
+          maxTorqueRPM = td.maxTorqueRPM, maxPowerRPM = td.maxPowerRPM, step = 250, torque = {}, power = {} }
+        for rpm = 0, maxRPM, 250 do
+          out.torque[#out.torque + 1] = math.floor((curve.torque[rpm] or curve.torque[rpm + 1] or 0) + 0.5)
+          out.power[#out.power + 1] = math.floor((curve.power[rpm] or curve.power[rpm + 1] or 0) + 0.5)
+        end
+      end
+    end
+  end
+  obj:queueGameEngineLua(string.format("if slrr_garage then slrr_garage.onDyno(%d, %s) end", obj:getId(), serialize(out or {})))
+end
+
+M.dyno = dyno
 M.capture = capture
 M.apply = apply
 M.setLift = setLift

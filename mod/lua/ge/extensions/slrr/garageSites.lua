@@ -78,6 +78,9 @@ M.shops = {
       pos = vec3(-82.5, -14.8, 119.7),
       sells = { "running/suspension_f", "running/suspension_r", "running/shocks_f", "running/shocks_r", "running/bars", "running/steering",
         "running/brakes_f", "running/brakes_r", "running/brakes", "body/chassis" } },
+    { id = "rentabox", name = "Rent-A-Box Lock-up Sale", trade = "Used parts",
+      pos = vec3(-143.0, 10.9, 121.4),
+      yard = true },      -- sells a changing pick of everything, second-hand: cheap and bent
     { id = "belascoAuto", name = "Belasco Auto", trade = "Interiors, trim and accessories",
       pos = vec3(-696.7, 799.3, 74.8),
       sells = { "interior", "paint", "body/plates", "body/electrics", "body/misc", "body/shells" } },

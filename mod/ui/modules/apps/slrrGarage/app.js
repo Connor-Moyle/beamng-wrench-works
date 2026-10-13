@@ -184,6 +184,22 @@ angular.module('beamng.apps')
     '.sg-veil{position:absolute;left:-200px;top:-200px;right:-200px;bottom:-200px;padding:200px;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;pointer-events:auto}',
     '.sg-modal{width:620px;max-height:82%;display:flex;flex-direction:column;padding:18px 20px 16px 20px;background:rgba(18,18,20,.94);border-radius:8px;border-top:4px solid #ff6600}',
     '.sg-modal.sg-wide{width:760px}',
+    '.sg-dyno{display:block;width:100%;height:190px;margin-top:8px;background:rgba(255,255,255,.04);border-radius:4px}',
+    '.sg-dkey{font-size:11px;color:#b8b8b8;margin-top:4px}',
+    '.sg-dkey i{display:inline-block;width:14px;height:3px;margin:0 6px 3px 0;vertical-align:middle}',
+    '.sg-dkey i+i,.sg-dkey i:nth-of-type(2){margin-left:14px}',
+    '.sg-dkey span{float:right}',
+    '.sg-kv .sg-bname{color:#fff;font-weight:600;max-width:38%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+    '.sg-kv .sg-bcost{font-weight:400;color:#b8b8b8;font-size:12px;margin-right:10px;align-self:center}',
+    '.sg-btn.sg-small{padding:3px 10px;font-size:11px;margin-left:6px}',
+    '.sg-buildrow{display:flex;align-items:center;margin-top:10px}',
+    '.sg-buildrow .sg-search{margin-left:0;flex:1;margin-right:10px}',
+    '.sg-jline{font-size:13px;line-height:1.5;padding-left:2px}',
+    '.sg-sheetbtns{display:flex;justify-content:space-between;margin-top:14px}',
+    '.sg-work{position:absolute;left:50%;top:16%;transform:translateX(-50%);min-width:320px;padding:12px 18px 14px 18px;font-size:15px;font-weight:600;text-align:center;background:rgba(18,18,20,.9);border-radius:6px;border-top:3px solid #ff6600;pointer-events:none}',
+    '.sg-workbar{height:6px;margin-top:9px;background:rgba(255,255,255,.14);border-radius:3px;overflow:hidden}',
+    '.sg-workbar i{display:block;height:100%;width:0;background:#ff6600;transition:width linear}',
+    '.sg-badge.sg-used{background:#2f7dd1}',
     '.sg-kv{display:flex;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.08);font-size:13px}',
     '.sg-kv span{color:#b8b8b8}',
     '.sg-kv b{margin-left:auto;font-weight:600}',
@@ -408,9 +424,52 @@ angular.module('beamng.apps')
     '      <div class="sg-kv" ng-if="info.repairCost > 0"><span>Cost to repair everything</span><b>{{money(info.repairCost)}}</b></div>',
     '      <div class="sg-kv" ng-if="info.missing"><span>Missing</span><b>{{info.missing}}</b></div>',
     '      <div class="sg-note" style="margin-top:10px" ng-if="info.note">{{info.note}}</div>',
+    '      <div ng-if="dyno.path">',
+    '        <div class="sg-grp">Engine</div>',
+    '        <div class="sg-kv"><span>Peak power</span><b>{{dyno.maxPower}} hp at {{dyno.maxPowerRPM}} rpm</b></div>',
+    '        <div class="sg-kv"><span>Peak torque</span><b>{{dyno.maxTorque}} Nm at {{dyno.maxTorqueRPM}} rpm</b></div>',
+    '        <svg class="sg-dyno" viewBox="0 0 560 190" preserveAspectRatio="none">',
+    '          <path ng-attr-d="{{dyno.grid}}" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="1"/>',
+    '          <path ng-attr-d="{{dyno.torquePath}}" fill="none" stroke="#6fb7ff" stroke-width="2.5"/>',
+    '          <path ng-attr-d="{{dyno.path}}" fill="none" stroke="#ff6600" stroke-width="2.5"/>',
+    '        </svg>',
+    '        <div class="sg-dkey"><i style="background:#ff6600"></i>power<i style="background:#6fb7ff"></i>torque<span>0 &ndash; {{dyno.maxRPM}} rpm</span></div>',
+    '      </div>',
+    '      <div class="sg-grp">Saved builds</div>',
+    '      <div class="sg-kv" ng-repeat="b in info.builds track by $index"><span class="sg-bname">{{b.name}}</span>',
+    '        <b class="sg-bcost">{{b.toBuy ? b.toBuy + \' parts to buy, \' + money(b.cost) : \'all parts in hand\'}}</b>',
+    '        <div class="sg-btn sg-small" ng-click="lua(\'loadBuild(\' + ($index + 1) + \')\')">Fit</div>',
+    '        <div class="sg-btn sg-small" ng-click="lua(\'deleteBuild(\' + ($index + 1) + \')\')">&times;</div></div>',
+    '      <div class="sg-note" ng-if="!info.builds.length">None yet. A build is the car as it stands now: its parts and its tuning. Fitting one later puts those parts back on, from the shelf where you still have them and bought where you do not.</div>',
+    '      <div class="sg-buildrow"><input class="sg-search" type="text" maxlength="40" placeholder="Name this build" ng-model="build.name">',
+    '        <div class="sg-btn sg-go" ng-click="saveBuild()">Save the car as it stands</div></div>',
     '    </div>',
     '  </div>',
     '</div>',
+
+    /* job sheet */
+    '<div class="sg-veil" ng-if="sheet && s.phase === \'garage\'" ng-mouseenter="overUi(true)">',
+    '  <div class="sg-modal">',
+    '    <div class="sg-dhead"><div class="sg-h">Job sheet</div><div class="sg-x" ng-click="closeSheet()" ng-bind-html="icon(\'close\')"></div></div>',
+    '    <div class="sg-scrolly">',
+    '      <div class="sg-grp" ng-if="sheet.fitted.length">Fitted ({{sheet.fitted.length}})</div>',
+    '      <div class="sg-jline" ng-repeat="n in sheet.fitted track by $index">{{n}}</div>',
+    '      <div class="sg-grp" ng-if="sheet.removed.length">Taken off ({{sheet.removed.length}})</div>',
+    '      <div class="sg-jline" ng-repeat="n in sheet.removed track by $index">{{n}}</div>',
+    '      <div class="sg-grp" ng-if="sheet.tuned || sheet.painted">Also</div>',
+    '      <div class="sg-jline" ng-if="sheet.tuned">Adjustments changed</div>',
+    '      <div class="sg-jline" ng-if="sheet.painted">Resprayed</div>',
+    '      <div class="sg-grp">Money</div>',
+    '      <div class="sg-kv"><span>{{sheet.net >= 0 ? \'Spent this visit\' : \'Made this visit\'}}</span><b>{{money(sheet.net >= 0 ? sheet.net : -sheet.net)}}</b></div>',
+    '      <div class="sg-kv" ng-if="!sheet.unlimited"><span>In hand</span><b>{{money(sheet.money)}}</b></div>',
+    '      <div class="sg-note" style="margin-top:10px" ng-if="sheet.missing">The car leaves without {{sheet.missing}}.</div>',
+    '    </div>',
+    '    <div class="sg-sheetbtns"><div class="sg-btn" ng-click="closeSheet()">Keep working</div><div class="sg-btn sg-go" ng-click="driveOut()">Drive out</div></div>',
+    '  </div>',
+    '</div>',
+
+    /* work in progress */
+    '<div class="sg-work" ng-if="work">{{work.what}}<div class="sg-workbar"><i ng-style="{\'transition-duration\': work.seconds + \'s\', width: work.go ? \'100%\' : \'0%\'}"></i></div></div>',
 
     /* settings */
     '<div class="sg-veil" ng-if="panel === \'settings\' && s.phase === \'garage\'" ng-mouseenter="overUi(true)">',
@@ -437,7 +496,7 @@ angular.module('beamng.apps')
     '    <div class="sg-page-l">',
     '      <h1 class="sg-h">{{s.shop ? s.shop.name : \'Catalog\'}}</h1>',
     '      <div class="sg-for" ng-if="!s.shop">Parts for your {{s.car}}, delivered to the garage</div>',
-    '      <div class="sg-for" ng-if="s.shop">{{s.shop.trade}} for your {{s.car}}. Over the counter: no delivery charge, no waiting<span ng-if="s.shop.discount > 0">, and {{s.shop.discount}}% off</span>.</div>',
+    '      <div class="sg-for" ng-if="s.shop">{{s.shop.trade}} for your {{s.car}}. <span ng-if="!s.shop.yard">Over the counter: no delivery charge, no waiting<span ng-if="s.shop.discount > 0">, and {{s.shop.discount}}% off</span>.</span><span ng-if="s.shop.yard">Second-hand, sold as seen: far below list price and none of it straight. What is here changes from day to day.</span></div>',
     '      <div class="sg-scrolly">',
     '        <div ng-repeat="sec in cat.sections">',
     '          <div class="sg-sec sg-h" ng-class="{\'sg-act\': sec.id === cur.section}" ng-click="openSection(sec)"><span ng-bind-html="icon(sec.id)"></span>{{sec.title}}</div>',
@@ -473,7 +532,7 @@ angular.module('beamng.apps')
     '        <div class="sg-card" ng-repeat="it in pageItems() track by it.slotPath + it.part">',
     '          <div class="sg-stage"><span class="sg-glyph" ng-bind-html="icon(curSec().id)"></span>',
     '            <div class="sg-prev" ng-if="hasModel(it.part)" data-part="{{it.part}}" data-id="c{{it.part}}" data-spin="always"></div>',
-    '            <div class="sg-badges"><span class="sg-badge" ng-if="it.fitted">On the car</span><span class="sg-badge sg-new" ng-if="it.owned > 0">On the shelf &times;{{it.owned}}</span></div>',
+    '            <div class="sg-badges"><span class="sg-badge" ng-if="it.fitted">On the car</span><span class="sg-badge sg-new" ng-if="it.owned > 0">On the shelf &times;{{it.owned}}</span><span class="sg-badge sg-used" ng-if="it.used">Used &minus;{{it.used}}%</span></div>',
     '          </div>',
     '          <div class="sg-meta"><div class="sg-cslot">{{it.slot}}</div><div class="sg-cname" title="{{it.part}}">{{it.name}}</div>',
     '            <div class="sg-buyrow"><div class="sg-price">{{money(it.price)}}</div><div class="sg-btn sg-go" ng-click="buy(it)">Add</div></div></div>',
@@ -889,7 +948,62 @@ angular.module('beamng.apps')
 
       // ---- info + settings
       $scope.$on('slrrGarageInfo', function (ev, data) {
-        $scope.$evalAsync(function () { data = data || {}; if (!Array.isArray(data.rows)) data.rows = []; $scope.info = data; });
+        $scope.$evalAsync(function () {
+          data = data || {};
+          if (!Array.isArray(data.rows)) data.rows = [];
+          if (!Array.isArray(data.builds)) data.builds = [];
+          $scope.info = data;
+        });
+      });
+
+      // ---- saved builds
+      $scope.build = { name: '' };
+      $scope.saveBuild = function () { $scope.lua('saveBuild(' + JSON.stringify($scope.build.name || '') + ')'); $scope.build.name = ''; };
+
+      // ---- the engine's power curve, drawn into a 560 x 190 box
+      $scope.dyno = {};
+      $scope.$on('slrrGarageDyno', function (ev, data) {
+        $scope.$evalAsync(function () {
+          if (!data || !Array.isArray(data.power) || data.power.length < 3) { $scope.dyno = {}; return; }
+          var W = 560, H = 190, n = data.power.length;
+          var top = Math.max(1, Math.max.apply(null, data.power), Math.max.apply(null, data.torque)) * 1.08;
+          function line(values) {
+            var d = '';
+            for (var i = 0; i < n; i++) d += (i ? 'L' : 'M') + (i / (n - 1) * W).toFixed(1) + ' ' + (H - Math.max(0, values[i]) / top * H).toFixed(1);
+            return d;
+          }
+          var grid = '';
+          for (var g = 1; g < 4; g++) grid += 'M0 ' + (H * g / 4) + 'H' + W;
+          for (var rpm = 1000; rpm < data.maxRPM; rpm += 1000) grid += 'M' + (rpm / data.maxRPM * W).toFixed(1) + ' 0V' + H;
+          $scope.dyno = {
+            path: line(data.power), torquePath: line(data.torque), grid: grid, maxRPM: data.maxRPM,
+            maxPower: Math.round(data.maxPower), maxTorque: Math.round(data.maxTorque),
+            maxPowerRPM: Math.round((data.maxPowerRPM || 0) / 50) * 50, maxTorqueRPM: Math.round((data.maxTorqueRPM || 0) / 50) * 50
+          };
+        });
+      });
+
+      // ---- job sheet, shown before driving out
+      $scope.sheet = null;
+      $scope.closeSheet = function () { $scope.sheet = null; };
+      $scope.driveOut = function () { $scope.sheet = null; $scope.lua('leave(true)'); };
+      $scope.$on('slrrGarageJobSheet', function (ev, data) {
+        $scope.$evalAsync(function () {
+          data = data || {};
+          ['fitted', 'removed'].forEach(function (k) { if (!Array.isArray(data[k])) data[k] = []; });
+          $scope.panel = null;
+          $scope.sheet = data;
+        });
+      });
+
+      // ---- work that takes time
+      $scope.work = null;
+      $scope.$on('slrrGarageWork', function (ev, data) {
+        $scope.$evalAsync(function () {
+          if (!data || !data.seconds) { $scope.work = null; return; }
+          $scope.work = { what: data.what, seconds: data.seconds, go: false };
+          window.setTimeout(function () { $scope.$evalAsync(function () { if ($scope.work) $scope.work.go = true; }); }, 40);
+        });
       });
       $scope.$on('slrrGarageSettings', function (ev, data) {
         $scope.$evalAsync(function () {
@@ -980,7 +1094,7 @@ angular.module('beamng.apps')
           if ($scope.line > $scope.lineCount() - 1) $scope.line = $scope.lineCount() - 1;
           if (data.phase !== 'garage') $scope.hover = {};
           if (data.phase === 'garage' && wasPhase === 'film') { $scope.line = 0; $scope.panel = null; }
-          if (data.phase === 'idle' || data.phase === 'leaving') { $scope.panel = null; $scope.contents = null; }
+          if (data.phase === 'idle' || data.phase === 'leaving') { $scope.panel = null; $scope.contents = null; $scope.sheet = null; $scope.work = null; }
           if (data.phase === 'idle') noModel = {};      // another car, another livery: ask again next time
           if (data.mode !== 'tune' && $scope.panel === 'tune') $scope.panel = null;
           if (data.mode !== 'tune') $scope.pt = { vars: [] };
