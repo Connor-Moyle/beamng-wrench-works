@@ -7,8 +7,10 @@ local FILE = '/settings/slrr_garage/settings.json'
 
 -- order here is the order on the settings screen
 M.defs = {
-  { key = 'freeroamMoney', group = 'Money', title = 'Freeroam budget', type = 'number', min = 0, max = 100000000, step = 5000, default = 250000,
-    desc = 'Outside career mode you always have exactly this much to spend. It never runs down. In career mode your real career money is used instead.' },
+  { key = 'unlimitedMoney', group = 'Money', title = 'Unlimited money', type = 'bool', default = false,
+    desc = 'Outside career mode: buy anything, nothing is ever deducted.' },
+  { key = 'freeroamMoney', group = 'Money', title = 'Freeroam money', type = 'number', min = 0, max = 100000000, step = 5000, default = 250000,
+    desc = 'What you start with outside career mode. Buying, selling, repairs and deliveries then move it up and down, and it is remembered between sessions. Changing this number sets your money to it. In career mode your career money is used instead.' },
   { key = 'priceMultiplier', group = 'Money', title = 'Part prices', type = 'range', min = 0, max = 3, step = 0.05, default = 1, unit = 'x',
     desc = 'Multiplies every catalog price. 0 makes parts free.' },
   { key = 'sellFactor', group = 'Money', title = 'Sell-back value', type = 'range', min = 0, max = 1, step = 0.05, default = 0.5, unit = 'x',
@@ -31,6 +33,8 @@ M.defs = {
     desc = 'A bent bumper is still bent after you take it off and refit it, and the car leaves as damaged as it came in unless you pay for repairs.' },
   { key = 'autoEnter', group = 'Garage', title = 'Drive up to the door to enter', type = 'bool', default = true,
     desc = 'Rolling towards the garage door starts the visit. Turn off to enter only with the key binding.' },
+  { key = 'enterSpeed', group = 'Garage', title = 'Fastest speed to enter at', type = 'range', min = 5, max = 60, step = 1, default = 15, unit = ' km/h',
+    desc = 'A door only takes the car in when it rolls up slower than this. Faster, and you just drive through.' },
   { key = 'playFilm', group = 'Garage', title = 'Drive-in film', type = 'bool', default = true,
     desc = 'Watch the car roll into the garage. Turn off to cut straight to the garage.' },
   { key = 'highlight', group = 'Garage', title = 'Highlight the part under the cursor', type = 'bool', default = true,

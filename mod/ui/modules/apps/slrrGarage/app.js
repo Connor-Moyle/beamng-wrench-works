@@ -31,6 +31,7 @@ angular.module('beamng.apps')
     // the mechanic's row
     repairPart: svg('<path d="M33 9a8 8 0 0 1-10 10L11 31a3 3 0 0 1-4-4l12-12A8 8 0 0 1 29 5l-5 5 2 5 5 2z"/><path d="M36 30v12M30 36h12"/>'),
     repairCar: svg('<path d="M4 28v-6l6-2 5-8h14l7 8 6 2v6h-4a5 5 0 0 0-10 0H18a5 5 0 0 0-10 0z"/><path d="M24 34v10M19 39h10"/>'),
+    sellAll: svg('<circle cx="19" cy="26" r="13"/><path d="M24 21c-1-2-8-3-8 1.500 0 4.500 8 2.300 8 6.800 0 4.500-7.500 3.800-9 .700M19 17v3M19 32.500v3"/><path d="M27 9.500a13 13 0 0 1 10 21.500"/><path d="M34 7a13 13 0 0 1 9 20"/>'),
     sell: svg('<circle cx="24" cy="24" r="17"/><path d="M30 17c-1-3-11-4-11 2 0 6 11 3 11 9 0 6-10 5-12 1M24 11v4M24 33v4"/>'),
     // catalog chapters / filters
     engine: svg('<path d="M10 18h6v-4h10v4h6l4 4h4v12h-4l-4 4H16l-4-4H8V22h2zM19 10h8"/>'),
@@ -281,7 +282,7 @@ angular.module('beamng.apps')
     '  <div class="sg-top sg-panel" ng-mouseenter="overUi(true)">',
     '    <div class="sg-tag sg-h">Garage</div>',
     '    <div class="sg-where"><b>{{s.garage}}</b><span>{{s.car}}</span></div>',
-    '    <div class="sg-money sg-glass"><b>{{money(s.money)}}</b><span>{{s.career ? \'Career money\' : \'Freeroam budget\'}}</span></div>',
+    '    <div class="sg-money sg-glass"><b>{{s.unlimited ? \'Unlimited\' : money(s.money)}}</b><span>{{s.career ? \'Career money\' : \'Money\'}}</span></div>',
     '  </div>',
 
     /* SLRR icon bar */
@@ -315,6 +316,7 @@ angular.module('beamng.apps')
     '        <div class="sg-ib" ng-class="{\'sg-on\': s.tool === \'repair\'}" ng-click="lua(\'setTool(\\\'repair\\\')\')" ng-mouseenter="tip = tips.repairPart" ng-bind-html="icon(\'repairPart\')"></div>',
     '        <div class="sg-ib" ng-class="{\'sg-dim\': !s.damaged}" ng-click="lua(\'repairAll()\')" ng-mouseenter="tip = repairAllTip()" ng-bind-html="icon(\'repairCar\')"></div>',
     '        <div class="sg-ib" ng-class="{\'sg-on\': s.tool === \'sell\'}" ng-click="lua(\'setTool(\\\'sell\\\')\')" ng-mouseenter="tip = tips.sell" ng-bind-html="icon(\'sell\')"></div>',
+    '        <div class="sg-ib" ng-class="{\'sg-dim\': !s.inventory.length}" ng-click="lua(\'sellAll()\')" ng-mouseenter="tip = sellAllTip()" ng-bind-html="icon(\'sellAll\')"></div>',
     '      </div>',
     '      <div class="sg-cap">Show on car</div>',
     '      <div class="sg-row" ng-mouseleave="tip = null">',
@@ -461,7 +463,7 @@ angular.module('beamng.apps')
     '        <div class="sg-onway" ng-if="cart.orders.length">On its way to the garage',
     '          <div class="sg-cartrow" ng-repeat="o in cart.orders track by $index"><span class="sg-cartn">{{o.name}}</span><span class="sg-cartp">{{eta(o.seconds)}}</span></div></div>',
     '      </div>',
-    '      <div class="sg-wallet">{{s.career ? \'Career money\' : \'Freeroam budget\'}}<b>{{money(s.money)}}</b></div>',
+    '      <div class="sg-wallet">{{s.career ? \'Career money\' : \'Money\'}}<b>{{s.unlimited ? \'Unlimited\' : money(s.money)}}</b></div>',
     '    </div>',
     '    <div class="sg-page-r">',
     '      <div class="sg-head"><div class="sg-h">{{curSub() ? curSub().title : \'Choose a chapter\'}}</div><div class="sg-crumb" ng-if="curSec()">{{curSec().title}} &middot; {{shownItems().length}} parts</div>',
@@ -623,6 +625,7 @@ angular.module('beamng.apps')
         return out;
       };
       $scope.scroll = function (d) { $scope.line = Math.max(0, Math.min($scope.lineCount() - 1, $scope.line + d)); wantPreviews(); };
+      $scope.sellAllTip = function () { return { title: 'Sell everything on the shelf', desc: $scope.s.inventory.length ? 'for ' + $scope.money($scope.s.shelfValue) + ' (asks first)' : 'the shelf is empty' }; };
       $scope.install = function (item) { $scope.contents = null; $scope.lua('install(' + item.id + ')'); };
       // the list behind a "+3 parts" badge
       $scope.contents = null;

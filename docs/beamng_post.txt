@@ -1,0 +1,73 @@
+[CENTER][IMG]https://raw.githubusercontent.com/Connor-Moyle/beamng-slrr-garage/main/docs/icon.jpg[/IMG]
+
+[SIZE=7][B]Garage[/B][/SIZE]
+[SIZE=4]Take the car apart and build it back, part by part[/SIZE][/CENTER]
+
+A hands-on garage for [B]West Coast USA[/B]. Roll up to a garage door, the car drives itself in onto a lift, and from there you work on it by hand: click a part and it comes off, click it on the shelf and it goes back on. It is built in the spirit of the garage in Street Legal Racing: Redline, written from scratch for BeamNG. Nothing from that game is used.
+
+[IMG]https://raw.githubusercontent.com/Connor-Moyle/beamng-slrr-garage/main/docs/screenshots/02_garage.jpg[/IMG]
+
+[SIZE=5][B]What it does[/B][/SIZE]
+[LIST]
+[*][B]Click parts off, click them back on.[/B] Every part except the body shell comes off, and you can drive out without whatever you left on the shelf.
+[*][B]No reloading while you work.[/B] The car is only rebuilt once, behind the fade, when you drive out.
+[*][B]A working two-post lift.[/B] The car parks between the posts, the arms swing in under the sills, and the lift carries it up so you can get the camera underneath.
+[*][B]Real 3D part previews.[/B] Parts in the catalog and on the shelf are the game's own models with your paint and livery.
+[*][B]Catalog with a shopping list.[/B] Parts are sorted into small chapters (front bumpers, rear suspension, front tyres and so on). Add what you want, then confirm the order.
+[*][B]Delivery by weight and size.[/B] A hood costs far more to deliver than a mirror. Standard or express.
+[*][B]Six parts shops in town.[/B] Real businesses on the map sell their own trade over the counter: no delivery charge, and 5% cheaper.
+[*][B]Damage stays.[/B] A bent bumper is still bent when you refit it, visit after visit, unless you pay for the repair.
+[*][B]Tuning per part.[/B] Click a tyre and you get its pressure, click the suspension and you get its alignment.
+[*][B]Paint booth.[/B] The car disappears in a cloud of the new colour.
+[*][B]Money.[/B] Career money in career mode. In freeroam a wallet that goes up and down as you buy and sell, or unlimited money if you prefer.
+[/LIST]
+
+[IMG]https://raw.githubusercontent.com/Connor-Moyle/beamng-slrr-garage/main/docs/screenshots/03_lift.jpg[/IMG]
+
+[SIZE=5][B]Where[/B][/SIZE]
+Three garages on West Coast USA, each with an orange marker in its doorways. Drive in at walking pace (under 15 km/h by default); faster and you just drive through.
+[LIST]
+[*][B]Belasco City Garage[/B] (service station): in by the main door, out by the side door, or the other way round.
+[*][B]Alder Dragway Garage[/B]: drive-through, either direction.
+[*][B]Industrial Garage[/B]: drive-through hall, either direction.
+[/LIST]
+
+Shops (blue markers, stop on them):
+[LIST]
+[*][B]Torres Tires[/B] - wheels, tyres, hubs
+[*][B]Belasco City Exhaust[/B] - exhausts and intakes
+[*][B]Fast Automotive[/B] - engines, turbos, nitrous, gearboxes, cooling, differentials
+[*][B]Smash Auto Repairs[/B] - body panels, lights, glass, spoilers, body kits
+[*][B]Jerry Riggs[/B] - suspension, brakes, steering, chassis bracing
+[*][B]Belasco Auto[/B] - interiors, trim, paint designs, accessories
+[/LIST]
+
+[IMG]https://raw.githubusercontent.com/Connor-Moyle/beamng-slrr-garage/main/docs/screenshots/05_catalog.jpg[/IMG]
+[IMG]https://raw.githubusercontent.com/Connor-Moyle/beamng-slrr-garage/main/docs/screenshots/06_shop.jpg[/IMG]
+
+[SIZE=5][B]Controls in the garage[/B][/SIZE]
+[LIST]
+[*][B]Left click[/B] a part on the car: take it off. A part on the shelf: fit it.
+[*][B]Right drag[/B]: orbit. [B]Wheel[/B]: zoom. [B]Middle click[/B]: look at a part.
+[*]The icon bar along the top: drive out, catalog, car info, mechanic, tune, lift, paint booth, test engine, advance time, whole car, settings.
+[*]Left of the shelf: repair part, repair car, sell part, sell everything, and four toggles that hide the engine, body, running gear or interior.
+[/LIST]
+Prices, delivery charges and times, the shop discount, the entry speed, camera direction and more are in the Settings screen.
+
+[IMG]https://raw.githubusercontent.com/Connor-Moyle/beamng-slrr-garage/main/docs/screenshots/04_paint.jpg[/IMG]
+
+[SIZE=5][B]Install[/B][/SIZE]
+[LIST=1]
+[*]Download [B]slrr_garage.zip[/B] from the releases page: [URL]https://github.com/Connor-Moyle/beamng-slrr-garage/releases[/URL]
+[*]Put the zip in your mods folder (Documents or AppData > BeamNG > BeamNG.drive > current > mods). Do not unpack it.
+[*]Load West Coast USA and drive up to a garage.
+[/LIST]
+
+[SIZE=5][B]Good to know[/B][/SIZE]
+[LIST]
+[*]Made for BeamNG.drive 0.39. West Coast USA only for now.
+[*]The mod is silent: it ships without sounds.
+[*]Career mode uses your career money; the garage does not touch career's own part inventory.
+[*]Shelf previews step aside while the camera is moving and come back when it rests.
+[*]Source and issue tracker: [URL]https://github.com/Connor-Moyle/beamng-slrr-garage[/URL]
+[/LIST]

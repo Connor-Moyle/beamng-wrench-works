@@ -1,6 +1,8 @@
 # Garage mod for BeamNG.drive
 
-A working garage for BeamNG.drive, built to feel like the one in *Street Legal Racing: Redline*. Roll up to the Belasco City Garage on West Coast USA, watch the car drive itself in, then work on it by hand: click parts off, click them back on, tune, paint, repair, order new parts from the catalog, and drive out the other door.
+A working garage for BeamNG.drive, built to feel like the one in *Street Legal Racing: Redline*. Roll up to a garage on West Coast USA, watch the car drive itself in onto the lift, then work on it by hand: click parts off, click them back on, tune, paint, repair, order new parts from the catalog, and drive out the other door.
+
+![The garage](docs/screenshots/02_garage.jpg)
 
 It is a tribute to how that game's garage plays. Nothing from Street Legal Racing: Redline is used or included: all code here is written for BeamNG, and all models and textures come from BeamNG itself.
 
@@ -10,7 +12,13 @@ Built on BeamNG.drive 0.39.4.
 
 1. Download `slrr_garage.zip` from the Releases page.
 2. Drop it into your BeamNG mods folder (`%LOCALAPPDATA%\BeamNG\BeamNG.drive\current\mods`).
-3. Load West Coast USA and drive at one of the orange markers at the Belasco City Garage. There is one in front of the main door and one outside the side door; you go in through one and come out of the other.
+3. Load West Coast USA and drive into a garage doorway (orange marker) at walking pace. Faster than 15 km/h and you simply drive through; the limit is in Settings.
+
+| Garage | Doors |
+| --- | --- |
+| Belasco City Garage (service station) | main door and side door: in by one, out by the other |
+| Alder Dragway Garage | drive-through, either direction |
+| Industrial Garage | drive-through hall, either direction |
 
 The mod ships without sounds and is simply quiet. `tools/install.ps1` can copy a set of interface sounds from a Street Legal Racing: Redline install you own, if you want them.
 
@@ -34,11 +42,11 @@ The icon bar along the top:
 - **Car info** – specs, part count and value, damage and repair cost.
 - **Mechanic (wrench)** – the default mode: fit and remove parts.
 - **Tune (screwdriver)** – click a door, hood or boot to open it; click any other part and it is outlined and a small panel pops up with just that part's adjustments (tyre pressure for a tyre, camber for the suspension, and so on). The full list is in the drawer on the right. Adjustments take effect when you drive out.
-- **Lift** – raises the car about 1.3 m so you can get the camera underneath it.
+- **Lift** – every garage has a two-post lift. The car parks between its posts, the arms swing in under the sills, and this button carries the car about 1.3 m up, camera and all.
 - **Paint booth** – factory colours or mix your own, three colour slots. The car disappears in a cloud of the new colour while it is sprayed.
 - **Test engine**, **Advance time**, **Whole car** (camera reset) and **Settings**.
 
-The mechanic's buttons sit left of the shelf: **Repair part**, **Repair car**, **Sell part**, and four toggles that hide the engine, body, running gear or interior so you can reach what is behind them.
+The mechanic's buttons sit left of the shelf: **Repair part**, **Repair car**, **Sell part**, **Sell everything** (asks first), and four toggles that hide the engine, body, running gear or interior so you can reach what is behind them.
 
 ## Ordering parts, delivery and shops
 
@@ -57,6 +65,8 @@ The mechanic's buttons sit left of the shelf: **Repair part**, **Repair car**, *
 
 Delivery charges, the express surcharge, delivery time and the shop discount can all be changed in Settings.
 
+![The lift](docs/screenshots/03_lift.jpg)
+
 ## Part previews
 
 The parts in the catalog and on the shelf are the real 3D models, with the game's own textures, your paint and your livery, turning at the game's frame rate. They are held in front of the camera, so on the shelf they step aside while the camera is moving and come back when it rests.
@@ -64,7 +74,7 @@ The parts in the catalog and on the shelf are the real 3D models, with the game'
 ## Damage and money
 
 - Parts keep their damage. Take a bent bumper off and it is still bent when you refit it, and the car leaves as damaged as it arrived, visit after visit, unless you pay to repair it.
-- In career mode the garage spends and earns your career money. Everywhere else you get a fixed budget that never runs down.
+- In career mode the garage spends and earns your career money. Outside it you have a wallet of your own that goes down when you buy and up when you sell, and is remembered between sessions. Settings has the starting amount and an unlimited-money switch.
 - Prices, sell-back value, repair cost, the budget, camera direction, preview speed and direction and a few other things are in the Settings screen.
 
 ## Why working on the car does not stutter
@@ -82,6 +92,7 @@ Changing a part in BeamNG normally rebuilds the whole vehicle, which freezes the
 - Two actions can be bound under Options > Controls > Gameplay: enter the nearest garage, and drive out. Handy when the car cannot drive itself to the door.
 - Career mode: only money is wired up. The garage does not know about career's own parts inventory.
 - More garages and shops can be added in `lua/ge/extensions/slrr/garageSites.lua` (a garage needs its parking spot, direction, door and wall distances and the way out; a shop needs a position and the catalog chapters it sells).
+- `docs/beamng_post.txt` is the forum post for the mod, in BBCode.
 
 ## Source layout
 
@@ -94,6 +105,8 @@ Changing a part in BeamNG normally rebuilds the whole vehicle, which freezes the
 | `lua/ge/extensions/slrr/garageDamage.lua`, `lua/vehicle/extensions/slrrGarageVeh.lua` | damage that survives rebuilding the car, the lift |
 | `lua/ge/extensions/slrr/garageShapes.lua` | cuts single parts out of the vehicle's model files |
 | `lua/ge/extensions/slrr/garagePreview.lua` | shows those parts: turning previews and parts placed on the car |
+| `lua/ge/extensions/slrr/garageLift.lua` | the car lift: its model and its movement |
+| `lua/ge/extensions/slrr/garageSites.lua` | the garages and shops and where they are |
 | `lua/ge/extensions/slrr/garageCatalog.lua`, `garageSettings.lua` | catalog chapters, settings |
 | `ui/modules/apps/slrrGarage/app.js` | the garage screen |
 

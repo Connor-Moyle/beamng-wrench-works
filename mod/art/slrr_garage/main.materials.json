@@ -1,0 +1,30 @@
+{
+  "slrr_lift_paint": {
+    "name": "slrr_lift_paint",
+    "mapTo": "slrr_lift_paint",
+    "class": "Material",
+    "Stages": [ { "baseColorFactor": [0.03, 0.17, 0.52, 1], "metallicFactor": 0.25, "roughnessFactor": 0.42 }, {}, {}, {} ],
+    "version": 1.5
+  },
+  "slrr_lift_steel": {
+    "name": "slrr_lift_steel",
+    "mapTo": "slrr_lift_steel",
+    "class": "Material",
+    "Stages": [ { "baseColorFactor": [0.16, 0.16, 0.17, 1], "metallicFactor": 0.85, "roughnessFactor": 0.45 }, {}, {}, {} ],
+    "version": 1.5
+  },
+  "slrr_lift_rubber": {
+    "name": "slrr_lift_rubber",
+    "mapTo": "slrr_lift_rubber",
+    "class": "Material",
+    "Stages": [ { "baseColorFactor": [0.02, 0.02, 0.02, 1], "metallicFactor": 0, "roughnessFactor": 0.95 }, {}, {}, {} ],
+    "version": 1.5
+  },
+  "slrr_lift_warn": {
+    "name": "slrr_lift_warn",
+    "mapTo": "slrr_lift_warn",
+    "class": "Material",
+    "Stages": [ { "baseColorFactor": [0.86, 0.56, 0.02, 1], "metallicFactor": 0.2, "roughnessFactor": 0.5 }, {}, {}, {} ],
+    "version": 1.5
+  }
+}

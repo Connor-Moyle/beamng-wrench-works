@@ -19,6 +19,7 @@ local camera = require('slrr/garageCamera')
 local damage = require('slrr/garageDamage')
 local shapes = require('slrr/garageShapes')
 local preview = require('slrr/garagePreview')
+local lift = require('slrr/garageLift')
 local settings = require('slrr/garageSettings')
 
 local im = ui_imgui
@@ -29,7 +30,6 @@ local FILM_SPEED = 5.2          -- m/s the car rolls in and out at
 local FILM_ACCEL = 2.4
 local FILM_START = -15          -- the drive-in starts no further out than this (metres along the axis)
 local FILM_TIMEOUT = 14
-local ENTER_MAX_SPEED = 14      -- m/s; faster than this and you are just driving past
 local FADE_TIME = 0.22
 
 local blockedActions = core_input_actionFilter.createActionTemplate({
@@ -46,7 +46,11 @@ local deliveryTimer = 0
 local mode = 'mechanic'   -- mechanic (wrench: fit and remove) | tune (screwdriver: adjust and open)
 local tool                -- nil | 'repair' | 'sell' : what the next click on a part does instead
 local site                -- the garage we are in / entering
-local viaSide = false     -- this visit came in through the side door (and leaves by the front)
+local viaSide = false     -- this visit came in through the garage's second door (and leaves by the front)
+local centreZOffset       -- height of the car's centre above its position, noted once it is parked
+local sillHeight = 0.2    -- how far the car's underside is off the floor, for the lift's pads
+local restZ               -- height of the car's position while it stands on the floor
+local sellAllTimer        -- running while "sell all" waits for its second click
 local vehId
 local armed = true        -- auto-enter is switched off until the car has left the doorway again
 local fade = 0            -- what the UI's black overlay should be (0..1 target)
@@ -83,7 +87,10 @@ end
 local function carCenter()
   local v = veh()
   if not v then return nil end
-  return v:getSpawnWorldOOBB():getCenter()
+  local c = v:getSpawnWorldOOBB():getCenter()
+  -- that box stays on the floor when the car goes up on the lift; the car's position does not
+  if centreZOffset then c.z = v:getPosition().z + centreZOffset end
+  return c
 end
 
 local START_ENGINE = [[
@@ -153,6 +160,8 @@ local function sendState()
     shop = shop and { name = shop.name, trade = shop.trade, discount = settings.get('shopDiscount') } or nil,
     car = carName(),
     money = parts.getMoney(),
+    unlimited = parts.isUnlimited(),
+    shelfValue = inGarage and parts.shelfValue() or 0,
     career = parts.inCareer(),
     inventory = inGarage and inventoryForUi() or {},
     filters = parts.getSectionFilter(),
@@ -344,12 +353,13 @@ local function sendPreviewLive(ids)
   guihooks.trigger('slrrGaragePreviewLive', { ids = ids })
 end
 
--- The garage has two doors: the front one on its axis and a side one, reached by a quarter
--- turn to the left at the far end. A visit comes in through one and leaves through the other.
+-- A garage has a front door on its axis and, most of them, a second one: at the side, reached
+-- by a quarter turn to the left, or at the back, straight on. A visit comes in through one
+-- and leaves through the other; with a single door the car is turned round to leave.
 local function leftOf(s) return vec3(-s.dir.y, s.dir.x, 0) end
 local function axisPoint(s, along, left) return s.spot + s.dir * along + leftOf(s) * left + vec3(0, 0, 0.3) end
 
--- where the front of the car goes between the parking spot and the forecourt of the side door
+-- where the front of the car goes between the parking spot and the forecourt of a side door
 local function sideRoute(half, farLeft)
   local turn, radius = site.exitTurnAlong, site.exitRadius
   local points = { axisPoint(site, half, 0) }
@@ -362,14 +372,13 @@ local function sideRoute(half, farLeft)
   return points
 end
 
--- the drive in and the drive out of this visit:
--- { points, startPos, startDir, parkDir } and { points, isOutside(carCentre), endPos, endDir }
+-- the drive in: { points, startPos, startDir, parkDir }. It starts where the car is, in the doorway.
 local function entryRoute(half)
   local left = leftOf(site)
-  if viaSide then
+  local c = carCenter()
+  if viaSide and site.exit == 'side' then
     -- in through the side door: round to the right, and stop facing the front door
-    local c = carCenter()
-    local startLeft = clamp((c - site.spot):dot(left), site.exitClear + half + 0.5, site.exitLeft + 3)
+    local startLeft = clamp((c - site.spot):dot(left), site.sideDoorLeft + half - 1, site.exitLeft + 3)
     local turn, radius = site.exitTurnAlong, site.exitRadius
     local points = { axisPoint(site, turn + radius, startLeft - half) }
     for i = 7, 0, -1 do
@@ -378,23 +387,39 @@ local function entryRoute(half)
     end
     points[#points + 1] = axisPoint(site, -half, 0)
     return { points = points, startPos = axisPoint(site, turn + radius, startLeft) - vec3(0, 0, 0.25), startDir = -left, parkDir = -site.dir }
+  elseif viaSide then
+    -- in through the back door, straight to the spot, facing the front door
+    local startAlong = clamp(sites.toAxis(site, c), site.backDoorDist + half - 1, site.backDoorDist + 12)
+    return {
+      points = { axisPoint(site, startAlong - half, 0), axisPoint(site, -half, 0) },
+      startPos = sites.point(site, startAlong, 0, 0.05), startDir = -site.dir, parkDir = -site.dir,
+    }
   end
-  local startAlong = clamp(sites.toAxis(site, carCenter()), math.max(site.approachDist, FILM_START), site.doorDist - 7)
+  local startAlong = clamp(sites.toAxis(site, c), site.doorDist - 12, site.doorDist - half + 1)
   return {
     points = { axisPoint(site, startAlong + half, 0), axisPoint(site, half, 0) },
     startPos = sites.point(site, startAlong, 0, 0.05), startDir = site.dir, parkDir = site.dir,
   }
 end
 
+-- the drive out: { points, isOutside(carCentre), endPos, endDir, turnAround }
 local function exitRoute(half)
   local left = leftOf(site)
-  if viaSide then
-    -- straight out of the front door
-    local far = site.doorDist - 12
+  if viaSide or site.exit == 'front' then
+    -- straight out of the front door (a car that came in by it has to be turned round first)
+    local far = site.doorDist - 11
     return {
       points = { axisPoint(site, -half, 0), axisPoint(site, far, 0) },
       isOutside = function(c) return (c - site.spot):dot(site.dir) < site.doorDist - 2.5 end,
       endPos = sites.point(site, far + half, 0, 0.05), endDir = -site.dir,
+      turnAround = not viaSide,
+    }
+  elseif site.exit == 'through' then
+    local far = site.backDoorDist + 11
+    return {
+      points = { axisPoint(site, half, 0), axisPoint(site, far, 0) },
+      isOutside = function(c) return (c - site.spot):dot(site.dir) > site.backDoorDist + 2.5 end,
+      endPos = sites.point(site, far - half, 0, 0.05), endDir = site.dir,
     }
   end
   local points = sideRoute(half, site.exitLeft)
@@ -403,6 +428,35 @@ local function exitRoute(half)
     isOutside = function(c) return (c - site.spot):dot(left) > site.exitClear end,
     endPos = points[#points] - left * half - vec3(0, 0, 0.25), endDir = left,
   }
+end
+
+-- where the camera stands to film the drive in: across the room from the door the car uses
+local function filmSpot()
+  local side = math.min(site.halfWidth - 0.9, 2.4)
+  if viaSide and site.exit == 'side' then
+    return sites.point(site, site.exitTurnAlong - 0.6, side, 1.55)       -- right-hand wall, facing the side door
+  elseif viaSide then
+    return sites.point(site, math.max(site.doorDist + 1.4, -6.5), -side, 1.5)   -- on the front-door side, facing the back door
+  end
+  return sites.point(site, math.min(site.backDist - 0.6, 6.5), -side, 1.5)       -- on the far side, facing the front door
+end
+
+-- how far the underside of the car is off the floor, from its jbeam: lowest node of the body
+-- shell above the lowest node of all (the bottom of the tyres)
+local function measureSill()
+  local vd = vehId and core_vehicle_manager.getVehicleData(vehId)
+  local rn = vd and vd.vdata.refNodes and vd.vdata.refNodes[0]
+  local chassis = rn and vd.vdata.nodes[rn.ref] and vd.vdata.nodes[rn.ref].partPath
+  local lowest, lowestBody = math.huge, math.huge
+  for _, node in pairs(vd and vd.vdata.nodes or {}) do
+    local z = node.pos and tonumber(node.pos.z)
+    if z then
+      if z < lowest then lowest = z end
+      if node.partPath == chassis and z < lowestBody then lowestBody = z end
+    end
+  end
+  if lowest == math.huge or lowestBody == math.huge then return 0.2 end
+  return clamp(lowestBody - lowest, lift.restHeight() + 0.01, 0.5)
 end
 
 -- the driver gets out: the door on their side swings open and is pushed shut again
@@ -451,8 +505,11 @@ local function enterJob(job)
 
   v = veh()
   if not v then phase = 'idle' setFade(0) return end
+  centreZOffset = nil
   camera.setup(site, carCenter, length, viaSide)
   camera.onPose = onCameraPose
+  lift.setup(site.spot, site.dir)           -- the car drives in between its posts
+  sillHeight = measureSill()
   mode, tool = 'mechanic', nil
 
   if settings.get('playFilm') then
@@ -460,7 +517,7 @@ local function enterJob(job)
     v:queueLuaCommand('input.event("parkingbrake", 0, FILTER_DIRECT)')
     placeCarAt(route.startPos, route.startDir)
     job.sleep(0.3)
-    camera.startFilm()
+    camera.startFilm(filmSpot())
     core_camera.setByName(0, 'slrrGarage', false)
     playSound('entergarage.wav')
     local path, duration = buildDrivePath(route.points)
@@ -478,6 +535,7 @@ local function enterJob(job)
       if not v then break end
       local along, side = sites.toAxis(site, carCenter())
       local arrived = viaSide and (along < 0.5 and math.abs(side) < 1.5) or (not viaSide and along > -0.5)
+      if t < 1.2 then arrived = false end      -- it starts in the doorway, give it time to get going
       if arrived or (t > duration and v:getVelocity():length() < 0.3) then break end
     end
 
@@ -495,6 +553,29 @@ local function enterJob(job)
       job.sleep(0.3)
       camera.startOrbit(false)
       setFade(0)
+    else
+      -- it stops a hand's breadth out, never dead centre: ease it onto the middle of the lift
+      job.sleep(0.25)
+      v = veh()
+      local from = v and carCenter()
+      if from and (math.abs(along) > 0.03 or math.abs(side) > 0.03) then
+        local base = v:getPosition()
+        local shift = sites.point(site, 0, 0, 0) - from
+        shift.z = 0
+        local ref = v:getRefNodeId()
+        local clock = hptimer()
+        local time = clamp(shift:length() / 0.9, 0.25, 1.1)
+        while true do
+          local k = math.min(1, clock:stop() / 1000 / time)
+          local e = k * k * (3 - 2 * k)
+          local p = base + shift * e
+          v:setClusterPosRelRot(ref, p.x, p.y, p.z, 0, 0, 0, 1)     -- moved as it stands, nothing reset
+          if k >= 1 then break end
+          job.sleep(0)
+          v = veh()
+          if not v then break end
+        end
+      end
     end
     job.sleep(0.35)
     v:queueLuaCommand('input.event("brake", 0, FILTER_DIRECT)')
@@ -510,6 +591,13 @@ local function enterJob(job)
 
   freezeCar(true)
   picker.begin(vehId)
+  v = veh()
+  if v then
+    local c = v:getSpawnWorldOOBB():getCenter()
+    centreZOffset = c.z - v:getPosition().z
+    restZ = v:getPosition().z
+  end
+  lift.setArms(true)                         -- the arms swing in under the sills
   phase = 'garage'
   sendState()
   sendHover()
@@ -536,9 +624,11 @@ local function cleanup()
   camera.stop()
   picker.clear()
   preview.clear()
+  lift.clear()
   shapes.release()
   parts.detach()
   damage.clear()
+  centreZOffset, restZ = nil, nil
   hoverPath, tool, mode, tuneSelected = nil, nil, 'mechanic', nil
   if core_camera.getActiveCamName(0) == 'slrrGarage' then
     core_camera.setByName(0, (previousCamera and previousCamera ~= 'slrrGarage') and previousCamera or 'orbit', false)
@@ -559,6 +649,8 @@ local function leaveJob(job)
   setFade(1)
   job.sleep(FADE_TIME + 0.05)
   preview.setSlots({})
+  lift.setArms(false, true)
+  lift.setPadHeight(nil, true)
   if camera.isLift() then
     camera.setLift(false)
     if v then v:queueLuaCommand('if slrrGarageVeh then slrrGarageVeh.releaseLift() end') end
@@ -577,6 +669,13 @@ local function leaveJob(job)
 
   local route = exitRoute(half)
   local outside = false
+  centreZOffset, restZ = nil, nil
+  if route.turnAround then
+    -- one door only: the car is turned to face it while the screen is dark
+    placeCarAt(sites.point(site, 0, 0, 0.05), -site.dir)
+    camera.setFacingOut(true)
+    job.sleep(0.4)
+  end
   v = veh()
   if v and settings.get('playFilm') and not missing then
     -- the car drives itself out while the camera stays behind in the garage
@@ -762,6 +861,26 @@ local function sell(itemId)
     playSound('money.wav')
     say(string.format('Sold the %s for $%d.', item.name, value), 2.5)
   end
+end
+
+-- sell everything on the shelf. It asks first: the second click within a few seconds does it.
+local function sellAll()
+  if phase ~= 'garage' then return end
+  local count = #parts.getInventory()
+  if count == 0 then
+    say('There is nothing on the shelf to sell.', 2.5)
+    return
+  end
+  if not sellAllTimer then
+    sellAllTimer = 5
+    playSound('warn.wav', 0.5)
+    say(string.format('Sell all %d parts on the shelf for $%d? Click again to confirm.', count, parts.shelfValue()), 5)
+    return
+  end
+  sellAllTimer = nil
+  local sold, total = parts.sellAll()
+  playSound('money.wav')
+  say(string.format('Sold %d parts for $%d.', sold, total), 3)
 end
 
 -- click on a shelf part: fit it (or sell / repair it when that tool is armed)
@@ -1117,9 +1236,18 @@ end
 local function toggleLift()
   if phase ~= 'garage' then return end
   camera.setLift(not camera.isLift())
-  setCarLift(camera.isLift())
   playSound('mnuselect.wav', 0.7)
   sendState()
+  if camera.isLift() then
+    -- the pads come up to the sills first; from there they follow the car (see onUpdate)
+    local reach = math.max(0, sillHeight - lift.getPadHeight()) / 0.55
+    core_jobsystem.create(function(job)
+      job.sleep(reach)
+      if phase ~= 'idle' and camera.isLift() then setCarLift(true) end
+    end)
+  else
+    setCarLift(false)
+  end
 end
 
 -- test the engine where it stands (the drivetrain stays locked)
@@ -1152,6 +1280,7 @@ end
 
 local function setSetting(key, value)
   if key == '__reset' then settings.reset() else settings.set(key, value) end
+  if key == 'freeroamMoney' then parts.setWallet(settings.get('freeroamMoney')) end
   if not settings.get('highlight') then parts.setHighlight(nil) end
   sendSettings()
   sendState()
@@ -1195,21 +1324,20 @@ local function setDragging(value)
   if dragging then setHover(nil) end
 end
 
--- enter by hand (console / key binding): uses the nearest garage on this map
+-- enter by hand (console / key binding): the nearest garage on this map, by its nearest door
 local function enterNearest()
   if phase ~= 'idle' then return end
   local v = getPlayerVehicle(0)
   if not v then return end
-  local best, bestDist
+  local pos = v:getPosition()
+  local best, bestDist, second
   for _, s in ipairs(sites.getSites()) do
-    local d = (v:getPosition() - s.spot):length()
-    if not bestDist or d < bestDist then best, bestDist = s, d end
+    for _, door in ipairs(sites.doors(s)) do
+      local d = (pos - door.pos):length()
+      if not bestDist or d < bestDist then best, bestDist, second = s, d, door.id == 'second' end
+    end
   end
-  if best then
-    -- from the side-door forecourt it goes in that way
-    local c = v:getSpawnWorldOOBB():getCenter()
-    startEnter(best, v:getID(), (c - best.spot):dot(leftOf(best)) > best.exitClear - 2)
-  end
+  if best then startEnter(best, v:getID(), second) end
 end
 
 ----------------------------------------------------------------------------------------------
@@ -1218,10 +1346,9 @@ end
 -- a soft beacon in front of the door, like SLRR's garage marker, so the way in is obvious
 local markerColor, markerTextColor, markerTextBg = ColorF(1, 0.4, 0, 0.28), ColorF(1, 1, 1, 1), ColorI(20, 20, 24, 200)
 local function drawMarker(s, distance, base)
-  base = base or sites.point(s, (s.triggerNear + s.triggerFar) * 0.5, 0, 0)
   local pulse = 0.5 + 0.5 * math.sin(os.clock() * 3)
   markerColor.a = 0.16 + 0.14 * pulse
-  debugDrawer:drawCylinder(base, base + vec3(0, 0, 0.12), s.triggerHalfWidth * 0.8, markerColor)
+  debugDrawer:drawCylinder(base, base + vec3(0, 0, 0.12), 2.2, markerColor)
   debugDrawer:drawCylinder(base, base + vec3(0, 0, 2.6 + 0.3 * pulse), 0.07, markerColor)
   if distance < 45 then
     local label = settings.get('autoEnter') and (s.name .. ' - drive in') or s.name
@@ -1268,43 +1395,33 @@ local function updateIdle(dt)
   local list = sites.getSites()
   if #list == 0 then return end
   local pos = v:getPosition()
+  local centre = v:getSpawnWorldOOBB():getCenter()
+  local heading = v:getDirectionVector()
+  local nose = centre + heading * (v:getInitialLength() * 0.5)
+  local nearDoor = false
   for _, s in ipairs(list) do
-    local distSq = (pos - s.spot):squaredLength()
-    local sideDoor = s.spot + s.dir * (s.exitTurnAlong + s.exitRadius) + leftOf(s) * (s.exitClear + 4.5)
-    if distSq < 90 * 90 then
-      drawMarker(s, math.sqrt(distSq))
-      drawMarker(s, (pos - sideDoor):length(), sideDoor)
-    end
-    if distSq < 60 * 60 then
-      local along, side = sites.toAxis(s, v:getSpawnWorldOOBB():getCenter())
-      local inBand = along < s.triggerNear and along > s.triggerFar and math.abs(side) < s.triggerHalfWidth
-      -- the same band in front of the side door, which you approach heading right
-      local left = -side
-      local doorAlong = s.exitTurnAlong + s.exitRadius
-      local inSideBand = left > s.exitClear + 2 and left < s.exitClear + 10 and math.abs(along - doorAlong) < s.triggerHalfWidth - 1
-      if not armed then
-        -- re-arm once the car is well clear of both doorways
-        local clearFront = along < s.triggerFar - 4 or math.abs(side) > s.triggerHalfWidth + 6
-        local clearSide = left > s.exitClear + 14 or left < s.exitClear - 12 or math.abs(along - doorAlong) > s.triggerHalfWidth + 6
-        if clearFront and clearSide then armed = true end
-      elseif inSideBand and settings.get('autoEnter') then
-        local vel = v:getVelocity()
-        local inward = -leftOf(s)
-        if vel:length() < ENTER_MAX_SPEED and v:getDirectionVector():dot(inward) > 0.55 and vel:dot(inward) > 0.5 then
-          startEnter(s, v:getID(), true)
-          return
-        end
-      elseif inBand and settings.get('autoEnter') then
-        local vel = v:getVelocity()
-        local speed = vel:length()
-        local heading = v:getDirectionVector():dot(s.dir)
-        if speed < ENTER_MAX_SPEED and heading > 0.55 and vel:dot(s.dir) > 0.5 then
-          startEnter(s, v:getID())
-          return
+    if (pos - s.spot):squaredLength() < 110 * 110 then
+      for _, door in ipairs(sites.doors(s)) do
+        local distance = (pos - door.pos):length()
+        if distance < 90 then drawMarker(s, distance, door.pos - door.inward * 1.2) end
+        if (centre - door.pos):length() < 9 then nearDoor = true end
+        -- the way in is the doorway itself: the nose of the car reaching the door, heading in
+        local rel = nose - door.pos
+        local depth = rel:dot(door.inward)
+        local across = math.abs(rel:dot(vec3(-door.inward.y, door.inward.x, 0)))
+        if armed and settings.get('autoEnter') and depth > -1.6 and depth < 1.2 and across < 2.6 then
+          local vel = v:getVelocity()
+          -- at walking pace only: anything faster is somebody driving (or drifting) through
+          if vel:length() < settings.get('enterSpeed') / 3.6 and heading:dot(door.inward) > 0.55 and vel:dot(door.inward) > 0.3 then
+            startEnter(s, v:getID(), door.id == 'second')
+            return
+          end
         end
       end
     end
   end
+  -- after a visit the doors only work again once the car has left the doorway
+  if not armed and not nearDoor then armed = true end
 end
 
 local function updateGarage(dt)
@@ -1350,6 +1467,26 @@ local function onUpdate(dtReal)
       messageTimer, message = nil, nil
       sendState()
     end
+  end
+  if phase ~= 'idle' then
+    -- the lift's pads stay under the sills: once they touch, they go wherever the car goes
+    local v = veh()
+    if v and restZ and (phase == 'garage' or phase == 'catalog' or phase == 'busy') then
+      local rise = v:getPosition().z - restZ + v:getVelocity().z * 0.1      -- a touch ahead: the model trails
+      local touching = lift.getPadHeight() >= sillHeight - 0.004
+      if camera.isLift() then
+        if touching then lift.setPadHeight(sillHeight + math.max(0, rise), true) else lift.setPadHeight(sillHeight) end
+      elseif rise > 0.012 then
+        lift.setPadHeight(sillHeight + rise, true)
+      else
+        lift.setPadHeight(nil)
+      end
+    end
+    lift.update(dtReal)
+  end
+  if sellAllTimer then
+    sellAllTimer = sellAllTimer - dtReal
+    if sellAllTimer <= 0 then sellAllTimer = nil end
   end
   if phase == 'idle' then
     updateIdle(dtReal)
@@ -1427,6 +1564,7 @@ local function onClientEndMission()
     camera.stop()
     picker.clear()
     preview.clear()
+    lift.clear()
     shapes.release()
     parts.detach()
     damage.clear()
@@ -1476,6 +1614,7 @@ M.abort = abort
 M.click = click
 M.install = install
 M.sell = sell
+M.sellAll = sellAll
 M.setTool = setTool
 M.setMode = setMode
 M.repairAll = repairAll

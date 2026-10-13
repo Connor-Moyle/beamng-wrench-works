@@ -215,7 +215,7 @@ end
 
 -- cam: { pos, forward, right, up, tanX, tanY }   spinRate: radians per second, sign = direction
 local function updateSlots(dt, cam, spinRate)
-  if lastPos and ((cam.pos - lastPos):squaredLength() > 1e-9 or cam.forward:dot(lastForward) < 1 - 1e-10) then
+  if lastPos and ((cam.pos - lastPos):squaredLength() > 2.5e-7 or cam.forward:dot(lastForward) < 1 - 2e-9) then
     M.park()
   else
     still = still + 1

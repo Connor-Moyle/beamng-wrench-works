@@ -5,6 +5,12 @@
 
 local M = {}
 
+-- A garage is described along its own axis: `spot` is where the car is parked (on the floor),
+-- `dir` points from the front door into the building, and every distance is measured along
+-- that axis from the spot. `exit` says how a car that came in by the front door leaves:
+--   "side"    round a quarter turn to the left and out of a side door (you can come in there too)
+--   "through" straight on, out of a back door on the same axis (you can come in there too)
+--   "front"   there is only the one door: the car is turned round and leaves the way it came
 M.sites = {
   west_coast_usa = {
     {
@@ -12,19 +18,40 @@ M.sites = {
       name = "Belasco City Garage",
       spot = vec3(904.487, -546.274, 163.65),
       dir = vec3(0.99281, -0.11969, 0),
-      doorDist = -7.0,        -- door plane
-      approachDist = -21.0,   -- where the drive-in animation starts
-      triggerNear = -9.0,     -- auto-enter band in front of the door (along the axis)
-      triggerFar = -17.0,
-      triggerHalfWidth = 4.0,
-      halfWidth = 5.4,        -- interior half width
-      backDist = 5.6,         -- back wall
-      ceiling = 4.5,
-      -- the way out is the side door: ahead, a quarter turn to the left, and through it
-      exitTurnAlong = 4.0,    -- where the turn starts (along the axis)
+      doorDist = -7.0,        -- front door plane
+      halfWidth = 5.4,        -- the room the camera may move in: half its width,
+      backDist = 5.6,         -- how far past the spot,
+      ceiling = 4.5,          -- and its height
+      exit = "side",
+      exitTurnAlong = 4.0,    -- where the turn to the side door starts
       exitRadius = 6.0,       -- radius of the turn; the door is centred on exitTurnAlong + exitRadius
+      sideDoorLeft = 14.8,    -- side door plane, this far left of the axis
       exitLeft = 21.5,        -- how far left of the axis the drive out ends
       exitClear = 17.5,       -- left of this the car is outside
+    },
+    {
+      id = "alderDragwayGarage",
+      name = "Alder Dragway Garage",
+      spot = vec3(-203.3, -204.0, 118.81),
+      dir = vec3(0.5101, -0.8601, 0),
+      doorDist = -5.0,
+      halfWidth = 3.3,
+      backDist = 5.4,
+      ceiling = 4.8,
+      exit = "through",
+      backDoorDist = 7.0,     -- back door plane
+    },
+    {
+      id = "commercialGarage",
+      name = "Industrial Garage",
+      spot = vec3(-216.61, -26.93, 120.91),     -- the middle of the drive-through hall
+      dir = vec3(-0.9915, -0.1302, 0),
+      doorDist = -20.0,
+      halfWidth = 3.8,
+      backDist = 7.0,
+      ceiling = 4.0,
+      exit = "through",
+      backDoorDist = 20.0,
     },
   },
 }
@@ -61,6 +88,18 @@ M.shops = {
 function M.getShops()
   local level = getCurrentLevelIdentifier and getCurrentLevelIdentifier()
   return level and M.shops[level] or {}
+end
+
+-- The doors of a garage: where each is (centre of the opening, on the floor) and which way is in.
+function M.doors(site)
+  local left = vec3(-site.dir.y, site.dir.x, 0)
+  local doors = { { id = 'front', pos = site.spot + site.dir * site.doorDist, inward = site.dir } }
+  if site.exit == 'side' then
+    doors[2] = { id = 'second', pos = site.spot + site.dir * (site.exitTurnAlong + site.exitRadius) + left * site.sideDoorLeft, inward = -left }
+  elseif site.exit == 'through' then
+    doors[2] = { id = 'second', pos = site.spot + site.dir * site.backDoorDist, inward = -site.dir }
+  end
+  return doors
 end
 
 function M.getSites()

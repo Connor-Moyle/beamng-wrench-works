@@ -55,6 +55,7 @@ local function loadSave()
     save.inventory = type(data.inventory) == 'table' and data.inventory or {}
     save.nextId = tonumber(data.nextId) or 1
     save.orders = type(data.orders) == 'table' and data.orders or {}
+    save.wallet = tonumber(data.wallet)
   end
 end
 
@@ -73,7 +74,8 @@ local function inventory()
 end
 
 ----------------------------------------------------------------------------------------------
--- money: career money in career mode, a fixed budget everywhere else
+-- money: career money in career mode; elsewhere a wallet of its own that is spent and earned
+-- like any other, unless the player has switched to unlimited money
 
 local function inCareer()
   return career_career ~= nil and career_career.isActive ~= nil and career_career.isActive() and career_modules_playerAttributes ~= nil
@@ -81,9 +83,27 @@ end
 
 function M.inCareer() return inCareer() end
 
+local function unlimited()
+  return not inCareer() and settings.get('unlimitedMoney')
+end
+
+function M.isUnlimited() return unlimited() end
+
+local function wallet()
+  if type(save.wallet) ~= 'number' then save.wallet = settings.get('freeroamMoney') end
+  return save.wallet
+end
+
 function M.getMoney()
   if inCareer() then return career_modules_playerAttributes.getAttributeValue('money') or 0 end
-  return settings.get('freeroamMoney')
+  if unlimited() then return 999999999 end
+  return wallet()
+end
+
+-- put the freeroam wallet at a set amount (the "freeroam money" setting was changed)
+function M.setWallet(amount)
+  save.wallet = math.max(0, tonumber(amount) or 0)
+  jsonWriteFile(SAVE_FILE, save, true)
 end
 
 -- catalog price of something worth `value` in the game's own part data
@@ -101,6 +121,8 @@ local function spend(amount, label)
   if inCareer() then
     local ok = career_modules_payment.pay({ money = { amount = amount } }, { label = label, tags = { 'buying', 'slrrGarage' } })
     if not ok then return false end
+  elseif not unlimited() then
+    save.wallet = wallet() - amount
   end
   visitNet = visitNet + amount
   return true
@@ -110,6 +132,8 @@ local function earn(amount, label)
   if amount <= 0 then return end
   if inCareer() then
     career_modules_playerAttributes.addAttributes({ money = amount }, { label = label, tags = { 'selling', 'slrrGarage' } })
+  elseif not unlimited() then
+    save.wallet = wallet() + amount
   end
   visitNet = visitNet - amount
 end
@@ -794,6 +818,7 @@ end
 -- vehicle config to respawn with when the spawned car no longer matches how it came in.
 function M.revertVisit()
   if not entrySnapshot or not model then return nil end
+  if not inCareer() and not unlimited() and visitNet ~= 0 then save.wallet = wallet() + visitNet end
   if inCareer() and visitNet ~= 0 then
     career_modules_playerAttributes.addAttributes({ money = visitNet }, { label = 'Garage visit undone', tags = { 'slrrGarage' } })
   end
@@ -838,6 +863,25 @@ function M.sellItem(itemId)
   table.remove(inventory(), idx)
   writeSave()
   return true, item, value
+end
+
+-- sell everything on the shelf; returns how many parts and for how much
+function M.sellAll()
+  local inv = inventory()
+  local count, total = #inv, 0
+  for _, item in ipairs(inv) do total = total + M.sellValue(item) end
+  if count == 0 then return 0, 0 end
+  earn(total, 'Sold ' .. count .. ' parts')
+  for i = #inv, 1, -1 do inv[i] = nil end
+  writeSave()
+  return count, total
+end
+
+-- what the whole shelf would fetch
+function M.shelfValue()
+  local total = 0
+  for _, item in ipairs(inventory()) do total = total + M.sellValue(item) end
+  return total
 end
 
 ----------------------------------------------------------------------------------------------

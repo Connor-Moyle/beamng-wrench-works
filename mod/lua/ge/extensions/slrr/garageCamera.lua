@@ -1,9 +1,9 @@
 -- SLRR Garage: the camera.
--- One orbit rig does everything, so nothing ever cuts: during the drive-in it waits inside
--- the garage and watches the car come in nose first, and once the car has stopped it swings
--- round in a single short move to the garage's working view - an orbit you turn with the
--- right mouse button and zoom with the wheel, with the soft follow of Street Legal Racing:
--- Redline's garage camera. On the way out it stays behind and watches the car leave.
+-- Nothing ever cuts. During the drive-in the camera stands at a fixed spot inside the garage
+-- and turns to watch the car come in; once the car has stopped it leaves that spot in a
+-- single short swing to the garage's working view - an orbit you turn with the right mouse
+-- button and zoom with the wheel, with a soft follow. On the way out it stays where it is
+-- and watches the car leave.
 
 local M = {}
 
@@ -36,6 +36,8 @@ local lift = false
 local flip = 0                  -- 180 degrees when the car is parked facing the front door
 local rate = 9                  -- how eagerly the smoothed values chase their targets
 local lastDist = 5              -- how far from its target the camera really was last frame
+local lastPos                   -- where the camera was last frame
+local filmPos                   -- where the camera stands while a drive-in or drive-out is filmed
 
 local function smooth(current, target, r, dt)
   return current + (target - current) * (1 - exp(-r * dt))
@@ -98,10 +100,17 @@ function M.update(dt)
   sFocus = sFocus and (sFocus + (wanted - sFocus) * (1 - exp(-(filming and 14 or 5) * dt))) or wanted
 
   local offset = orbitOffset(sYaw, sPitch, sDist)
-  local k = roomLimit(sFocus, offset)
-  offset = offset * (1 + (k - 1) * wallWeight)
+  local pos
+  if filming and filmPos then
+    pos = filmPos
+    offset = pos - sFocus
+  else
+    local k = roomLimit(sFocus, offset)
+    offset = offset * (1 + (k - 1) * wallWeight)
+    pos = sFocus + offset
+  end
   lastDist = offset:length()
-  local pos = sFocus + offset
+  lastPos = pos
   local rot = quatFromDir((sFocus - pos):normalized(), vec3(0, 0, 1))
   -- whoever draws things that must sit still on the screen needs this frame's camera, not the last
   if M.onPose then M.onPose(pos, rot, sFov, dt) end
@@ -125,10 +134,10 @@ end
 -- the drive-in: look at the front of the car from inside. The camera's
 -- arm is far longer than the garage, so the walls hold the camera at the back of the room
 -- and it waits there, sinking a little, while the car comes towards it.
-function M.startFilm()
+function M.startFilm(pos)
   active, filming, settleT, lift = true, true, nil, false
   focus, sFocus = nil, nil
-  -- the same side of the car as the working view, so the swing that follows is a short one
+  filmPos = pos
   yaw, pitch, dist, fov = rad(-194) + flip, rad(5), 30, FILM_FOV
   sYaw, sPitch, sDist, sFov = yaw, pitch, dist, FILM_FOV
   wallWeight, wallTarget = 1, 1
@@ -140,7 +149,8 @@ function M.startExit()
   if not active then return end
   filming, settleT, lift = true, nil, false
   focus = nil
-  yaw, pitch, dist, fov = rad(-35) + flip, rad(12), carLength * 1.3, FILM_FOV
+  filmPos = lastPos           -- stay right here and turn to follow
+  fov = FILM_FOV
   wallTarget = 1
   rate = 2.5
 end
@@ -152,8 +162,17 @@ function M.startOrbit(fromFilm)
   yaw, pitch, dist, fov = y, p, d, ORBIT_FOV
   wallTarget = 1
   focus = nil
-  if fromFilm and filming then
-    sDist = lastDist          -- the walls were holding it closer than its arm
+  if fromFilm and filming and filmPos and sFocus then
+    -- carry on from where the film camera stands: the same place, said in orbit terms
+    local offset = filmPos - sFocus
+    local dir = site and site.dir or vec3(0, 1, 0)
+    local right = vec3(dir.y, -dir.x, 0)
+    sDist = max(0.5, offset:length())
+    sPitch = math.asin(clamp(offset.z / sDist, -1, 1))
+    sYaw = math.atan2(-offset:dot(right), -offset:dot(dir))
+    while sYaw - yaw > math.pi do sYaw = sYaw - 2 * math.pi end
+    while sYaw - yaw < -math.pi do sYaw = sYaw + 2 * math.pi end
+    wallWeight = 0            -- it may stand outside the orbit's room; ease it in
     settleT = 0
     rate = 1.4
   else
@@ -164,13 +183,18 @@ function M.startOrbit(fromFilm)
     rate = 9
   end
   filming = false
+  filmPos = nil
 end
 
 function M.stop()
   M.onPose = nil
+  filmPos, lastPos = nil, nil
   active, filming, settleT, lift = false, false, nil, false
   site, getCarCenter, focus, sFocus = nil, nil, nil, nil
 end
+
+-- the car has been turned round where it stands
+function M.setFacingOut(facingOut) flip = facingOut and math.pi or 0 end
 
 function M.isActive() return active end
 function M.isFilming() return filming end
@@ -199,11 +223,11 @@ end
 
 function M.hasFocus() return focus ~= nil end
 
--- "lift": the camera may drop below the floor and look up at the underside
+-- "lift": the camera may drop low and look up at the underside
 function M.setLift(on)
   lift = on == true
   if lift then
-    pitch = rad(-6)
+    pitch = rad(6)          -- the camera rises with the car; start just above level with it
   else
     pitch = clamp(pitch, PITCH_MIN, PITCH_MAX)
     if pitch < rad(8) then pitch = rad(14) end
