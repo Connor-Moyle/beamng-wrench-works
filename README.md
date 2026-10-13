@@ -129,6 +129,7 @@ Changing a part in BeamNG normally rebuilds the whole vehicle, which freezes the
 - "Paper catalog" in Settings prints the catalog and the shops as a spiral-bound parts catalogue, in the spirit of the street racing games of the early 2000s. It is drawn from scratch; nothing from another game is used.
 - `docs/beamng_post.txt` is the forum post for the mod, in BBCode.
 - `node tools/ui_selfcheck.js` runs the garage screen's logic (catalog search, sorting, paging, part options) outside the game.
+- `tools/ingame_test.lua` runs the mod's features in the game itself and writes a pass/fail list; how to run it is at the top of the file.
 
 ## Source layout
 

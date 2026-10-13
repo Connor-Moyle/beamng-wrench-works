@@ -20,6 +20,7 @@ local tracks              -- files found, shuffled; looked up again on every vis
 local index = 0
 local sourceId            -- the sound source of the track that is playing
 local at                  -- the radio it was started for (nil: plain music, the same everywhere)
+local placed = false      -- the game gave it a place in the world
 local age = 0             -- seconds since it was started
 local volume
 local fails = 0           -- tracks in a row that would not play; after three it stays quiet this visit
@@ -55,7 +56,7 @@ local function create(description, file)
 end
 
 local function start(file, radioPos)
-  local placed = radioPos ~= nil
+  placed = radioPos ~= nil
   sourceId = placed and create(PLACED, file) or nil
   if not sourceId then
     -- the game would not give it a place: plain music is better than none
@@ -109,6 +110,12 @@ function M.update(dt, playing, radioPos)
   if #tracks == 0 then return end
   index = index % #tracks + 1
   if not start(tracks[index], radioPos) then fails = fails + 1 end
+end
+
+-- what the radio is doing, for the console
+function M.status()
+  local snd = source()
+  return { tracks = tracks and #tracks or 0, playing = snd ~= nil and snd:isPlaying() or false, placed = placed, file = tracks and tracks[index] or nil }
 end
 
 return M
