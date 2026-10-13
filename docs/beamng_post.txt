@@ -3,7 +3,7 @@
 [SIZE=7][B]Wrench Works[/B][/SIZE]
 [SIZE=4]Take the car apart and build it back, part by part[/SIZE][/CENTER]
 
-A hands-on garage for [B]West Coast USA[/B]. Roll up to a garage door, the car drives itself in onto a lift, and from there you work on it by hand: click a part and it comes off, click it on the shelf and it goes back on. It is built in the spirit of the garage in Street Legal Racing: Redline, written from scratch for BeamNG. Nothing from that game is used.
+A hands-on garage for [B]West Coast USA[/B] and [B]Utah[/B]. Roll up to a garage door, the car drives itself in onto a lift, and from there you work on it by hand: click a part and it comes off, click it on the shelf and it goes back on. It is built in the spirit of the garage in Street Legal Racing: Redline, written from scratch for BeamNG. Nothing from that game is used.
 
 [IMG]https://raw.githubusercontent.com/Connor-Moyle/beamng-wrench-works/main/docs/screenshots/02_garage.jpg[/IMG]
 
@@ -13,14 +13,20 @@ A hands-on garage for [B]West Coast USA[/B]. Roll up to a garage door, the car d
 [*][B]No reloading while you work.[/B] The car is only rebuilt once, behind the fade, when you drive out.
 [*][B]A working two-post lift.[/B] The car parks between the posts, the arms swing in under the sills, and the lift carries it up so you can get the camera underneath.
 [*][B]Real 3D part previews.[/B] Parts in the catalog and on the shelf are the game's own models with your paint and livery.
-[*][B]Catalog with a shopping list.[/B] Parts are sorted into small chapters (front bumpers, rear suspension, front tyres and so on). Add what you want, then confirm the order.
-[*][B]Delivery by weight and size.[/B] A hood costs far more to deliver than a mirror. Standard or express.
-[*][B]Six parts shops in town.[/B] Real businesses on the map sell their own trade over the counter: no delivery charge, and 5% cheaper.
+[*][B]Catalog with a shopping list.[/B] Parts are sorted into small chapters (front bumpers, rear suspension, front tyres and so on). Search the whole catalog at once, sort by price, add what you want, then confirm the order.
+[*][B]Delivery by weight and size.[/B] A hood costs far more to deliver than a mirror. Standard or express, and a message when it arrives while you are out driving.
+[*][B]Seven parts shops in town.[/B] Real businesses on the map sell their own trade over the counter: no delivery charge, and 5% cheaper.
 [*][B]Damage stays.[/B] A bent bumper is still bent when you refit it, visit after visit, unless you pay for the repair.
 [*][B]Tuning per part.[/B] Click a tyre and you get its pressure, click the suspension and you get its alignment.
 [*][B]Paint booth.[/B] The car disappears in a cloud of the new colour.
 [*][B]Job sheet, saved builds and a dyno sheet.[/B] Drive out shows what the visit changed and cost. Save the car as it stands and fit that build again later. Car info plots the engine's power and torque.
 [*][B]A used-parts lock-up.[/B] A pick of second-hand parts that changes daily: cheap, and bent until you repair them.
+[*][B]Strip it for cash.[/B] Arm the sell tool and click parts straight off the car; each shows what it fetches first.
+[*][B]Fit all new parts.[/B] One button fits everything you just bought, in the right order.
+[*][B]Parts with options, chosen in one place.[/B] A mod wheel that wants a diameter, then a width, then a style? The catalog lists every choice it has, level by level, and delivers it built that way as one part.
+[*][B]Start from a body shell.[/B] Walk into a garage on foot and the lift is empty: buy the bare shell of any car you have installed and build it up from the catalog.
+[*][B]A radio in every garage.[/B] It plays your own music, and the sound comes from where the radio stands. No music is included; a small script converts your files.
+[*][B]Add your own garages and shops.[/B] One console command where the point should be, or a small JSON file in your map mod. Works on any map.
 [*][B]Money.[/B] Career money in career mode. In freeroam a wallet that goes up and down as you buy and sell, or unlimited money if you prefer.
 [/LIST]
 
@@ -33,6 +39,7 @@ Three garages on West Coast USA, each with an orange marker in its doorways. Dri
 [*][B]Alder Dragway Garage[/B]: a tent with one entrance. Drive in, and the car backs out when you are done.
 [*][B]Industrial Garage[/B]: drive-through hall, either direction.
 [/LIST]
+And one on Utah: the [B]Canyon Service Center[/B], a single open bay. Drive in, and the car backs out.
 
 Shops (blue markers, stop on them):
 [LIST]
@@ -63,13 +70,14 @@ Prices, delivery charges and times (standard and express), the shop discount, th
 [LIST=1]
 [*]Download [B]wrench_works.zip[/B] from the releases page: [URL]https://github.com/Connor-Moyle/beamng-wrench-works/releases[/URL]
 [*]Put the zip in your mods folder (Documents or AppData > BeamNG > BeamNG.drive > current > mods). Do not unpack it.
-[*]Load West Coast USA and drive up to a garage.
+[*]Load West Coast USA or Utah and drive up to a garage.
 [/LIST]
 
 [SIZE=5][B]Good to know[/B][/SIZE]
 [LIST]
-[*]Made for BeamNG.drive 0.39. West Coast USA only for now.
-[*]Sounds are the game's own; nothing extra to install.
+[*]Made for BeamNG.drive 0.39. Garages on West Coast USA and Utah, and on any map you or a map mod add them to; the shops that come with the mod are on West Coast USA.
+[*]Sounds are the game's own; nothing extra to install. Music is yours to bring: see the readme on GitHub.
+[*]Map makers: [URL]https://github.com/Connor-Moyle/beamng-wrench-works/blob/main/docs/adding_garages.md[/URL] shows how to add garages and shops to your map.
 [*]Career mode uses your career money; the garage does not touch career's own part inventory.
 [*]Shelf previews step aside while the camera is moving and come back when it rests.
 [*]Source and issue tracker: [URL]https://github.com/Connor-Moyle/beamng-wrench-works[/URL]

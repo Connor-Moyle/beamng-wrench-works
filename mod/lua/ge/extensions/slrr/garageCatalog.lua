@@ -39,6 +39,7 @@ M.sections = {
     { id = "chassis", title = "CHASSIS & BRACING" },
     { id = "plates", title = "PLATE HOLDERS" },
     { id = "electrics", title = "HORNS & ELECTRONICS" },
+    { id = "race", title = "RACE EQUIPMENT" },
     { id = "misc", title = "ACCESSORIES" },
   } },
   { id = "running", title = "RUNNING GEAR", subs = {
@@ -88,6 +89,9 @@ local rules = {
   { { "skin_interior", "interior_skin", "skin_.*seat", "interior_colou?r" }, "paint", "interior" },
   { { "paint_design", "livery", "skin_", "_skin", "^skin" }, "paint", "skins" },
 
+  { { "wheeliebar", "wheelie_bar", "parachute", "_chute", "^chute", "windownet", "window_net", "firesuppress", "fire_ext", "killswitch", "kill_switch", "towhook", "tow_hook", "ballast" }, "body", "race" },
+  { { "linelock", "line_lock" }, "running", "brakes" },
+  { { "transbrake", "trans_brake", "twostep", "two_step", "antilag" }, "engine", "management" },
   { { "doorpanel", "door_panel" }, "interior", "trim" },
   { { "doorglass", "door_glass", "quarterglass", "windshield", "backlight", "glass", "window" }, "body", "glass" },
   { { "brakepad", "brake_f", "brake_r", "brakes?_", "brake$" }, "running", "brakes_?" },

@@ -2,7 +2,7 @@
 
 A hands-on garage mod for BeamNG.drive.
 
-A working garage for BeamNG.drive, built to feel like the one in *Street Legal Racing: Redline*. Roll up to a garage on West Coast USA, watch the car drive itself in onto the lift, then work on it by hand: click parts off, click them back on, tune, paint, repair, order new parts from the catalog, and drive out the other door.
+A working garage for BeamNG.drive, built to feel like the one in *Street Legal Racing: Redline*. Roll up to a garage on West Coast USA or Utah, watch the car drive itself in onto the lift, then work on it by hand: click parts off, click them back on, tune, paint, repair, order new parts from the catalog, and drive out the other door.
 
 ![The garage](docs/screenshots/02_garage.jpg)
 
@@ -14,15 +14,30 @@ Built on BeamNG.drive 0.39.4.
 
 1. Download `wrench_works.zip` from the Releases page.
 2. Drop it into your BeamNG mods folder (`%LOCALAPPDATA%\BeamNG\BeamNG.drive\current\mods`).
-3. Load West Coast USA and drive into a garage doorway (orange marker) at walking pace. Faster than 15 km/h and you simply drive through; the limit is in Settings.
+3. Load West Coast USA or Utah and drive into a garage doorway (orange marker) at walking pace. Faster than 15 km/h and you simply drive through; the limit is in Settings.
 
 | Garage | Doors |
 | --- | --- |
 | Belasco City Garage (service station) | main door and side door: in by one, out by the other |
 | Alder Dragway Garage | a tent with one entrance: drive in, and the car backs out |
 | Industrial Garage | drive-through hall, either direction |
+| Canyon Service Center (Utah) | one open bay: drive in, and the car backs out |
 
 Sounds are the game's own. A `.wav` dropped into `art/sound/slrr_garage/` under one of the names in `garage.lua` replaces the matching sound; `tools/install.ps1` can copy such a set from a Street Legal Racing: Redline install you own.
+
+## The radio
+
+Every garage has a radio, and it plays your music while you are in a garage or a shop, one track after another in a shuffled order. With "Music comes from the radio" switched on (it is by default) the sound has a place in the room: it is louder near the radio and moves between your ears as the camera goes round the car.
+
+No music comes with the mod. Bring your own:
+
+- **Files you already have as `.ogg`, `.wav` or `.flac`:** put them in `settings\slrr_garage\music` in your BeamNG user folder (`%LOCALAPPDATA%\BeamNG\BeamNG.drive\current`). Make the folder if it is not there.
+- **Anything else (mp3, m4a, ...):** `add_music.ps1` (in `tools/`, and on the Releases page) converts it and puts it in that folder: `.\add_music.ps1 -Source "D:\Music\Garage"`. It needs [ffmpeg](https://ffmpeg.org) (`winget install Gyan.FFmpeg`).
+- **The garage music of Street Legal Racing: Redline:** if you own the game, `.\add_music.ps1 -Slrr` finds your copy through Steam and converts its garage tracks. They are not included here because they are not ours to hand out.
+
+`add_music.ps1` makes the tracks mono, which the game needs to place a sound in the room, and gives them the narrow tone of a small speaker. `-Clean` keeps them as they are, in stereo; those play as plain music.
+
+Settings has a switch for the music, one for the radio effect, and a volume. Streaming services such as YouTube Music are not supported: the game can only play sound files.
 
 ## In the garage
 
@@ -34,13 +49,14 @@ Sounds are the game's own. A `.wav` dropped into `art/sound/slrr_garage/` under 
 | Right-drag | Orbit the camera |
 | Mouse wheel | Zoom |
 | Middle-click a part | Look at that part |
+| Mouse wheel over the shelf | Move the shelf a line up or down |
 
 Every part comes off except the body shell itself. Take off what you like and drive out without it.
 
 The icon bar along the top:
 
 - **Drive out** – shows the job sheet (what was fitted, taken off and spent this visit), then builds the car as you left it and drives it out of the other door.
-- **Catalog** – every part that fits the car, in five sections (Engine, Body, Running Gear, Interior, Paint) split into small chapters such as Front Bumpers, Rear Suspension or Front Tyres, with a search box per chapter. Parts go on a shopping list; you pay when you confirm it, and they are delivered to the shelf (see below).
+- **Catalog** – every part that fits the car, in five sections (Engine, Body, Running Gear, Interior, Paint) split into small chapters such as Front Bumpers, Rear Suspension or Front Tyres. The search box looks through every chapter at once, the list can be sorted by price, and the mouse wheel turns the page. A chapter that holds parts for several slots gets a filter for each, named the way the car (or the mod the part comes from) names them. Parts go on a shopping list; you pay when you confirm it, and they are delivered to the shelf (see below).
 - **Car info** – specs, part count and value, damage and repair cost, the engine's power and torque curve, and your saved builds.
 - **Mechanic (wrench)** – the default mode: fit and remove parts.
 - **Tune (screwdriver)** – click a door, hood or boot to open it; click any other part and it is outlined and a small panel pops up with just that part's adjustments (tyre pressure for a tyre, camber for the suspension, and so on). The full list is in the drawer on the right. Adjustments take effect when you drive out.
@@ -48,7 +64,17 @@ The icon bar along the top:
 - **Paint booth** – factory colours or mix your own, three colour slots. The car disappears in a cloud of the new colour while it is sprayed.
 - **Test engine**, **Advance time**, **Whole car** (camera reset) and **Settings**.
 
-The mechanic's buttons sit left of the shelf: **Repair part**, **Repair car**, **Sell part**, **Sell everything** (asks first), and four toggles that hide the engine, body, running gear or interior so you can reach what is behind them.
+The mechanic's buttons sit left of the shelf: **Repair part**, **Repair car**, **Sell part** (click a part on the shelf, or one on the car to take it off and sell it in one go; the price is shown first), **Sell everything** (asks first), and four toggles that hide the engine, body, running gear or interior so you can reach what is behind them.
+
+With more than one newly bought part on the shelf, a **Fit all new parts** button appears above it. It fits them in order, a part before whatever bolts to it.
+
+## Parts with options
+
+Some parts are really a set of choices. A drag wheel from a wheel mod, say, wants a diameter, then a width, then a style, then extras. For such a part **Add** opens a list of everything it lets you choose, level by level, with what each choice adds to the price. What you leave alone comes as standard. The part then arrives as one item on the shelf, built the way you ordered it, and fits with one click. "Add as standard" skips the choosing.
+
+## Starting from a body shell
+
+Walk into a garage on foot and the lift is empty. Any car you have installed can be bought there as a bare body shell, at a fifth of its list price by default: it is put on the lift with everything that unbolts left off, and from there it is yours to build from the catalog. A shell that cannot move by itself is put outside the door when you leave. This is not available in career mode, where cars come from the dealership.
 
 ## Saved builds
 
@@ -57,8 +83,8 @@ In Car info, "Save the car as it stands" stores the parts and tuning that are on
 ## Ordering parts, delivery and shops
 
 - **Shopping list.** "Add" in the catalog puts a part on the list. Nothing is paid until you press Confirm purchase.
-- **Delivery.** Parts ordered from the garage are delivered, and delivery is charged by weight and bulk: a hood costs many times what a mirror or a hub cap does. Standard delivery takes a few minutes; express costs more and arrives ten times sooner. Arrivals drop onto the shelf while you are in the garage, or are waiting there next time.
-- **Shops in town.** Six businesses on West Coast USA sell parts over the counter. Stop on the blue marker on their forecourt. You take the parts with you (they are on the shelf when you reach the garage), there is no delivery charge, and prices are 5% lower.
+- **Delivery.** Parts ordered from the garage are delivered, and delivery is charged by weight and bulk: a hood costs many times what a mirror or a hub cap does. Standard delivery takes a few minutes; express costs more and arrives ten times sooner. Arrivals drop onto the shelf while you are in the garage, or are waiting there next time; out on the road a message tells you when an order has arrived.
+- **Shops in town.** Seven businesses on West Coast USA sell parts over the counter. Stop on the blue marker on their forecourt. You take the parts with you (they are on the shelf when you reach the garage), there is no delivery charge, and prices are 5% lower.
 
 | Shop | Sells |
 | --- | --- |
@@ -99,8 +125,10 @@ Changing a part in BeamNG normally rebuilds the whole vehicle, which freezes the
 - Two actions can be bound under Options > Controls > Gameplay: enter the nearest garage, and drive out. Handy when the car cannot drive itself to the door.
 - Career mode: the garage spends your career money, and after the car is rebuilt on the way out it asks career to re-read the car, so career's record of it matches. Parts you take off live on this garage's shelf, not in career's own parts store.
 - "Work takes time" in Settings makes taking parts off and fitting them take a moment, longer for heavy parts. It is off by default.
-- More garages and shops can be added in `lua/ge/extensions/slrr/garageSites.lua` (a garage needs its parking spot, direction, door and wall distances and the way out; a shop needs a position and the catalog chapters it sells).
+- **Adding garages and shops**, on any map, takes one console command where the point should be, or a small JSON file in a map mod. Existing points can be moved the same way. See [docs/adding_garages.md](docs/adding_garages.md).
+- "Paper catalog" in Settings prints the catalog and the shops as a spiral-bound parts catalogue, in the spirit of the street racing games of the early 2000s. It is drawn from scratch; nothing from another game is used.
 - `docs/beamng_post.txt` is the forum post for the mod, in BBCode.
+- `node tools/ui_selfcheck.js` runs the garage screen's logic (catalog search, sorting, paging, part options) outside the game.
 
 ## Source layout
 
@@ -114,8 +142,9 @@ Changing a part in BeamNG normally rebuilds the whole vehicle, which freezes the
 | `lua/ge/extensions/slrr/garageShapes.lua` | cuts single parts out of the vehicle's model files |
 | `lua/ge/extensions/slrr/garagePreview.lua` | shows those parts: turning previews and parts placed on the car |
 | `lua/ge/extensions/slrr/garageLift.lua` | the car lift: its model and its movement |
-| `lua/ge/extensions/slrr/garageSites.lua` | the garages and shops and where they are |
+| `lua/ge/extensions/slrr/garageSites.lua` | the garages and shops that come with the mod, and the reader for those added by files |
 | `lua/ge/extensions/slrr/garageCatalog.lua`, `garageSettings.lua` | catalog chapters, settings |
+| `lua/ge/extensions/slrr/garageMusic.lua` | the radio |
 | `ui/modules/apps/slrrGarage/app.js` | the garage screen |
 
 Not affiliated with BeamNG GmbH or the makers of Street Legal Racing: Redline.

@@ -191,6 +191,12 @@ local function updateLatches(dt)
   if pending and relatch.tries < 4 then relatchTimer = 0.5 else relatch = nil end
 end
 
+-- push every door and lid shut (the car is about to drive out through a doorway)
+local function shutLatches()
+  relatch, relatchTimer = {}, 0
+  for name in pairs(latchStates()) do relatch[name] = 'attached' end
+end
+
 -- The lift. The car is held up by forces: every node that is not part of a wheel is steered towards a spot a set height above where it stood, with a force strong
 -- enough to carry it. The wheels are left alone and hang on the suspension, as on a real lift.
 local liftNodes        -- { cid, mass, x, y, z } world rest positions of the chassis nodes
@@ -284,6 +290,7 @@ end
 M.dyno = dyno
 M.capture = capture
 M.apply = apply
+M.shutLatches = shutLatches
 M.setLift = setLift
 M.releaseLift = releaseLift
 M.updateGFX = updateGFX

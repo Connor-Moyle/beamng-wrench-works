@@ -56,7 +56,7 @@ angular.module('beamng.apps')
     '.sg-view.sg-can{cursor:pointer}',
     '.sg-view.sg-dragging{cursor:move}',
     '.sg-panel{pointer-events:auto}',
-    '.sg-glass{background:rgba(0,0,0,.62);border-radius:6px;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}',
+    '.sg-glass{background:rgba(0,0,0,.62);border-radius:6px}',
 
     /* top bar */
     '.sg-top{position:absolute;left:14px;right:14px;top:10px;height:46px;display:flex;align-items:center}',
@@ -200,6 +200,7 @@ angular.module('beamng.apps')
     '.sg-workbar{height:6px;margin-top:9px;background:rgba(255,255,255,.14);border-radius:3px;overflow:hidden}',
     '.sg-workbar i{display:block;height:100%;width:0;background:#ff6600;transition:width linear}',
     '.sg-badge.sg-used{background:#2f7dd1}',
+    '.sg-fitnew{position:absolute;right:14px;bottom:calc(21vh + 22px)}',
     '.sg-kv{display:flex;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.08);font-size:13px}',
     '.sg-kv span{color:#b8b8b8}',
     '.sg-kv b{margin-left:auto;font-weight:600}',
@@ -279,6 +280,87 @@ angular.module('beamng.apps')
     '.sg-foot .sg-btn{margin:0 14px}',
     '.sg-blank{flex:1;display:flex;align-items:center;justify-content:center;font-size:15px;color:#9a9a9a;text-align:center;line-height:1.6}',
 
+    /* body shells, for a visit that starts on foot */
+    '.sg-lothead{display:flex;align-items:center;margin-bottom:8px}',
+    '.sg-lothead .sg-h{font-size:24px}',
+    '.sg-lothead .sg-cash{margin-left:auto;margin-right:14px;font-size:18px;font-weight:700}',
+    '.sg-lotrow{display:flex;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.08)}',
+    '.sg-lotrow img{width:96px;height:54px;object-fit:cover;border-radius:3px;margin-right:12px;background:rgba(255,255,255,.06)}',
+    '.sg-lotn{flex:1;min-width:0}',
+    '.sg-lotn span{display:block;font-size:11px;letter-spacing:1px;color:#ffb380;text-transform:uppercase}',
+    '.sg-lotn b{font-size:15px;font-weight:600}',
+    '.sg-lotrow .sg-price{margin:0 14px}',
+
+    /* slot filters of a chapter */
+    '.sg-chips{display:flex;flex-wrap:wrap;margin:-4px 0 8px 0;max-height:62px;overflow-y:auto}',
+    '.sg-chips .sg-tab{margin-bottom:4px}',
+
+    /* options of a part, chosen before it is bought */
+    '.sg-cfg{z-index:5}',
+    '.sg-crow{margin-top:6px;border:1px solid rgba(255,255,255,.14);border-radius:4px;background:rgba(255,255,255,.04)}',
+    '.sg-chead{display:flex;align-items:baseline;padding:7px 10px;cursor:pointer;font-size:13px}',
+    '.sg-chead:hover{background:rgba(255,102,0,.2)}',
+    '.sg-chead span{color:#ffb380;font-size:11px;letter-spacing:1px;text-transform:uppercase;width:34%;flex:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:10px}',
+    '.sg-chead b{flex:1;min-width:0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+    '.sg-chead i{font-style:normal;color:#c8c8c8;margin-left:10px;font-variant-numeric:tabular-nums}',
+    '.sg-chead em{font-style:normal;margin-left:10px;color:#9a9a9a}',
+    '.sg-copts{max-height:26vh;overflow-y:auto;border-top:1px solid rgba(255,255,255,.12);padding:4px}',
+    '.sg-copt{display:flex;padding:5px 8px;font-size:13px;border-radius:3px;cursor:pointer}',
+    '.sg-copt:hover{background:rgba(255,255,255,.1)}',
+    '.sg-copt.sg-act{background:#ff6600}',
+    '.sg-copt span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+    '.sg-copt i{font-style:normal;margin-left:10px;opacity:.85}',
+    '.sg-cfgfoot{display:flex;align-items:center;margin-top:14px}',
+    '.sg-cfgfoot .sg-total{margin:0;flex:1;justify-content:flex-start;align-items:baseline}',
+    '.sg-cfgfoot .sg-total b{margin-left:12px}',
+    '.sg-cfgfoot .sg-btn{margin-left:8px}',
+
+    /* the paper catalog (Settings > Catalog): the same book, printed */
+    '.sg-retro .sg-book{background:#e9e2cf;color:#1c1a16;border-top:none;border-radius:2px;box-shadow:0 0 0 2px #3a3326,0 18px 50px rgba(0,0,0,.6);',
+    '  font-family:"Courier New",Courier,monospace;background-image:repeating-linear-gradient(0deg,rgba(0,0,0,.03) 0,rgba(0,0,0,.03) 1px,transparent 1px,transparent 27px)}',
+    '.sg-retro .sg-page-l{background:rgba(120,100,50,.13);position:relative;padding-right:30px}',
+    '.sg-retro .sg-page-l:after{content:"";position:absolute;right:-13px;top:0;bottom:0;width:26px;z-index:2;',
+    '  background:radial-gradient(circle at 5px 15px,#15130f 0,#15130f 4px,transparent 5px) 0 0/26px 30px repeat-y,',
+    '  radial-gradient(circle at 21px 15px,#15130f 0,#15130f 4px,transparent 5px) 0 0/26px 30px repeat-y,',
+    '  linear-gradient(#b9b3a2,#77705f) 4px 13px/18px 4px repeat-y;background-size:26px 30px,26px 30px,18px 30px}',
+    '.sg-retro .sg-page-r{padding-left:36px}',
+    '.sg-retro .sg-h{font-family:Impact,"Arial Narrow Bold","Arial Black",sans-serif;font-style:normal;font-weight:400;letter-spacing:1px}',
+    '.sg-retro h1.sg-h{color:#b3261e;text-shadow:2px 2px 0 rgba(0,0,0,.12)}',
+    '.sg-retro .sg-for,.sg-retro .sg-crumb,.sg-retro .sg-foot,.sg-retro .sg-carthint,.sg-retro .sg-blank,.sg-retro .sg-shipt small{color:#5a5140}',
+    '.sg-retro .sg-sec{background:#cfc4a4;color:#1c1a16;border:1px solid #9c9072;border-radius:0}',
+    '.sg-retro .sg-sec:hover{background:#dcbf8a}',
+    '.sg-retro .sg-sec.sg-act{background:#b3261e;color:#fff;border-color:#7d1a14}',
+    '.sg-retro .sg-sub-row{color:#3a3326;border-radius:0}',
+    '.sg-retro .sg-sub-row:hover{background:rgba(0,0,0,.08)}',
+    '.sg-retro .sg-sub-row.sg-act{color:#b3261e}',
+    '.sg-retro .sg-sub-row.sg-none{color:#a79e86}',
+    '.sg-retro .sg-head{border-bottom:3px double #3a3326}',
+    '.sg-retro .sg-search{background:#fffdf5;color:#1c1a16;border-color:#9c9072;border-radius:0;font-family:inherit}',
+    '.sg-retro .sg-search::placeholder{color:#8a8068}',
+    '.sg-retro .sg-card{background:#f6f1e2;border:1px solid #9c9072;border-radius:0;box-shadow:2px 3px 0 rgba(0,0,0,.18)}',
+    '.sg-retro .sg-card .sg-stage{border:6px solid #fff;box-shadow:0 0 0 1px #c9c1aa inset}',
+    '.sg-retro .sg-card .sg-meta{background:none}',
+    '.sg-retro .sg-card .sg-cslot{color:#8a2a22}',
+    '.sg-retro .sg-price{color:#b3261e;font-family:Impact,"Arial Black",sans-serif;font-weight:400;font-size:22px}',
+    '.sg-retro .sg-btn{background:#3a3326;color:#f6f1e2;border-radius:0}',
+    '.sg-retro .sg-btn:hover{background:#5a5140}',
+    '.sg-retro .sg-btn.sg-go{background:#b3261e}',
+    '.sg-retro .sg-btn.sg-go:hover{background:#cf3b32}',
+    '.sg-retro .sg-mini,.sg-retro .sg-tab{background:#cfc4a4;color:#1c1a16;border-radius:0}',
+    '.sg-retro .sg-tab.sg-on{background:#b3261e;color:#fff}',
+    '.sg-retro .sg-cart,.sg-retro .sg-wallet{border-top:1px dashed #7c7258}',
+    '.sg-retro .sg-carth,.sg-retro .sg-total,.sg-retro .sg-wallet{color:#8a2a22}',
+    '.sg-retro .sg-carth i{background:#b3261e}',
+    '.sg-retro .sg-total b,.sg-retro .sg-wallet b,.sg-retro .sg-cartp{color:#1c1a16}',
+    '.sg-retro .sg-cartx{color:#5a5140}',
+    '.sg-retro .sg-ship{border-color:#9c9072;border-radius:0}',
+    '.sg-retro .sg-ship.sg-act{border-color:#b3261e;background:rgba(179,38,30,.1)}',
+    '.sg-retro .sg-dot{border-color:#5a5140}',
+    '.sg-retro .sg-ship.sg-act .sg-dot{border-color:#b3261e;background:#b3261e}',
+    '.sg-retro .sg-onway{color:#2a4a7a}',
+    '.sg-retro .sg-onway .sg-cartrow{color:#1c1a16}',
+    '.sg-retro .sg-scrolly::-webkit-scrollbar-thumb{background:rgba(0,0,0,.3)}',
+
     /* film bars + fade */
     '.sg-lb{position:absolute;left:-200px;right:-200px;height:400px;background:#000;transition:transform .6s ease}',
     '.sg-lb.sg-t{top:-500px}.sg-lb.sg-b{bottom:-500px}',
@@ -312,7 +394,7 @@ angular.module('beamng.apps')
     '    <div ng-if="s.mode === \'mechanic\' && !s.tool"><i>Click</i>a shelf part to fit it</div>',
     '    <div ng-if="s.mode === \'tune\' && !s.tool"><i>Click</i>a part to pick it and tune it</div>',
     '    <div ng-if="s.tool === \'repair\'"><i>Click</i>a damaged part to repair it</div>',
-    '    <div ng-if="s.tool === \'sell\'"><i>Click</i>a shelf part to sell it</div>',
+    '    <div ng-if="s.tool === \'sell\'"><i>Click</i>a part, on the car or the shelf, to sell it</div>',
     '    <div><i>Right-drag</i>look around</div><div><i>Wheel</i>zoom</div><div><i>Middle-click</i>look at a part</div>',
     '  </div>',
 
@@ -345,6 +427,7 @@ angular.module('beamng.apps')
     '        <div class="sg-prev" ng-if="slot && hasModel(slot.part)" data-part="{{slot.part}}" data-id="s{{slot.id}}" data-spin="hover"></div>',
     '        <div class="sg-badges" ng-if="slot">',
     '          <span class="sg-badge sg-new" ng-if="slot.new">NEW</span>',
+    '          <span class="sg-badge sg-used" ng-if="slot.used">USED</span>',
     '          <span class="sg-badge sg-dmg" ng-if="slot.damaged">DAMAGED</span>',
     '          <span class="sg-badge sg-more" ng-if="slot.count > 1" ng-click="showContents(slot, $event)">+{{slot.count - 1}} parts &#9662;</span>',
     '        </div>',
@@ -361,6 +444,8 @@ angular.module('beamng.apps')
     '      <div class="sg-ib" ng-class="{\'sg-dim\': line >= lineCount() - 1}" ng-click="scroll(1)" ng-bind-html="icon(\'down\')"></div>',
     '    </div>',
     '  </div>',
+
+    '  <div class="sg-fitnew sg-btn sg-go sg-panel" ng-if="s.phase === \'garage\' && s.mode === \'mechanic\' && !s.tool && !panel && boughtCount() > 1" ng-mouseenter="overUi(true)" ng-click="lua(\'installNew()\')">Fit all {{boughtCount()}} new parts</div>',
 
     /* tune drawer */
     '  <div class="sg-drawer sg-glass sg-panel" ng-if="panel === \'tune\'" ng-mouseenter="overUi(true)">',
@@ -468,6 +553,24 @@ angular.module('beamng.apps')
     '  </div>',
     '</div>',
 
+    /* body shells */
+    '<div class="sg-veil" ng-if="s.phase === \'lot\'">',
+    '  <div class="sg-modal sg-wide">',
+    '    <div class="sg-lothead"><div class="sg-h">Body shells</div><input class="sg-search" type="text" placeholder="Search" ng-model="lot.search">',
+    '      <div class="sg-cash">{{s.unlimited ? \'Unlimited\' : money(s.money)}}</div><div class="sg-btn" ng-click="lua(\'leaveLot()\')">Leave</div></div>',
+    '    <div class="sg-note" style="margin-bottom:6px">You came on foot, so the lift is empty. Pick the bare body shell of any car and it is put on the lift for you to build up: everything else comes from the catalog.</div>',
+    '    <div class="sg-scrolly">',
+    '      <div class="sg-lotrow" ng-repeat="m in lotShown() track by m.key">',
+    '        <img ng-if="m.preview" ng-src="{{m.preview}}" onerror="this.style.visibility=\'hidden\'">',
+    '        <div class="sg-lotn"><span>{{m.brand}}</span><b>{{m.name}}</b></div>',
+    '        <div class="sg-price">{{m.price > 0 ? money(m.price) : \'free\'}}</div>',
+    '        <div class="sg-btn sg-go" ng-class="{\'sg-nope\': !s.unlimited && m.price > s.money}" ng-click="lua(\'buyShell(\' + quote(m.key) + \')\')">Buy</div>',
+    '      </div>',
+    '      <div class="sg-note" ng-if="!lotShown().length">{{lot.models.length ? \'No car matches that.\' : \'Looking through the cars you have installed...\'}}</div>',
+    '    </div>',
+    '  </div>',
+    '</div>',
+
     /* work in progress */
     '<div class="sg-work" ng-if="work">{{work.what}}<div class="sg-workbar"><i ng-style="{\'transition-duration\': work.seconds + \'s\', width: work.go ? \'100%\' : \'0%\'}"></i></div></div>',
 
@@ -491,7 +594,7 @@ angular.module('beamng.apps')
     '</div>',
 
     /* catalog */
-    '<div class="sg-cat" ng-if="s.phase === \'catalog\' || s.phase === \'shop\'">',
+    '<div class="sg-cat" ng-class="{\'sg-retro\': s.retro}" ng-if="s.phase === \'catalog\' || s.phase === \'shop\'">',
     '  <div class="sg-book">',
     '    <div class="sg-page-l">',
     '      <h1 class="sg-h">{{s.shop ? s.shop.name : \'Catalog\'}}</h1>',
@@ -525,9 +628,14 @@ angular.module('beamng.apps')
     '      <div class="sg-wallet">{{s.career ? \'Career money\' : \'Money\'}}<b>{{s.unlimited ? \'Unlimited\' : money(s.money)}}</b></div>',
     '    </div>',
     '    <div class="sg-page-r">',
-    '      <div class="sg-head"><div class="sg-h">{{curSub() ? curSub().title : \'Choose a chapter\'}}</div><div class="sg-crumb" ng-if="curSec()">{{curSec().title}} &middot; {{shownItems().length}} parts</div>',
-    '        <input class="sg-search" type="text" placeholder="Search this chapter" ng-model="cur.search" ng-change="searchChanged()" ng-if="curSub() && curSub().items.length > 6">',
+    '      <div class="sg-head"><div class="sg-h">{{searching() ? \'Search\' : (curSub() ? curSub().title : \'Choose a chapter\')}}</div><div class="sg-crumb" ng-if="curSec()">{{searching() ? \'All chapters\' : curSec().title}} &middot; {{shownItems().length}} parts</div>',
+    '        <input class="sg-search" type="text" placeholder="Search all parts" ng-model="cur.search" ng-change="searchChanged()" ng-if="cat.sections.length">',
+    '        <div class="sg-mini" ng-if="shownItems().length > 1" ng-click="cycleSort()">{{sortLabel()}}</div>',
     '        <div class="sg-btn sg-go" ng-click="lua(\'closeCatalog()\')">{{s.shop ? \'Leave shop\' : \'Back to garage\'}}</div></div>',
+    '      <div class="sg-chips" ng-if="!searching() && slotChips().length > 1">',
+    '        <div class="sg-tab" ng-class="{\'sg-on\': !cur.slot}" ng-click="pickSlot(null)">All</div>',
+    '        <div class="sg-tab" ng-repeat="c in slotChips() track by $index" ng-class="{\'sg-on\': cur.slot === c}" ng-click="pickSlot(c)">{{c}}</div>',
+    '      </div>',
     '      <div class="sg-grid" ng-if="pageItems().length">',
     '        <div class="sg-card" ng-repeat="it in pageItems() track by it.slotPath + it.part">',
     '          <div class="sg-stage"><span class="sg-glyph" ng-bind-html="icon(curSec().id)"></span>',
@@ -539,13 +647,31 @@ angular.module('beamng.apps')
     '        </div>',
     '      </div>',
     '      <div class="sg-blank" ng-if="!pageItems().length && !cur.search">Pick a chapter on the left.<br>Everything you buy lands on the shelf in the garage,<br>ready to be fitted with one click.</div>',
-    '      <div class="sg-blank" ng-if="!pageItems().length && cur.search">Nothing in this chapter matches &ldquo;{{cur.search}}&rdquo;.</div>',
+    '      <div class="sg-blank" ng-if="!pageItems().length && cur.search">Nothing here matches &ldquo;{{cur.search}}&rdquo;.</div>',
     '      <div class="sg-foot" ng-if="pageCount() > 1">',
     '        <div class="sg-btn" ng-class="{\'sg-nope\': cur.page <= 0}" ng-click="turn(-1)">&#9664; Prev</div>',
     '        Page {{cur.page + 1}} of {{pageCount()}}',
     '        <div class="sg-btn" ng-class="{\'sg-nope\': cur.page >= pageCount() - 1}" ng-click="turn(1)">Next &#9654;</div>',
     '      </div>',
     '    </div>',
+    '  </div>',
+    '</div>',
+
+    /* a part's own options */
+    '<div class="sg-veil sg-cfg" ng-if="cfg && !cfg.waiting && (s.phase === \'catalog\' || s.phase === \'shop\')">',
+    '  <div class="sg-modal sg-wide">',
+    '    <div class="sg-dhead"><div><div class="sg-pslot" style="font-size:11px;letter-spacing:1px;color:#ffb380;text-transform:uppercase">{{cfg.item.slot}}</div><div class="sg-h">{{cfg.item.name}}</div></div><div class="sg-x" ng-click="cfgClose()" ng-bind-html="icon(\'close\')"></div></div>',
+    '    <div class="sg-note">This part has options of its own. Choose them here and it arrives built that way, ready to fit in one go. Whatever you leave alone comes as standard.</div>',
+    '    <div class="sg-scrolly">',
+    '      <div class="sg-crow" ng-repeat="r in cfgRows() track by r.slot.path" ng-style="{\'margin-left\': (r.depth * 22) + \'px\'}">',
+    '        <div class="sg-chead" ng-click="cfgToggle(r.slot)"><span>{{r.slot.title}}</span><b>{{cfgName(r.slot)}}</b><i>{{cfgCost(r.slot)}}</i><em>{{cfg.open === r.slot.path ? \'▴\' : \'▾\'}}</em></div>',
+    '        <div class="sg-copts" ng-if="cfg.open === r.slot.path">',
+    '          <div class="sg-copt" ng-if="!r.slot.core" ng-class="{\'sg-act\': !cfg.choice[r.slot.path]}" ng-click="cfgChoose(r.slot, null)"><span>None</span></div>',
+    '          <div class="sg-copt" ng-repeat="o in r.slot.options track by o.part" ng-class="{\'sg-act\': cfg.choice[r.slot.path] === o.part}" ng-click="cfgChoose(r.slot, o)" title="{{o.part}}"><span>{{o.name}}</span><i>{{optCost(r.slot, o)}}</i></div>',
+    '        </div>',
+    '      </div>',
+    '    </div>',
+    '    <div class="sg-cfgfoot"><div class="sg-total">Total<b>{{money(cfgTotal())}}</b></div><div class="sg-btn" ng-click="cfgPlain()">Add as standard</div><div class="sg-btn sg-go" ng-click="cfgConfirm()">Add to list</div></div>',
     '  </div>',
     '</div>',
 
@@ -647,7 +773,7 @@ angular.module('beamng.apps')
       ];
       $scope.tips = {
         repairPart: { title: 'Repair part', desc: 'then click the damaged part' },
-        sell: { title: 'Sell part', desc: 'then click a part on the shelf' }
+        sell: { title: 'Sell part', desc: 'then click a part, on the car or on the shelf' }
       };
       $scope.repairAllTip = function () {
         return { title: 'Repair the whole car', desc: $scope.s.damaged ? ('costs ' + $scope.money($scope.s.repairAllCost)) : 'nothing is damaged' };
@@ -664,6 +790,7 @@ angular.module('beamng.apps')
         var h = $scope.hover;
         if (!h.name) return false;
         if ($scope.s.tool === 'repair') return !!h.damaged;
+        if ($scope.s.tool === 'sell') return !!h.removable;
         if ($scope.s.mode === 'tune') return true;
         return !!h.removable;
       };
@@ -671,7 +798,7 @@ angular.module('beamng.apps')
       $scope.hoverHint = function () {
         var h = $scope.hover;
         if ($scope.s.tool === 'repair') return h.damaged ? ('click to repair for ' + $scope.money(h.repairCost)) : 'not damaged';
-        if ($scope.s.tool === 'sell') return 'take it off first to sell it';
+        if ($scope.s.tool === 'sell') return h.removable ? ('click to take it off and sell it for ' + $scope.money(h.sellValue)) : (h.reason || 'cannot be removed');
         if ($scope.s.mode === 'tune') return 'click to pick and tune';
         return h.removable ? 'click to remove' : (h.reason || 'cannot be removed');
       };
@@ -685,6 +812,12 @@ angular.module('beamng.apps')
       };
       $scope.scroll = function (d) { $scope.line = Math.max(0, Math.min($scope.lineCount() - 1, $scope.line + d)); wantPreviews(); };
       $scope.sellAllTip = function () { return { title: 'Sell everything on the shelf', desc: $scope.s.inventory.length ? 'for ' + $scope.money($scope.s.shelfValue) + ' (asks first)' : 'the shelf is empty' }; };
+      // parts that were bought and have not been on the car yet
+      $scope.boughtCount = function () {
+        var inv = $scope.s.inventory || [], n = 0;
+        for (var i = 0; i < inv.length; i++) if (inv[i].new || inv[i].used) n++;
+        return n;
+      };
       $scope.install = function (item) { $scope.contents = null; $scope.lua('install(' + item.id + ')'); };
       // the list behind a "+3 parts" badge
       $scope.contents = null;
@@ -706,40 +839,167 @@ angular.module('beamng.apps')
         for (var i = 0; i < sec.subs.length; i++) if (sec.subs[i].id === $scope.cur.sub) return sec.subs[i];
         return null;
       };
-      // chapter contents, narrowed by whatever is typed in the search box
+      // What the right-hand page shows: the open chapter, or - once something is typed in the
+      // search box - every part in the book that matches, whatever chapter it is in.
+      var SORTS = [null, 'up', 'down'], SORT_LABELS = { 'null': 'By slot', up: 'Cheapest first', down: 'Dearest first' };
+      $scope.cur.sort = null;
+      $scope.sortLabel = function () { return SORT_LABELS[String($scope.cur.sort)]; };
+      $scope.cycleSort = function () { $scope.cur.sort = SORTS[(SORTS.indexOf($scope.cur.sort) + 1) % SORTS.length]; $scope.cur.page = 0; };
+      $scope.searching = function () { return !!($scope.cur.search || '').trim(); };
       var shownKey = null, shownList = [];
       $scope.shownItems = function () {
         var sub = $scope.curSub();
-        if (!sub) return [];
         var q = ($scope.cur.search || '').toLowerCase().trim();
-        var key = $scope.cur.section + '/' + $scope.cur.sub + '/' + q + '/' + sub.items.length + '/' + $scope.cat.stamp;
+        if (!q && !sub) return [];
+        var key = (q ? '*' : $scope.cur.section + '/' + $scope.cur.sub + '/' + ($scope.cur.slot || '')) + '/' + q + '/' + $scope.cur.sort + '/' + $scope.cat.stamp;
         if (key !== shownKey) {
           shownKey = key;
-          if (!q) shownList = sub.items;
+          var list = [];
+          if (!q) list = $scope.cur.slot ? sub.items.filter(function (it) { return it.slot === $scope.cur.slot; }) : sub.items;
           else {
             var words = q.split(/\s+/);
-            shownList = sub.items.filter(function (it) {
-              var text = (it.name + ' ' + it.slot + ' ' + it.part).toLowerCase();
-              for (var i = 0; i < words.length; i++) if (text.indexOf(words[i]) < 0) return false;
-              return true;
+            $scope.cat.sections.forEach(function (sec) {
+              sec.subs.forEach(function (chapter) {
+                chapter.items.forEach(function (it) {
+                  var text = (it.name + ' ' + it.slot + ' ' + it.part).toLowerCase();
+                  for (var i = 0; i < words.length; i++) if (text.indexOf(words[i]) < 0) return;
+                  list.push(it);
+                });
+              });
             });
           }
+          if ($scope.cur.sort) {
+            var dir = $scope.cur.sort === 'up' ? 1 : -1;
+            list = list.slice().sort(function (a, b) { return dir * (a.price - b.price) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0); });
+          }
+          shownList = list;
         }
         return shownList;
       };
-      $scope.pageCount = function () { var n = $scope.shownItems().length; return $scope.curSub() ? Math.max(1, Math.ceil(n / CATALOG_PER_PAGE)) : 0; };
+      // A chapter that holds parts for several slots (front wheel diameter, front wheel width, ...)
+      // gets one filter per slot, named the way the car - or the mod - names them.
+      var chipsKey = null, chips = [];
+      $scope.slotChips = function () {
+        var sub = $scope.curSub();
+        if (!sub) return [];
+        var key = $scope.cur.section + '/' + $scope.cur.sub + '/' + $scope.cat.stamp;
+        if (key !== chipsKey) {
+          chipsKey = key; chips = [];
+          sub.items.forEach(function (it) { if (chips.indexOf(it.slot) < 0) chips.push(it.slot); });
+          chips.sort();
+          if ($scope.cur.slot && chips.indexOf($scope.cur.slot) < 0) $scope.cur.slot = null;
+        }
+        return chips;
+      };
+      $scope.pickSlot = function (name) { $scope.cur.slot = name; $scope.cur.page = 0; };
+      $scope.pageCount = function () { var n = $scope.shownItems().length; return ($scope.curSub() || $scope.searching()) ? Math.max(1, Math.ceil(n / CATALOG_PER_PAGE)) : 0; };
       $scope.pageItems = function () {
         return $scope.shownItems().slice($scope.cur.page * CATALOG_PER_PAGE, ($scope.cur.page + 1) * CATALOG_PER_PAGE);
       };
       $scope.searchChanged = function () { $scope.cur.page = 0; wantPreviews(); };
       $scope.openSection = function (sec) {
-        $scope.cur.section = sec.id; $scope.cur.page = 0; $scope.cur.sub = null; $scope.cur.search = '';
+        $scope.cur.section = sec.id; $scope.cur.page = 0; $scope.cur.sub = null; $scope.cur.search = ''; $scope.cur.slot = null;
         for (var i = 0; i < sec.subs.length; i++) if (sec.subs[i].items.length) { $scope.cur.sub = sec.subs[i].id; break; }
         $scope.lua('uiSound("mnuselect.wav")'); wantPreviews();
       };
-      $scope.openSub = function (sec, sub) { $scope.cur.section = sec.id; $scope.cur.sub = sub.id; $scope.cur.page = 0; $scope.cur.search = ''; $scope.lua('uiSound("flip.wav")'); wantPreviews(); };
-      $scope.turn = function (d) { $scope.cur.page = Math.max(0, Math.min($scope.pageCount() - 1, $scope.cur.page + d)); $scope.lua('uiSound("flip.wav")'); wantPreviews(); };
-      $scope.buy = function (it) { $scope.lua('buy(' + JSON.stringify(it.slotPath) + ',' + JSON.stringify(it.part) + ')'); };
+      $scope.openSub = function (sec, sub) { $scope.cur.section = sec.id; $scope.cur.sub = sub.id; $scope.cur.page = 0; $scope.cur.search = ''; $scope.cur.slot = null; $scope.lua('uiSound("flip.wav")'); wantPreviews(); };
+      $scope.turn = function (d) {
+        var page = Math.max(0, Math.min($scope.pageCount() - 1, $scope.cur.page + d));
+        if (page === $scope.cur.page) return;
+        $scope.cur.page = page; $scope.lua('uiSound("flip.wav")'); wantPreviews();
+      };
+      function addPlain(it) { $scope.lua('buy(' + JSON.stringify(it.slotPath) + ',' + JSON.stringify(it.part) + ')'); }
+      $scope.buy = function (it) {
+        // a part with slots of its own may have options to choose first (the yard sells as seen)
+        if (!it.more || it.used) { addPlain(it); return; }
+        $scope.cfg = { item: it, root: it.slotPath + it.part, slots: {}, asked: {}, choice: {}, open: null, waiting: true, version: 0 };
+        askSlots(it.slotPath, it.part);
+      };
+
+      // ---- choosing a part's own options before buying it.
+      // cfg.slots holds, per part ("slot path" + "part name"), the slots Lua says it has; cfg.choice
+      // holds what is picked for each slot path. The rows on screen are the tree of those, flattened.
+      $scope.cfg = null;
+      function askSlots(slotPath, part) {
+        var key = slotPath + part;
+        if ($scope.cfg.asked[key]) return;
+        $scope.cfg.asked[key] = true;
+        $scope.lua('requestSlots(' + JSON.stringify(slotPath) + ',' + JSON.stringify(part) + ')');
+      }
+      function optionOf(slot, part) {
+        for (var i = 0; i < slot.options.length; i++) if (slot.options[i].part === part) return slot.options[i];
+        return null;
+      }
+      $scope.$on('slrrGarageSlots', function (ev, data) {
+        $scope.$evalAsync(function () {
+          var cfg = $scope.cfg;
+          if (!cfg || !data || !cfg.asked[data.key]) return;
+          var slots = Array.isArray(data.slots) ? data.slots : [];
+          slots.forEach(function (slot) { if (!Array.isArray(slot.options)) slot.options = []; });
+          cfg.slots[data.key] = slots;
+          cfg.version++;
+          if (data.key === cfg.root) {
+            cfg.waiting = false;
+            if (!slots.length) { addPlain(cfg.item); $scope.cfg = null; return; }     // nothing to choose after all
+          }
+          slots.forEach(function (slot) {
+            if (cfg.choice[slot.path] === undefined) cfg.choice[slot.path] = slot.default || '';
+            // what it comes with may have options of its own: show those too, no guessing
+            var o = optionOf(slot, cfg.choice[slot.path]);
+            if (o && o.more) askSlots(slot.path, o.part);
+          });
+        });
+      });
+      var rowsVersion = -1, rowsOf = null, rows = [];
+      $scope.cfgRows = function () {
+        var cfg = $scope.cfg;
+        if (!cfg) return [];
+        if (rowsOf !== cfg || rowsVersion !== cfg.version) {
+          rowsOf = cfg; rowsVersion = cfg.version; rows = [];
+          (function walk(key, depth) {
+            (cfg.slots[key] || []).forEach(function (slot) {
+              if (rows.length >= 80) return;
+              rows.push({ slot: slot, depth: depth });
+              var o = optionOf(slot, cfg.choice[slot.path]);
+              if (o && o.more && depth < 6) walk(slot.path + o.part, depth + 1);
+            });
+          })(cfg.root, 0);
+        }
+        return rows;
+      };
+      $scope.optCost = function (slot, o) { return o.price > 0 ? '+' + $scope.money(o.price) : (o.part === slot.default ? 'standard' : 'free'); };
+      $scope.cfgName = function (slot) { var o = optionOf(slot, $scope.cfg.choice[slot.path]); return o ? o.name : 'None'; };
+      $scope.cfgCost = function (slot) { var o = optionOf(slot, $scope.cfg.choice[slot.path]); return o ? $scope.optCost(slot, o) : ''; };
+      $scope.cfgToggle = function (slot) { $scope.cfg.open = $scope.cfg.open === slot.path ? null : slot.path; };
+      $scope.cfgChoose = function (slot, o) {
+        var cfg = $scope.cfg;
+        cfg.choice[slot.path] = o ? o.part : '';
+        cfg.open = null;
+        cfg.version++;
+        if (o && o.more) askSlots(slot.path, o.part);
+        $scope.lua('uiSound("mnuselect.wav")');
+      };
+      $scope.cfgTotal = function () {
+        var cfg = $scope.cfg, total = cfg.item.price;
+        $scope.cfgRows().forEach(function (r) { var o = optionOf(r.slot, cfg.choice[r.slot.path]); if (o) total += o.price; });
+        return total;
+      };
+      $scope.cfgClose = function () { $scope.cfg = null; };
+      $scope.cfgPlain = function () { addPlain($scope.cfg.item); $scope.cfg = null; };
+      $scope.cfgConfirm = function () {
+        var cfg = $scope.cfg;
+        // only what is on screen is sent: the choice for each slot, and below it the choices for that part's slots
+        var sub = (function collect(key, depth) {
+          var out = {};
+          (cfg.slots[key] || []).forEach(function (slot) {
+            var part = cfg.choice[slot.path] || '', o = optionOf(slot, part);
+            out[slot.id] = { part: o ? part : '', sub: (o && o.more && depth < 6) ? collect(slot.path + part, depth + 1) : {} };
+          });
+          return out;
+        })(cfg.root, 0);
+        bngApi.engineLua('slrr_garage.buy(' + JSON.stringify(cfg.item.slotPath) + ',' + JSON.stringify(cfg.item.part) + ',' + bngApi.serializeToLua(sub) + ')');
+        $scope.cfg = null;
+      };
 
       // ---- shopping list
       $scope.cart = { items: [], shipping: [], orders: [] };
@@ -983,6 +1243,27 @@ angular.module('beamng.apps')
         });
       });
 
+      // ---- body shells: what a visit on foot can start from
+      $scope.lot = { models: [], search: '' };
+      $scope.quote = function (text) { return JSON.stringify(String(text)); };
+      $scope.$on('slrrGarageLot', function (ev, data) {
+        $scope.$evalAsync(function () { $scope.lot.models = (data && Array.isArray(data.models)) ? data.models : []; });
+      });
+      var lotKey = null, lotOf = null, lotList = [];
+      $scope.lotShown = function () {
+        var q = ($scope.lot.search || '').toLowerCase().trim();
+        if (q !== lotKey || lotOf !== $scope.lot.models) {
+          lotKey = q; lotOf = $scope.lot.models;
+          var words = q ? q.split(/\s+/) : [];
+          lotList = lotOf.filter(function (m) {
+            var text = (m.brand + ' ' + m.name + ' ' + m.key).toLowerCase();
+            for (var i = 0; i < words.length; i++) if (text.indexOf(words[i]) < 0) return false;
+            return true;
+          });
+        }
+        return lotList;
+      };
+
       // ---- job sheet, shown before driving out
       $scope.sheet = null;
       $scope.closeSheet = function () { $scope.sheet = null; };
@@ -1070,8 +1351,16 @@ angular.module('beamng.apps')
         else if (d.button === 1) $scope.lua('focus()');
       }
       function onWheel(ev) {
-        if ($scope.s.phase !== 'garage') return;
-        var t = ev.target;
+        var phase = $scope.s.phase, t = ev.target;
+        // over the shelf the wheel moves it a line, over the catalog's page it turns the page
+        // (a part's preview is a hole in the panel: there the element behind the hole counts)
+        var hole = holeAt(ev.clientX, ev.clientY), at = hole ? hole.el : t;
+        if (at && at.closest) {
+          var dir = ev.deltaY > 0 ? 1 : -1;
+          if (phase === 'garage' && at.closest('.sg-slots')) { ev.preventDefault(); $scope.$evalAsync(function () { $scope.scroll(dir); }); return; }
+          if ((phase === 'catalog' || phase === 'shop') && at.closest('.sg-grid')) { ev.preventDefault(); $scope.$evalAsync(function () { $scope.turn(dir); }); return; }
+        }
+        if (phase !== 'garage') return;
         if (!t || !t.classList || !t.classList.contains('sg-view')) return;
         ev.preventDefault();
         var steps = ev.deltaY < 0 ? 1 : -1;
@@ -1095,6 +1384,7 @@ angular.module('beamng.apps')
           if (data.phase !== 'garage') $scope.hover = {};
           if (data.phase === 'garage' && wasPhase === 'film') { $scope.line = 0; $scope.panel = null; }
           if (data.phase === 'idle' || data.phase === 'leaving') { $scope.panel = null; $scope.contents = null; $scope.sheet = null; $scope.work = null; }
+          if (data.phase !== 'catalog' && data.phase !== 'shop') $scope.cfg = null;
           if (data.phase === 'idle') noModel = {};      // another car, another livery: ask again next time
           if (data.mode !== 'tune' && $scope.panel === 'tune') $scope.panel = null;
           if (data.mode !== 'tune') $scope.pt = { vars: [] };

@@ -21,6 +21,7 @@ local shapes = require('slrr/garageShapes')
 local preview = require('slrr/garagePreview')
 local lift = require('slrr/garageLift')
 local settings = require('slrr/garageSettings')
+local music = require('slrr/garageMusic')
 
 local im = ui_imgui
 
@@ -38,7 +39,7 @@ local blockedActions = core_input_actionFilter.createActionTemplate({
   "radialMenuActivate", "couplers", "vehicleTriggers", "nodegrabber",
 })
 
-local phase = 'idle'      -- idle | film | garage | catalog | busy | leaving | shop
+local phase = 'idle'      -- idle | film | garage | catalog | busy | leaving | shop | lot (on foot, choosing a body shell)
 local shop                -- the parts shop we are in (phase 'shop')
 local shopArmed = true    -- a shop opens again only after you have driven off its marker
 local shopTimer = 0       -- how long the car has stood on a shop marker
@@ -68,7 +69,14 @@ local frame = 0
 local testHoverTimer       -- while set, a test is steering the hover and the real cursor is ignored
 local onCameraPose         -- set further down: places the part models for this frame's camera
 local sendTunePart         -- set further down
+local setCarLift           -- set further down
+local cleanup              -- set further down
 local tuneSelected         -- part path picked with the screwdriver (outlined, its adjustments shown)
+local pickRay, pickAge = nil, 0   -- the cursor ray the hover was last worked out for, and how long ago
+local fromLot = false     -- this visit began on foot, with a body shell bought for the empty lift
+local boughtShell = false -- ... and that shell is the car in the garage now
+local shellPrice = 0
+local lotModels           -- the body shells on offer, as last sent to the UI
 
 ----------------------------------------------------------------------------------------------
 -- small helpers
@@ -163,7 +171,7 @@ local function inventoryForUi()
   for _, item in ipairs(parts.getInventory()) do
     list[#list + 1] = {
       id = item.id, part = item.part, name = item.name, slot = item.slot, section = item.section, photo = 'item_' .. item.id,
-      value = parts.itemPrice(item), count = item.count or 1, new = item.new == true,
+      value = parts.itemPrice(item), count = item.count or 1, new = item.new == true, used = item.used == true,
       damaged = parts.itemDamaged(item), repairCost = parts.itemRepairCost(item), sellValue = parts.sellValue(item),
       contents = (item.count or 1) > 1 and parts.itemContents(item) or nil,
     }
@@ -197,6 +205,7 @@ local function sendState()
     paint = (parts.getPaints()[1] or {}).baseColor,
     paintSmoke = settings.get('paintSmoke'),
     hints = settings.get('hints'),
+    retro = settings.get('retroCatalog'),
   })
 end
 
@@ -208,6 +217,8 @@ end
 
 local function sendHover()
   local d = hoverPath and parts.describe(hoverPath) or nil
+  -- what the sell tool would pay for it, straight off the car (bent parts fetch half, as on the shelf)
+  if d then d.sellValue = math.floor(d.value * settings.get('sellFactor') * (d.damaged and 0.5 or 1) + 0.5) end
   guihooks.trigger('slrrGarageHover', d or {})
 end
 
@@ -290,7 +301,10 @@ local function respawnWithDesired(job, final)
   v = veh()
   if not v then return end
   local nowCenter, nowDir = carCenter(), v:getDirectionVector()
-  if (nowCenter - center):length() > 0.12 or nowDir:dot(dir) < 0.998 then
+  -- (a car rebuilt while it was up on the lift comes back in mid-air with nothing holding it:
+  -- it goes on the floor at once, before it can fall)
+  local inTheAir = restZ and v:getPosition().z - restZ > 0.12
+  if inTheAir or (nowCenter - center):length() > 0.12 or nowDir:dot(dir) < 0.998 then
     local floorZ = site and site.spot.z or (center.z - 0.6)
     spawn.safeTeleport(v, vec3(center.x, center.y, floorZ + 0.05), quatFromDir(dir, vec3(0, 0, 1)), true, nil, false, true, false)
     job.sleep(0.2)
@@ -513,8 +527,10 @@ local function enterJob(job)
   -- cut to black; everything that needs hiding happens now, so the film runs uninterrupted
   setFade(1)
   job.sleep(FADE_TIME + 0.05)
-  previousCamera = core_camera.getActiveCamName(0)
-  previousGameState = core_gamestate.state and deepcopy(core_gamestate.state) or nil
+  if not fromLot then       -- (walking in has noted these already)
+    previousCamera = core_camera.getActiveCamName(0)
+    previousGameState = core_gamestate.state and deepcopy(core_gamestate.state) or nil
+  end
   core_input_actionFilter.setGroup('slrrGarageBlocked', blockedActions)
   core_input_actionFilter.addAction(0, 'slrrGarageBlocked', true)
   v:queueLuaCommand('ai.scriptStop(true, true) ai.setMode("disabled") input.event("throttle", 0, FILTER_DIRECT) input.event("brake", 0, FILTER_DIRECT)')
@@ -537,7 +553,7 @@ local function enterJob(job)
   sillHeight = measureSill()
   mode, tool = 'mechanic', nil
 
-  if settings.get('playFilm') then
+  if settings.get('playFilm') and not fromLot then
     freezeCar(false)
     v:queueLuaCommand('input.event("parkingbrake", 0, FILTER_DIRECT)')
     placeCarAt(route.startPos, route.startDir)
@@ -623,6 +639,12 @@ local function enterJob(job)
     restZ = v:getPosition().z
   end
   lift.setArms(true)                         -- the arms swing in under the sills
+  if fromLot then
+    -- it was bought as a bare shell: everything that unbolts is not there, and is not on the shelf either
+    parts.stripToShell()
+    parts.pay(shellPrice, 'Body shell')
+    fromLot, boughtShell = false, true
+  end
   phase = 'garage'
   sendState()
   sendHover()
@@ -640,10 +662,118 @@ local function startEnter(_site, id, side)
   core_jobsystem.create(enterJob)
 end
 
+-- On foot the doorway leads to the same garage, with nothing on the lift: a place to start a
+-- car from nothing. Any car's bare body shell can be bought there; it is put on the lift and
+-- from then on it is an ordinary visit.
+local function sendLot()
+  lotModels = {}
+  local ok, list = pcall(function() return core_vehicles.getModelList(true).models end)
+  local factor = settings.get('shellPrice') * settings.get('priceMultiplier')
+  for _, m in ipairs(ok and type(list) == 'table' and list or {}) do
+    if type(m) == 'table' and type(m.key) == 'string' and (m.Type == 'Car' or m.Type == 'Truck') then
+      local full = core_vehicles.getModel(m.key)
+      local cfg = full and full.configs and m.default_pc and full.configs[m.default_pc]
+      local value = cfg and tonumber(cfg.Value) or 8000
+      lotModels[#lotModels + 1] = {
+        key = m.key, name = tostring(m.Name or m.key), brand = tostring(m.Brand or ''),
+        price = math.floor(value * factor / 50 + 0.5) * 50, preview = type(m.preview) == 'string' and m.preview or nil,
+      }
+    end
+  end
+  table.sort(lotModels, function(a, b)
+    if a.brand ~= b.brand then return a.brand < b.brand end
+    return a.name < b.name
+  end)
+  guihooks.trigger('slrrGarageLot', { models = lotModels })
+end
+
+local function startLot(_site)
+  if phase ~= 'idle' then return end
+  armed = false
+  if parts.inCareer() then
+    if ui_message then ui_message('In career mode cars come from the dealership. Drive one in to work on it.', 6, 'slrrGarage') end
+    return
+  end
+  site, viaSide, vehId, shop = _site, false, nil, nil
+  phase = 'lot'
+  previousCamera = core_camera.getActiveCamName(0)
+  previousGameState = core_gamestate.state and deepcopy(core_gamestate.state) or nil
+  core_gamestate.setGameState('slrrGarage', 'slrrGarage', 'freeroam')
+  core_input_actionFilter.setGroup('slrrGarageBlocked', blockedActions)
+  core_input_actionFilter.addAction(0, 'slrrGarageBlocked', true)
+  centreZOffset = nil
+  -- the camera looks at the empty lift the way it would look at a car standing on it
+  camera.setup(site, function() return carCenter() or sites.point(site, 0, 0, 0.7) end, 4.5, false)
+  camera.onPose = onCameraPose
+  lift.setup(site.spot, site.dir)
+  camera.startOrbit(false)
+  core_camera.setByName(0, 'slrrGarage', false)
+  playSound('entergarage.wav')
+  sendState()
+  sendLot()
+end
+
+local function buyShell(key)
+  if phase ~= 'lot' then return end
+  local entry
+  for _, m in ipairs(lotModels or {}) do
+    if m.key == key then entry = m end
+  end
+  if not entry then return end
+  if parts.getMoney() < entry.price then
+    playSound('warn.wav', 0.6)
+    say('Not enough money for that shell.')
+    return
+  end
+  phase = 'film'
+  fromLot, shellPrice = true, entry.price
+  sendState()
+  core_jobsystem.create(function(job)
+    setFade(1)
+    job.sleep(FADE_TIME + 0.05)
+    local ok, car = pcall(core_vehicles.spawnNewVehicle, entry.key, {
+      pos = sites.point(site, 0, 0, 0.3), rot = quatFromDir(site.dir, vec3(0, 0, 1)),
+      autoEnterVehicle = false, canSpawnAnotherVehicleCheck = false,
+    })
+    local id = ok and car and car:getID()
+    local waited = 0
+    while id and not core_vehicle_manager.getVehicleData(id) and waited < 15 do
+      job.sleep(0.1)
+      waited = waited + 0.1
+    end
+    if not id or not core_vehicle_manager.getVehicleData(id) or phase ~= 'film' then
+      -- no car came of it: back to the list, nothing paid
+      if id and getObjectByID(id) then getObjectByID(id):delete() end
+      if phase == 'film' then
+        fromLot, phase = false, 'lot'
+        setFade(0)
+        say('That one could not be delivered.')
+      end
+      return
+    end
+    job.sleep(0.3)
+    vehId = id
+    -- the player takes the seat (and the walking figure is put away)
+    if gameplay_walk and gameplay_walk.getInVehicle then gameplay_walk.getInVehicle(getObjectByID(id)) else be:enterVehicle(0, getObjectByID(id)) end
+    previousCamera = nil      -- what was noted on the way in was the walking camera; the car gets its own
+    job.sleep(0.25)
+    enterJob(job)
+    if phase == 'garage' then say(string.format('The %s shell is on the lift. Everything else is in the catalog.', entry.name), 5) end
+  end)
+end
+
+local function leaveLot()
+  if phase ~= 'lot' then return end
+  playSound('mnuback.wav')
+  cleanup()
+  fade, armed = 0, false
+  sendState()
+end
+
 ----------------------------------------------------------------------------------------------
 -- leaving
 
-local function cleanup()
+cleanup = function()
   core_input_actionFilter.setGroup('slrrGarageBlocked', blockedActions)
   core_input_actionFilter.addAction(0, 'slrrGarageBlocked', false)
   camera.stop()
@@ -655,6 +785,7 @@ local function cleanup()
   damage.clear()
   centreZOffset, restZ = nil, nil
   hoverPath, tool, mode, tuneSelected = nil, nil, 'mechanic', nil
+  fromLot, boughtShell = false, false
   if core_camera.getActiveCamName(0) == 'slrrGarage' then
     core_camera.setByName(0, (previousCamera and previousCamera ~= 'slrrGarage') and previousCamera or 'orbit', false)
   end
@@ -685,6 +816,9 @@ local function leaveJob(job)
   local missing = parts.missingEssentials()
   local v = veh()
   local half = v and v:getInitialLength() * 0.5 or 2.2
+  -- doors and lids that stand open (the driver's door, anything opened with the screwdriver)
+  -- are pushed shut: an open door does not survive the doorway
+  if v then v:queueLuaCommand('if slrrGarageVeh then slrrGarageVeh.shutLatches() end') end
   setFade(1)
   job.sleep(FADE_TIME + 0.05)
   preview.setSlots({})
@@ -692,8 +826,15 @@ local function leaveJob(job)
   lift.setPadHeight(nil, true)
   if camera.isLift() then
     camera.setLift(false)
-    if v then v:queueLuaCommand('if slrrGarageVeh then slrrGarageVeh.releaseLift() end') end
-    job.sleep(0.6)
+    if parts.isDirty() then
+      -- the car is about to be rebuilt: let go, it is put right on the floor
+      if v then v:queueLuaCommand('if slrrGarageVeh then slrrGarageVeh.releaseLift() end') end
+      job.sleep(0.6)
+    else
+      -- this car leaves as it is, so it comes down the way it went up instead of being dropped
+      setCarLift(false)
+      job.sleep(settings.get('liftHeight') / 0.55 + 0.4)
+    end
   end
   if parts.isDirty() then
     respawnWithDesired(job, true)
@@ -715,7 +856,7 @@ local function leaveJob(job)
     -- the car drives itself out while the camera stays behind in the garage
     v:queueLuaCommand('input.event("parkingbrake", 0, FILTER_DIRECT)')
     camera.startExit()
-    job.sleep(0.5)
+    job.sleep(0.9)
     local path, duration = buildDrivePath(route.points)
     v:queueLuaCommand('ai.startFollowing(' .. serialize({ path = path }) .. ', 0, 1, "neverReset")')
     playSound('leavegarage.wav')
@@ -886,6 +1027,8 @@ local function work(what, weight, fn)
   end)
 end
 
+local sell                 -- set further down
+
 -- left click on the 3D view
 local function click()
   if phase ~= 'garage' or not hoverPath then return end
@@ -901,7 +1044,7 @@ local function click()
     core_jobsystem.create(applyInGarage)
     return
   end
-  if mode == 'tune' then
+  if mode == 'tune' and tool ~= 'sell' then
     tuneClick(hoverPath)
     return
   end
@@ -922,13 +1065,18 @@ local function click()
     end
     playSound('wrench.wav')
     hoverPath = nil
+    pickRay = nil
     sendHover()
+    if tool == 'sell' then        -- the sell tool takes it off the car and straight over the counter
+      sell(item.id)
+      return
+    end
     sendState()
     guihooks.trigger('slrrGarageItemAdded', { id = item.id })
   end)
 end
 
-local function sell(itemId)
+sell = function(itemId)
   if phase ~= 'garage' and phase ~= 'catalog' then return end
   local ok, item, value = parts.sellItem(tonumber(itemId))
   if ok then
@@ -997,6 +1145,27 @@ local function install(itemId)
   end)
 end
 
+-- fit everything on the shelf that was bought and has not been on the car yet
+local function installNew()
+  if phase ~= 'garage' then return end
+  local count, weight = 0, 0
+  for _, item in ipairs(parts.getInventory()) do
+    if item.new or item.used then count, weight = count + 1, weight + parts.partWeight(item.part) end
+  end
+  if count == 0 then return end
+  work('Fitting ' .. count .. ' new parts', weight, function()
+    local fitted, needsLoad = parts.installNew()
+    if fitted == 0 then
+      playSound('warn.wav', 0.6)
+      say('Nothing on the car to bolt the new parts to. Fit what they attach to first.')
+      return
+    end
+    playSound('screw.wav')
+    say(fitted == count and (fitted .. ' parts fitted.') or string.format('%d of %d parts fitted. The rest have nothing to bolt to yet.', fitted, count), 3.5)
+    if needsLoad then core_jobsystem.create(applyInGarage) end
+  end)
+end
+
 local function setTool(name)
   if phase ~= 'garage' then return end
   if name ~= 'repair' and name ~= 'sell' then name = nil end
@@ -1044,7 +1213,7 @@ local function sendCatalog()
   if shop then
     sells = {}
     for _, key in ipairs(shop.sells or {}) do sells[key] = true end
-    if shop.yard then sells = nil end              -- the yard sells anything it happens to have
+    if shop.yard or shop.all then sells = nil end  -- the yard sells anything it happens to have; so does a shop without a list
   end
   local out = {}
   for _, section in ipairs(parts.getSections()) do
@@ -1082,9 +1251,9 @@ local function closeCatalog()
 end
 
 -- "buy" in the catalog: onto the shopping list; nothing is paid until the order is confirmed
-local function buy(slotPath, partName)
+local function buy(slotPath, partName, sub)
   if phase ~= 'catalog' and phase ~= 'shop' then return end
-  local ok, res = parts.cartAdd(slotPath, partName)
+  local ok, res = parts.cartAdd(slotPath, partName, sub)
   if not ok then
     playSound('warn.wav', 0.6)
     say(res)
@@ -1314,7 +1483,7 @@ local function sendInfo()
 end
 
 -- lift: raise the car off the floor (the camera may then look up at it from below)
-local function setCarLift(on)
+setCarLift = function(on)
   local v = veh()
   if not v then return end
   v:queueLuaCommand('extensions.load("slrrGarageVeh") slrrGarageVeh.setLift(' .. (on and settings.get('liftHeight') or 0) .. ')')
@@ -1427,7 +1596,11 @@ local function enterNearest()
       if not bestDist or d < bestDist then best, bestDist, second = s, d, door.id == 'second' end
     end
   end
-  if best then startEnter(best, v:getID(), second) end
+  if best and v:getJBeamFilename() == 'unicycle' then
+    startLot(best)
+  elseif best then
+    startEnter(best, v:getID(), second)
+  end
 end
 
 ----------------------------------------------------------------------------------------------
@@ -1481,10 +1654,21 @@ end
 local function updateIdle(dt)
   local v = getPlayerVehicle(0)
   if not v then return end
-  updateShops(v, dt)
+  local onFoot = v:getJBeamFilename() == 'unicycle'
+  if not onFoot then updateShops(v, dt) end      -- the shops sell parts for the car you came in
   if phase ~= 'idle' then return end
   local list = sites.getSites()
   if #list == 0 then return end
+  -- out driving: say so, once, when an order has reached the garage
+  deliveryTimer = deliveryTimer + dt
+  if deliveryTimer > 3 then
+    deliveryTimer = 0
+    local arrived = parts.announceArrivals()
+    if arrived > 0 and ui_message then
+      playSound('ok.wav')
+      ui_message(arrived == 1 and 'Your part has been delivered. It is waiting at the garage.' or (arrived .. ' parts have been delivered. They are waiting at the garage.'), 6, 'slrrGarage')
+    end
+  end
   local pos = v:getPosition()
   local centre = v:getSpawnWorldOOBB():getCenter()
   local heading = v:getDirectionVector()
@@ -1497,13 +1681,19 @@ local function updateIdle(dt)
         if distance < 90 and settings.get('markers') then drawMarker(s, distance, door.pos - door.inward * 1.2) end
         if (centre - door.pos):length() < 9 then nearDoor = true end
         -- the way in is the doorway itself: the nose of the car reaching the door, heading in
-        local rel = nose - door.pos
+        local rel = (onFoot and pos or nose) - door.pos
         local depth = rel:dot(door.inward)
         local across = math.abs(rel:dot(vec3(-door.inward.y, door.inward.x, 0)))
         if armed and settings.get('autoEnter') and depth > -1.6 and depth < 1.2 and across < 2.6 then
           local vel = v:getVelocity()
+          if onFoot then
+            -- walking in: the lift is empty, and there are body shells for sale
+            if settings.get('walkIn') and vel:dot(door.inward) > 0.3 then
+              startLot(s)
+              return
+            end
           -- at walking pace only: anything faster is somebody driving (or drifting) through
-          if vel:length() < settings.get('enterSpeed') / 3.6 and heading:dot(door.inward) > 0.55 and vel:dot(door.inward) > 0.3 then
+          elseif vel:length() < settings.get('enterSpeed') / 3.6 and heading:dot(door.inward) > 0.55 and vel:dot(door.inward) > 0.3 then
             startEnter(s, v:getID(), door.id == 'second')
             return
           end
@@ -1533,14 +1723,24 @@ local function updateGarage(dt)
   end
   if mouseOverUi or dragging or not picker.isReady() then
     if hoverPath then setHover(nil) end
+    pickRay = nil
   else
+    -- Finding the part under the cursor goes through the vertices of the whole car. It is done
+    -- when the cursor or the camera has moved, at most 30 times a second, and a few times a
+    -- second regardless, for parts that have come off or gone on in the meantime.
     local ray = getCameraMouseRay()
-    local partPath
-    if ray then
-      local picked = picker.pick(ray.pos, ray.dir, parts.isMeshHidden)
-      partPath = picked and parts.removableAncestor(picked) or picked
+    pickAge = pickAge + dt
+    if not ray then
+      setHover(nil)
+      pickRay = nil
+    else
+      local moved = not pickRay or (ray.pos - pickRay.pos):squaredLength() > 1e-10 or (ray.dir - pickRay.dir):squaredLength() > 1e-10
+      if (moved and pickAge > 0.033) or pickAge > 0.25 then
+        pickRay, pickAge = { pos = vec3(ray.pos), dir = vec3(ray.dir) }, 0
+        local picked = picker.pick(ray.pos, ray.dir, parts.isMeshHidden)
+        setHover(picked and parts.removableAncestor(picked) or picked)
+      end
     end
-    setHover(partPath)
   end
   parts.updateHighlight(dt)
   if mode == 'tune' then
@@ -1552,6 +1752,7 @@ end
 
 local function onUpdate(dtReal)
   frame = frame + 1
+  music.update(dtReal, phase ~= 'idle', (site and sites.radio(site)) or (shop and shop.pos + vec3(0, 0, 1.5)) or nil)
   if messageTimer then
     messageTimer = messageTimer - dtReal
     if messageTimer <= 0 then
@@ -1625,9 +1826,11 @@ local function abort()
   if phase == 'shop' then leaveShop() return end
   local v = veh()
   local config = parts.revertVisit()
-  if v then
+  if v and boughtShell then
+    v:delete()        -- a body shell bought on this visit goes back with the money
+  elseif v then
     v:setMeshAlpha(1, '', false)
-    v:queueLuaCommand('controller.setFreeze(0)')
+    v:queueLuaCommand('controller.setFreeze(0) if slrrGarageVeh then slrrGarageVeh.setLift(0) end')
     if config then v:respawn(serialize(config)) end
   end
   cleanup()
@@ -1664,6 +1867,8 @@ local function onClientEndMission()
     damage.clear()
     phase, site, vehId, fade, shop = 'idle', nil, nil, 0, nil
   end
+  music.stop()
+  sites.reload()
   armed = true
 end
 
@@ -1675,6 +1880,7 @@ end
 
 local function onExtensionUnloaded()
   abort()
+  music.stop()
 end
 
 -- the UI app asks for the current state when it (re)loads
@@ -1710,6 +1916,9 @@ M.leave = leave
 M.abort = abort
 M.click = click
 M.install = install
+M.installNew = installNew
+M.buyShell = function(key) buyShell(tostring(key)) end
+M.leaveLot = function() leaveLot() end
 M.sell = sell
 M.saveBuild = function(name)
   if phase ~= 'garage' then return end
@@ -1737,6 +1946,12 @@ M.toggleFilter = toggleFilter
 M.openCatalog = openCatalog
 M.closeCatalog = closeCatalog
 M.buy = buy
+-- the catalog asks what can be chosen for a part's own slots before it is bought
+M.requestSlots = function(slotPath, partName)
+  if phase ~= 'catalog' and phase ~= 'shop' then return end
+  slotPath, partName = tostring(slotPath), tostring(partName)
+  guihooks.trigger('slrrGarageSlots', { key = slotPath .. partName, slots = parts.partSlots(slotPath, partName) })
+end
 M.cartRemove = cartRemove
 M.cartClear = cartClear
 M.checkout = checkout
@@ -1772,6 +1987,93 @@ M.debugPointAt = function(target)
   setHover(partPath)
   return picked, partPath
 end
+----------------------------------------------------------------------------------------------
+-- For people adding garages and shops to a map: stand where the point should be and run one
+-- line in the console (the ~ key). It goes into settings/slrr_garage/sites.json and works at
+-- once. docs/adding_garages.md has the rest.
+
+local function slug(name)
+  return (tostring(name):lower():gsub('[^%w]+', '_'):gsub('^_+', ''):gsub('_+$', ''))
+end
+
+local function round3(x) return math.floor(x * 1000 + 0.5) / 1000 end
+
+-- the floor under the player's car and the way it points
+local function standing()
+  local v = getPlayerVehicle(0)
+  if not v then return nil end
+  local c = v:getSpawnWorldOOBB():getCenter()
+  local drop = castRayStatic(c, vec3(0, 0, -1), 6)
+  local dir = vec3(v:getDirectionVector())
+  dir.z = 0
+  dir:normalize()
+  return vec3(c.x, c.y, c.z - math.min(drop, 6)), dir
+end
+
+local function tell(text)
+  log('I', logTag, text)
+  if ui_message then ui_message(text, 10, 'slrrGarage') end
+  return text
+end
+
+-- Park the car where it should stand in the garage, nose pointing in (away from the door).
+M.addGarageHere = function(name)
+  if phase ~= 'idle' then return tell('Leave the garage first.') end
+  local floor, dir = standing()
+  if not floor then return tell('There is no vehicle to take the place from.') end
+  name = (type(name) == 'string' and name ~= '') and name or 'My Garage'
+  local file = sites.saveUserEntry('garages', {
+    id = slug(name), name = name, spot = { round3(floor.x), round3(floor.y), round3(floor.z) }, dir = { round3(dir.x), round3(dir.y) },
+    doorDist = -7, halfWidth = 3.5, backDist = 5, ceiling = 4.5, exit = 'reverse',
+  })
+  if not file then return tell('Could not save the garage: no map is loaded.') end
+  armed = false       -- the car standing in it is not a customer
+  return tell(string.format('"%s" added. Its door is taken to be 7 m behind the car; drive to the doorway and run slrr_garage.setDoorHere() to put it right. Saved in %s', name, file))
+end
+
+-- Stand in the doorway of a garage you added: its door is put there.
+M.setDoorHere = function(id)
+  if phase ~= 'idle' then return tell('Leave the garage first.') end
+  local floor = standing()
+  if not floor then return tell('There is no vehicle to take the place from.') end
+  local best, bestDist
+  for _, s in ipairs(sites.getSites()) do
+    if sites.getUserEntry('garages', s.id) and (not id or s.id == id) then
+      local d = (floor - s.spot):length()
+      if not bestDist or d < bestDist then best, bestDist = s, d end
+    end
+  end
+  if not best then return tell('None of your own garages is on this map. Add one with slrr_garage.addGarageHere("Name").') end
+  local along = sites.toAxis(best, floor)
+  if along > -1.5 then return tell('The door has to be in front of the parking spot: this is ' .. round3(along) .. ' m along, it must be behind the car.') end
+  local entry = sites.getUserEntry('garages', best.id)
+  entry.doorDist = round3(along)
+  sites.saveUserEntry('garages', entry)
+  armed = false
+  return tell(string.format('The door of "%s" is now %.1f m from its parking spot.', best.name, -along))
+end
+
+-- Stop where customers should stop. sells: a list of catalog chapters ("running/rims_f") or
+-- whole sections ("engine"); leave it out and the shop sells everything.
+M.addShopHere = function(name, trade, sells)
+  if phase ~= 'idle' then return tell('Leave the garage first.') end
+  local floor = standing()
+  if not floor then return tell('There is no vehicle to take the place from.') end
+  name = (type(name) == 'string' and name ~= '') and name or 'My Parts Shop'
+  local file = sites.saveUserEntry('shops', {
+    id = slug(name), name = name, trade = type(trade) == 'string' and trade or 'Parts',
+    pos = { round3(floor.x), round3(floor.y), round3(floor.z) }, sells = type(sells) == 'table' and sells or nil,
+  })
+  if not file then return tell('Could not save the shop: no map is loaded.') end
+  shopArmed = false
+  return tell(string.format('"%s" added. Saved in %s', name, file))
+end
+
+M.reloadSites = function()
+  sites.reload()
+  return tell(string.format('%d garages and %d shops on this map.', #sites.getSites(), #sites.getShops()))
+end
+
 M.uiSound = function(name) if type(name) == 'string' and name:match('^[%w_]+%.wav$') then playSound(name, 0.7) end end
 M.getPhase = function() return phase end
 

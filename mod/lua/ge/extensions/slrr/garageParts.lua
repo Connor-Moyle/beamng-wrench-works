@@ -35,7 +35,7 @@ local entrySnapshot       -- shelf and money as they were on the way in, for und
 local meshAlpha = {}     -- mesh name -> alpha we last set
 local chassisPath        -- part path that carries the ref nodes; never removable
 local sectionFilter = {} -- section id -> true when hidden from view (SLRR's engine/body/running gear toggles)
-local highlightPath, highlightPhase = nil, 0
+local highlightPath, highlightPhase, highlightWait = nil, 0, 0
 local desiredVars, entryVars       -- tuning variables the player wants / came in with
 local desiredPaints, entryPaints   -- paint slots the player wants / came in with
 local visitNet = 0                 -- money spent minus money earned during this visit (career refunds on undo)
@@ -146,6 +146,9 @@ local function earn(amount, label)
   end
   visitNet = visitNet - amount
 end
+
+-- pay for something that is not a part (a body shell); counts towards this visit. Returns ok.
+function M.pay(amount, label) return spend(amount, label) end
 
 ----------------------------------------------------------------------------------------------
 -- jbeam lookups
@@ -322,7 +325,7 @@ function M.setHighlight(partPath)
     end
   end
   highlightPath = partPath
-  highlightPhase = 0
+  highlightPhase, highlightWait = 0, 0
 end
 
 function M.updateHighlight(dt)
@@ -331,6 +334,11 @@ function M.updateHighlight(dt)
   local node = partIndex[highlightPath]
   if not veh or not node then highlightPath = nil return end
   highlightPhase = highlightPhase + dt * 5
+  -- the pulse is redrawn 30 times a second, not every frame: changing a mesh's alpha is not free,
+  -- and a big part is a hundred meshes
+  highlightWait = highlightWait - dt
+  if highlightWait > 0 then return end
+  highlightWait = 0.033
   local alpha = 0.78 + 0.14 * math.sin(highlightPhase)
   for _, p in ipairs(subtreePartPaths(node)) do
     for _, mesh in ipairs(loadedMeshes[p] or {}) do
@@ -426,6 +434,34 @@ function M.detach()
 end
 
 function M.getVehicleId() return vehId end
+
+-- The car was bought as a bare body shell: everything that unbolts is gone - not to the shelf,
+-- it was never paid for. What a slot cannot do without (its core parts) stays, and so does
+-- whatever the shell itself hangs from. From here on this is how the car "came in".
+function M.stripToShell()
+  if not desired then return end
+  local keep = {}
+  local node = chassisPath and partIndex[chassisPath]
+  while node do
+    keep[node] = true
+    node = parentOf[node]
+  end
+  local function strip(parent)
+    for _, child in pairs(parent.children or {}) do
+      if isChosen(child) then
+        if keep[child] then
+          strip(child)
+        elseif not slotInfo(child, parent).coreSlot then
+          child.chosenPartName, child.partPath, child.children, child.decisionMethod = '', nil, nil, 'user-empty'
+        end
+      end
+    end
+  end
+  strip(desired)
+  reindex()
+  applyVisibility()
+  entryTree = deepcopy(desired)
+end
 
 -- the livery the car wears (nil for plain paint)
 function M.getSkin()
@@ -610,6 +646,28 @@ function M.installItem(itemId)
   return true, item.name, M.needsLoad()
 end
 
+-- Fit every shelf part that was bought and has not been on the car yet. Goes round again while
+-- anything went on, so a part is fitted before what bolts to it. Returns how many, needsLoad.
+function M.installNew()
+  local fitted, progress = 0, true
+  while progress do
+    progress = false
+    local todo = {}
+    for _, item in ipairs(inventory()) do
+      if item.new or item.used then todo[#todo + 1] = item end
+    end
+    -- nearest the shell first: a new part must not be swapped out again with the part it sits on
+    table.sort(todo, function(a, b)
+      if #a.slotPath ~= #b.slotPath then return #a.slotPath < #b.slotPath end
+      return a.id < b.id
+    end)
+    for _, item in ipairs(todo) do
+      if M.installItem(item.id) then fitted, progress = fitted + 1, true end
+    end
+  end
+  return fitted, M.needsLoad()
+end
+
 -- true when the desired tree shows parts the spawned vehicle has no meshes for
 function M.needsLoad()
   for partPath in pairs(partIndex) do
@@ -693,9 +751,19 @@ loadStandins = function()
   local grew = false
   walk(desired, function(node)
     local built = resolved[node.path]
-    if isChosen(node) and not node.children and built and built.chosenPartName == node.chosenPartName and built.children then
-      node.children = deepcopy(built.children)
-      grew = true
+    if isChosen(node) and built and built.chosenPartName == node.chosenPartName and built.children then
+      if not node.children then
+        node.children = deepcopy(built.children)
+        grew = true
+      else
+        -- a part bought with some of its options chosen knows only those; the rest come as standard
+        for slotId, child in pairs(built.children) do
+          if node.children[slotId] == nil then
+            node.children[slotId] = deepcopy(child)
+            grew = true
+          end
+        end
+      end
     end
   end)
   if grew then reindex() end
@@ -866,7 +934,6 @@ function M.revertVisit()
     for k in pairs(now) do if not was[k] then changed = true end end
   end
   if not changed then return nil end
-  pendingExtras = nil
   jbeamLoader.onFileChanged()
   local config = deepcopy(vd.config)
   config.partsTree = deepcopy(entryTree)
@@ -1268,6 +1335,7 @@ function M.buildCatalog()
         part = partName, name = info.name, price = priced(info.value),
         slotPath = node.path, slot = sInfo.description,
         fitted = node.chosenPartName == partName, owned = owned[partName] or 0,
+        more = next(info.slots) ~= nil,       -- it has slots of its own: there may be options to choose
       }
     end
   end)
@@ -1378,7 +1446,93 @@ local function deliveryFee(partName)
   return (6 + weight * 0.9 + size * size * 14) * settings.get('deliveryFactor')
 end
 
-function M.cartAdd(slotPath, partName)
+-- ... and a cart entry: the part and the options that were chosen for it
+local function entryFee(entry)
+  local fee = deliveryFee(entry.part)
+  for _, name in ipairs(entry.extraParts or {}) do fee = fee + deliveryFee(name) end
+  return fee
+end
+
+-- A part's own slots and what can go in each, so they can be chosen before it is bought:
+-- { { id, path, title, default, core, options = { { part, name, price, more } } } }.
+-- A slot with nothing to choose is left out. What a slot comes with as standard costs nothing extra.
+local function slotChoices(slotDef)
+  local vd = vehData()
+  local ok, names = pcall(jbeamIO.getCompatiblePartNamesForSlot, vd.ioCtx, slotDef)
+  names = ok and type(names) == 'table' and names or {}
+  local default = type(slotDef.default) == 'string' and slotDef.default or ''
+  local found = false
+  for _, name in ipairs(names) do
+    if name == default then found = true end
+  end
+  return names, found and default or ''
+end
+
+function M.partSlots(slotPath, partName)
+  local out = {}
+  local part = getPart(partName)
+  if not vehData() or not part or yardStock then return out end
+  for _, slotDef in ipairs(type(part.slots2) == 'table' and part.slots2 or {}) do
+    local id = type(slotDef) == 'table' and slotDef.name
+    if type(id) == 'string' then
+      local names, default = slotChoices(slotDef)
+      if #names > 1 or (#names == 1 and default == '') then
+        local options = {}
+        for _, name in ipairs(names) do
+          local info = partInfo(name)
+          options[#options + 1] = { part = name, name = info.name, price = name == default and 0 or priced(info.value), more = next(info.slots) ~= nil }
+        end
+        table.sort(options, function(a, b)
+          if a.price ~= b.price then return a.price < b.price end
+          return a.name < b.name
+        end)
+        out[#out + 1] = {
+          id = id, path = slotPath .. id .. '/', default = default, core = slotDef.coreSlot == true, options = options,
+          title = (type(slotDef.description) == 'string' and slotDef.description ~= '') and slotDef.description or prettify(id),
+        }
+      end
+    end
+  end
+  table.sort(out, function(a, b) return a.title < b.title end)
+  return out
+end
+
+-- The options chosen for a part ({ [slotId] = { part = name or '', sub = {...} } }) as tree
+-- nodes, checked against what really fits. acc collects what they add: value and part names.
+local function chosenChildren(parentPath, partName, sub, acc, depth)
+  if type(sub) ~= 'table' or (depth or 0) > 12 then return nil end
+  local part = getPart(partName)
+  local children
+  for _, slotDef in ipairs(part and type(part.slots2) == 'table' and part.slots2 or {}) do
+    local id = type(slotDef) == 'table' and slotDef.name
+    local choice = type(id) == 'string' and sub[id] or nil
+    if type(choice) == 'table' and type(choice.part) == 'string' then
+      local names, default = slotChoices(slotDef)
+      local path = parentPath .. id .. '/'
+      local node
+      if choice.part == '' then
+        if slotDef.coreSlot ~= true then
+          node = { id = id, path = path, chosenPartName = '', decisionMethod = 'user-empty', suitablePartNames = names }
+        end
+      elseif tableContains(names, choice.part) then
+        node = { id = id, path = path, chosenPartName = choice.part, partPath = path .. choice.part, decisionMethod = 'user', suitablePartNames = names }
+        if choice.part ~= default then
+          acc.value = acc.value + partInfo(choice.part).value
+          acc.parts[#acc.parts + 1] = choice.part
+        end
+        node.children = chosenChildren(path, choice.part, choice.sub, acc, (depth or 0) + 1)
+      end
+      if node then
+        children = children or {}
+        children[id] = node
+      end
+    end
+  end
+  return children
+end
+
+-- sub: the options chosen for the part's own slots (see chosenChildren), or nil
+function M.cartAdd(slotPath, partName, sub)
   local slot = slotIndex[slotPath]
   if not slot or not fits(slot, partName) then return false, "That part does not fit this car." end
   local used = yardStock and yardStock[slotPath .. partName]
@@ -1388,7 +1542,9 @@ function M.cartAdd(slotPath, partName)
       if entry.slotPath == slotPath and entry.part == partName then return false, "There is only the one." end
     end
   end
-  cart[#cart + 1] = { slotPath = slotPath, part = partName, used = used }
+  local acc = { value = 0, parts = {} }
+  local children = not used and chosenChildren(slotPath, partName, sub, acc) or nil
+  cart[#cart + 1] = { slotPath = slotPath, part = partName, used = used, children = children, extraValue = acc.value, extraParts = acc.parts }
   return true
 end
 
@@ -1399,7 +1555,7 @@ end
 
 -- what a cart entry costs: list price, or what the yard asks for its second-hand one
 local function cartPrice(entry)
-  local price = priced(partInfo(entry.part).value)
+  local price = priced(partInfo(entry.part).value + (entry.extraValue or 0))
   if entry.used then price = math.floor(price * (1 - entry.used.discount) + 0.5) end
   return price
 end
@@ -1417,9 +1573,11 @@ function M.cartSummary(inShop)
   for i, entry in ipairs(cart) do
     local info = partInfo(entry.part)
     local weight, size = freight(entry.part)
-    local fee = deliveryFee(entry.part)
+    for _, name in ipairs(entry.extraParts or {}) do weight = weight + freight(name) end
+    local fee = entryFee(entry)
     local price = cartPrice(entry)
-    out.items[i] = { name = info.name .. (entry.used and ' (used)' or ''), part = entry.part, price = price, weight = math.floor(weight * 10 + 0.5) / 10, size = math.floor(size * 100 + 0.5) / 100, fee = math.floor(fee + 0.5) }
+    local options = #(entry.extraParts or {})
+    out.items[i] = { name = info.name .. (entry.used and ' (used)' or '') .. (options > 0 and string.format(' (+%d option%s)', options, options == 1 and '' or 's') or ''), part = entry.part, price = price, weight = math.floor(weight * 10 + 0.5) / 10, size = math.floor(size * 100 + 0.5) / 100, fee = math.floor(fee + 0.5) }
     out.subtotal = out.subtotal + price
     base = base + fee
   end
@@ -1451,7 +1609,13 @@ function M.checkout(shippingId, inShop)
     if item then
       items[#items + 1] = item
       subtotal = subtotal + cartPrice(entry)
-      base = base + deliveryFee(entry.part)
+      base = base + entryFee(entry)
+      if entry.children then
+        -- it arrives built the way it was ordered
+        item.tree.children = deepcopy(entry.children)
+        item.value = item.value + (entry.extraValue or 0)
+        item.count = countParts(item.tree)
+      end
       if entry.used then
         -- second-hand: worth what was paid for it, and bent - the dent is put on the part when
         -- the car is next built with it, and can be repaired like any other damage
@@ -1477,6 +1641,19 @@ function M.checkout(shippingId, inShop)
   if option.seconds <= 0 then return true, #items == 1 and (items[1].name .. ' is on your shelf at the garage.') or (#items .. ' parts are on your shelf at the garage.') end
   local minutes = option.seconds / 60
   return true, string.format('Ordered. Delivery to the garage in %s.', minutes >= 1 and string.format('%.0f min', minutes) or string.format('%.0f s', option.seconds))
+end
+
+-- orders (for any car) that have arrived and have not been announced yet; each counts once
+function M.announceArrivals()
+  local now, arrived = os.time(), 0
+  for _, order in ipairs(save.orders) do
+    if not order.told and (order.due or 0) <= now then
+      order.told = true
+      arrived = arrived + 1
+    end
+  end
+  if arrived > 0 then writeSave() end
+  return arrived
 end
 
 -- put orders that have arrived on the shelf; returns how many
