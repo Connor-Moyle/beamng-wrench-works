@@ -1,4 +1,4 @@
--- SLRR Garage, vehicle side: remembers how bent the car is, and bends it back that way.
+-- Wrench Works, vehicle side: remembers how bent the car is, and bends it back that way.
 -- Changing parts in BeamNG rebuilds the vehicle, which also repairs it. The garage does not
 -- hand out free repairs, so before a rebuild it records every bent or broken beam (by the
 -- names of the two nodes it joins, so the record survives a different set of parts) and
@@ -20,6 +20,18 @@ local function latchStates()
     if type(c) == 'table' and c.tryAttachGroupImpulse and c.getGroupState then states[name] = c.getGroupState() end
   end
   return states
+end
+
+-- Some beams report a deformation on a car straight from the factory (they are built under
+-- tension). What an undamaged car reports is noted here, so that only real bends count.
+local baseline
+
+local function takeBaseline()
+  baseline = {}
+  for cid = 0, tableSizeC(v.data.beams) - 1 do
+    local d = obj:getBeamDeformation(cid) or 0
+    if d ~= 0 then baseline[cid] = d end
+  end
 end
 
 local function frame()
@@ -48,7 +60,8 @@ local function capture()
         pairCount[key] = index
         local broken = obj:beamIsBroken(cid)
         local deform = obj:getBeamDeformation(cid) or 0
-        if broken or deform ~= 0 then
+        local bent = math.abs(deform - (baseline and baseline[cid] or 0)) > 1e-5
+        if broken or bent then
           local a, b = nodes[lo], nodes[hi]
           if a and b and a.name and b.name then
             data.beams[#data.beams + 1] = {
@@ -87,6 +100,7 @@ end
 
 -- bend the freshly built car the way the record says, wherever the same part is still fitted
 local function apply(data)
+  if not baseline then takeBaseline() end     -- called on a freshly built car
   local o, x, y, z = frame()
   local nodes, beams = v.data.nodes, v.data.beams
   if not o or not nodes or not beams or type(data) ~= 'table' then return end
@@ -149,8 +163,7 @@ local function updateLatches(dt)
   if pending and relatch.tries < 4 then relatchTimer = 0.5 else relatch = nil end
 end
 
--- The lift. The garage has no lift model, so the car is simply held up: every node of the
--- chassis is steered towards a spot a set height above where it stood, with a force strong
+-- The lift. The car is held up by forces: every node that is not part of a wheel is steered towards a spot a set height above where it stood, with a force strong
 -- enough to carry it. The wheels are left alone and hang on the suspension, as on a real lift.
 local liftNodes        -- { cid, mass, x, y, z } world rest positions of the chassis nodes
 local liftHeight, liftTarget, liftSpeed = 0, 0, 0.55
@@ -159,12 +172,12 @@ local liftCarry = 1     -- the chassis nodes also carry everything bolted to the
 local function setLift(height)
   liftTarget = math.max(0, tonumber(height) or 0)
   if liftNodes or liftTarget <= 0 then return end
-  local rn = v.data.refNodes and v.data.refNodes[0]
-  local chassis = rn and v.data.nodes[rn.ref] and v.data.nodes[rn.ref].partPath
+  -- Everything but the wheels is carried. (Carrying the body shell alone tips a car whose
+  -- engine hangs off a subframe behind it.)
   local origin = obj:getPosition()
   liftNodes = {}
   for cid, node in pairs(v.data.nodes) do
-    if node.partPath == chassis then
+    if not node.wheelID then
       local p = origin + obj:getNodePosition(cid)
       liftNodes[#liftNodes + 1] = { cid = cid, mass = obj:getNodeMass(cid), x = p.x, y = p.y, z = p.z }
     end
@@ -210,6 +223,12 @@ end
 local function onReset()
   releaseLift()
   carried, relatch = nil, nil
+  takeBaseline()
+end
+
+-- loaded when the car is spawned: if nothing has happened to it yet, this is what "undamaged" reads as
+local function onExtensionLoaded()
+  if not baseline and (beamstate.damage or 0) < 1 then takeBaseline() end
 end
 
 M.capture = capture
@@ -218,5 +237,6 @@ M.setLift = setLift
 M.releaseLift = releaseLift
 M.updateGFX = updateGFX
 M.onReset = onReset
+M.onExtensionLoaded = onExtensionLoaded
 
 return M

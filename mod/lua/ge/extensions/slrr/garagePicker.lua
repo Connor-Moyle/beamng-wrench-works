@@ -1,4 +1,4 @@
--- SLRR Garage: which car part is under the mouse cursor?
+-- Wrench Works: which car part is under the mouse cursor?
 -- The engine exposes no mesh raycast for vehicles, only the vertices of every flexmesh. So the
 -- picker caches those vertices once (in the vehicle's own jbeam space, spread over a few frames)
 -- and treats each one as a small sphere: the closest sphere the cursor ray passes through names

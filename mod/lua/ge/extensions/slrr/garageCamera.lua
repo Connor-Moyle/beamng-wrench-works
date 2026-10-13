@@ -1,4 +1,4 @@
--- SLRR Garage: the camera.
+-- Wrench Works: the camera.
 -- Nothing ever cuts. During the drive-in the camera stands at a fixed spot inside the garage
 -- and turns to watch the car come in; once the car has stopped it leaves that spot in a
 -- single short swing to the garage's working view - an orbit you turn with the right mouse

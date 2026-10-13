@@ -1,4 +1,4 @@
-// SLRR Garage - the on-screen side of the garage.
+// Wrench Works - the on-screen side of the garage.
 // A full-screen app that only exists in the "slrrGarage" layout. It carries over the controls of
 // Street Legal Racing: Redline's garage (the icon bar, the mechanic's repair / sell / filter
 // buttons, the scrolling parts shelf, the catalog) in BeamNG's own look, and adds the panels that
@@ -291,7 +291,7 @@ angular.module('beamng.apps')
     '  </div>',
     '  <div class="sg-tip" ng-if="tip">{{tip.title}}<small>{{tip.desc}}</small></div>',
 
-    '  <div class="sg-help sg-glass" ng-if="!panel">',
+    '  <div class="sg-help sg-glass" ng-if="!panel && s.hints !== false">',
     '    <div ng-if="s.mode === \'mechanic\' && !s.tool"><i>Click</i>a part to take it off</div>',
     '    <div ng-if="s.mode === \'mechanic\' && !s.tool"><i>Click</i>a shelf part to fit it</div>',
     '    <div ng-if="s.mode === \'tune\' && !s.tool"><i>Click</i>a part to pick it and tune it</div>',

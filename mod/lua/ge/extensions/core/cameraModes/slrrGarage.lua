@@ -1,4 +1,4 @@
--- SLRR Garage camera mode. A thin shell: the garage extension owns the camera logic
+-- Wrench Works camera mode. A thin shell: the garage extension owns the camera logic
 -- (slrr/garageCamera.lua); this mode just asks it where the camera is each frame.
 
 local C = {}

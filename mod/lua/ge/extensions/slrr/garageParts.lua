@@ -1,4 +1,4 @@
--- SLRR Garage: the parts on the car, the parts on the shelf, and the catalog.
+-- Wrench Works: the parts on the car, the parts on the shelf, and the catalog.
 --
 -- Two part trees are kept apart on purpose:
 --   * the LOADED tree is what the game really spawned (physics, meshes) - changing it costs a

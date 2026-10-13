@@ -1,4 +1,4 @@
--- SLRR Garage: the catalog's table of contents, and the rules that sort BeamNG parts into it.
+-- Wrench Works: the catalog's table of contents, and the rules that sort BeamNG parts into it.
 -- The sections follow Street Legal Racing: Redline's catalog (engine / body / running gear /
 -- interior), with the audio and decal chapters swapped for things BeamNG cars actually have.
 -- Chapters are kept small: anything that comes in a front and a rear flavour gets one of each.

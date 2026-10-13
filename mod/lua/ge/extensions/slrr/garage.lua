@@ -1,4 +1,4 @@
--- SLRR Garage (extension name: slrr_garage)
+-- Wrench Works (extension name: slrr_garage)
 -- Street Legal Racing: Redline's garage, in BeamNG. Drive up to the Belasco City Garage on
 -- West Coast USA: the car rolls in on its own, watched from inside, the camera swings round
 -- into the garage view, and from there you work on the car the SLRR way - click parts off onto
@@ -174,6 +174,7 @@ local function sendState()
     previews = settings.get('previews'),
     paint = (parts.getPaints()[1] or {}).baseColor,
     paintSmoke = settings.get('paintSmoke'),
+    hints = settings.get('hints'),
   })
 end
 
@@ -314,6 +315,7 @@ local function buildDrivePath(points)
     lengths[i] = (points[i] - points[i - 1]):length()
     total = total + lengths[i]
   end
+  local FILM_SPEED = FILM_SPEED * settings.get('driveSpeed')
   local accelDist = FILM_SPEED * FILM_SPEED / (2 * FILM_ACCEL)
   local function timeAt(s)
     local a = FILM_ACCEL
@@ -355,7 +357,7 @@ end
 
 -- A garage has a front door on its axis and, most of them, a second one: at the side, reached
 -- by a quarter turn to the left, or at the back, straight on. A visit comes in through one
--- and leaves through the other; with a single door the car is turned round to leave.
+-- and leaves through the other; with a single door the car backs out.
 local function leftOf(s) return vec3(-s.dir.y, s.dir.x, 0) end
 local function axisPoint(s, along, left) return s.spot + s.dir * along + leftOf(s) * left + vec3(0, 0, 0.3) end
 
@@ -402,17 +404,18 @@ local function entryRoute(half)
   }
 end
 
--- the drive out: { points, isOutside(carCentre), endPos, endDir, turnAround }
+-- the drive out: { points, isOutside(carCentre), endPos, endDir }
 local function exitRoute(half)
   local left = leftOf(site)
-  if viaSide or site.exit == 'front' then
-    -- straight out of the front door (a car that came in by it has to be turned round first)
+  if viaSide or site.exit == 'reverse' then
+    -- straight out of the front door: nose first for a car that came in the other way, backwards
+    -- for one that came in by this door (the script driver reverses towards points behind it)
     local far = site.doorDist - 11
+    local backing = not viaSide
     return {
       points = { axisPoint(site, -half, 0), axisPoint(site, far, 0) },
       isOutside = function(c) return (c - site.spot):dot(site.dir) < site.doorDist - 2.5 end,
-      endPos = sites.point(site, far + half, 0, 0.05), endDir = -site.dir,
-      turnAround = not viaSide,
+      endPos = sites.point(site, backing and (far - half) or (far + half), 0, 0.05), endDir = backing and site.dir or -site.dir,
     }
   elseif site.exit == 'through' then
     local far = site.backDoorDist + 11
@@ -579,7 +582,7 @@ local function enterJob(job)
     end
     job.sleep(0.35)
     v:queueLuaCommand('input.event("brake", 0, FILTER_DIRECT)')
-    core_jobsystem.create(driverDoorJob)
+    if settings.get('driverDoor') then core_jobsystem.create(driverDoorJob) end
   else
     placeCarAt(sites.point(site, 0, 0, 0.05), route.parkDir)
     job.sleep(0.35)
@@ -670,12 +673,6 @@ local function leaveJob(job)
   local route = exitRoute(half)
   local outside = false
   centreZOffset, restZ = nil, nil
-  if route.turnAround then
-    -- one door only: the car is turned to face it while the screen is dark
-    placeCarAt(sites.point(site, 0, 0, 0.05), -site.dir)
-    camera.setFacingOut(true)
-    job.sleep(0.4)
-  end
   v = veh()
   if v and settings.get('playFilm') and not missing then
     -- the car drives itself out while the camera stays behind in the garage
@@ -871,7 +868,7 @@ local function sellAll()
     say('There is nothing on the shelf to sell.', 2.5)
     return
   end
-  if not sellAllTimer then
+  if not sellAllTimer and settings.get('confirmSellAll') then
     sellAllTimer = 5
     playSound('warn.wav', 0.5)
     say(string.format('Sell all %d parts on the shelf for $%d? Click again to confirm.', count, parts.shelfValue()), 5)
@@ -1061,7 +1058,8 @@ local function enterShop(_shop, id)
   core_gamestate.setGameState('slrrGarage', 'slrrGarage', 'freeroam')
   core_input_actionFilter.setGroup('slrrGarageBlocked', blockedActions)
   core_input_actionFilter.addAction(0, 'slrrGarageBlocked', true)
-  v:queueLuaCommand('controller.setFreeze(1) input.event("throttle", 0, FILTER_DIRECT)')
+  -- engine off at the counter: an idling engine shakes the camera, and the part previews wait for it to be still
+  v:queueLuaCommand('controller.setFreeze(1) input.event("throttle", 0, FILTER_DIRECT) if electrics.setIgnitionLevel then electrics.setIgnitionLevel(0) end')
   parts.attach(vehId, false)
   parts.cartClear()
   parts.setCounterDiscount(settings.get('shopDiscount') / 100)
@@ -1076,7 +1074,7 @@ end
 leaveShop = function()
   if phase ~= 'shop' then return end
   local v = veh()
-  if v then v:queueLuaCommand('controller.setFreeze(0)') end
+  if v then v:queueLuaCommand('controller.setFreeze(0) ' .. START_ENGINE) end
   playSound('mnuback.wav')
   parts.cartClear()
   parts.setCounterDiscount(0)
@@ -1226,11 +1224,10 @@ local function sendInfo()
 end
 
 -- lift: raise the car off the floor (the camera may then look up at it from below)
-local LIFT_HEIGHT = 1.35
 local function setCarLift(on)
   local v = veh()
   if not v then return end
-  v:queueLuaCommand('extensions.load("slrrGarageVeh") slrrGarageVeh.setLift(' .. (on and LIFT_HEIGHT or 0) .. ')')
+  v:queueLuaCommand('extensions.load("slrrGarageVeh") slrrGarageVeh.setLift(' .. (on and settings.get('liftHeight') or 0) .. ')')
 end
 
 local function toggleLift()
@@ -1292,7 +1289,8 @@ end
 local function cameraDrag(dx, dy)
   dx = tonumber(dx) or 0
   if settings.get('invertCameraX') then dx = -dx end
-  camera.rotate(dx, tonumber(dy) or 0)
+  local k = settings.get('cameraSensitivity')
+  camera.rotate(dx * k, (tonumber(dy) or 0) * k)
 end
 
 local function cameraZoom(steps)
@@ -1361,11 +1359,12 @@ end
 -- shops: a blue marker on their forecourt; stop on it to go in
 local shopColor = ColorF(0.1, 0.55, 1, 0.25)
 local function updateShops(v, dt)
+  if not settings.get('shops') then return end
   local pos = v:getPosition()
   local on
   for _, s in ipairs(sites.getShops()) do
     local d = (pos - s.pos):length()
-    if d < 120 then
+    if d < 120 and settings.get('markers') then
       local pulse = 0.5 + 0.5 * math.sin(os.clock() * 3)
       shopColor.a = 0.16 + 0.12 * pulse
       debugDrawer:drawCylinder(s.pos, s.pos + vec3(0, 0, 0.12), 3.2, shopColor)
@@ -1405,7 +1404,7 @@ local function updateIdle(dt)
     if (pos - s.spot):squaredLength() < 110 * 110 then
       for _, door in ipairs(sites.doors(s)) do
         local distance = (pos - door.pos):length()
-        if distance < 90 then drawMarker(s, distance, door.pos - door.inward * 1.2) end
+        if distance < 90 and settings.get('markers') then drawMarker(s, distance, door.pos - door.inward * 1.2) end
         if (centre - door.pos):length() < 9 then nearDoor = true end
         -- the way in is the doorway itself: the nose of the car reaching the door, heading in
         local rel = nose - door.pos
@@ -1503,6 +1502,9 @@ end
 -- game hooks
 
 local function onVehicleSpawned(id)
+  -- every car gets the damage keeper while it is still new, so it knows what "undamaged" looks like
+  local spawned = getObjectByID(id)
+  if spawned then spawned:queueLuaCommand('extensions.load("slrrGarageVeh")') end
   if id ~= vehId then return end
   if respawnWaiter then
     settleFrames = 3
@@ -1576,7 +1578,9 @@ local function onClientEndMission()
 end
 
 local function onExtensionLoaded()
-  log('I', logTag, 'SLRR garage loaded')
+  local current = getPlayerVehicle(0)
+  if current then current:queueLuaCommand('extensions.load("slrrGarageVeh")') end
+  log('I', logTag, 'Wrench Works loaded')
 end
 
 local function onExtensionUnloaded()

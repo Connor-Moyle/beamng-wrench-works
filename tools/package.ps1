@@ -1,9 +1,9 @@
-# Builds slrr_garage.zip (without the SLRR sounds, which are not ours to hand out).
+# Builds wrench_works.zip (without the SLRR sounds, which are not ours to hand out).
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 $mod = Join-Path $root 'mod'
-$zip = Join-Path $root 'slrr_garage.zip'
-$stage = Join-Path $env:TEMP ("slrr_garage_pkg_" + [guid]::NewGuid().ToString('N'))
+$zip = Join-Path $root 'wrench_works.zip'
+$stage = Join-Path $env:TEMP ("wrench_works_pkg_" + [guid]::NewGuid().ToString('N'))
 Copy-Item $mod $stage -Recurse
 Get-ChildItem (Join-Path $stage 'art\sound\slrr_garage') -Filter *.wav -ErrorAction SilentlyContinue | Remove-Item -Force
 if (Test-Path $zip) { Remove-Item $zip -Force }

@@ -1,7 +1,7 @@
 {
   "domElement": "<slrr-garage></slrr-garage>",
-  "name": "SLRR Garage",
-  "description": "The garage screen of the SLRR Garage mod: parts shelf, info line and catalog. Shown automatically inside the garage.",
+  "name": "Wrench Works",
+  "description": "The garage screen of the Wrench Works mod: parts shelf, info line and catalog. Shown automatically inside the garage.",
   "author": "Connor",
   "version": "1.0",
   "directive": "slrrGarage",

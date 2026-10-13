@@ -1,4 +1,4 @@
--- SLRR Garage: where the garages are.
+-- Wrench Works: where the garages are.
 -- Every site is described along its drive-in axis: `spot` is where the car ends up parked,
 -- `dir` points INTO the garage, and the distances below are measured along that axis
 -- (negative = outside, towards the street).
@@ -10,7 +10,7 @@ local M = {}
 -- that axis from the spot. `exit` says how a car that came in by the front door leaves:
 --   "side"    round a quarter turn to the left and out of a side door (you can come in there too)
 --   "through" straight on, out of a back door on the same axis (you can come in there too)
---   "front"   there is only the one door: the car is turned round and leaves the way it came
+--   "reverse" there is only the one door: the car backs out the way it came
 M.sites = {
   west_coast_usa = {
     {
@@ -32,14 +32,13 @@ M.sites = {
     {
       id = "alderDragwayGarage",
       name = "Alder Dragway Garage",
-      spot = vec3(-203.3, -204.0, 118.81),
-      dir = vec3(0.5101, -0.8601, 0),
-      doorDist = -5.0,
+      spot = vec3(-203.3, -204.0, 118.81),      -- a tent: open towards the paddock, closed at the back
+      dir = vec3(-0.5101, 0.8601, 0),
+      doorDist = -7.0,
       halfWidth = 3.3,
-      backDist = 5.4,
+      backDist = 4.2,
       ceiling = 4.8,
-      exit = "through",
-      backDoorDist = 7.0,     -- back door plane
+      exit = "reverse",
     },
     {
       id = "commercialGarage",

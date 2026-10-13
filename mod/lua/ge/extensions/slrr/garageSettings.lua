@@ -1,4 +1,4 @@
--- SLRR Garage: everything the player can configure, with its defaults.
+-- Wrench Works: everything the player can configure, with its defaults.
 -- Stored in /settings/slrr_garage/settings.json and edited from the garage's settings screen.
 
 local M = {}
@@ -40,8 +40,24 @@ M.defs = {
     desc = 'Rolling towards the garage door starts the visit. Turn off to enter only with the key binding.' },
   { key = 'enterSpeed', group = 'Garage', title = 'Fastest speed to enter at', type = 'range', min = 5, max = 60, step = 1, default = 15, unit = ' km/h',
     desc = 'A door only takes the car in when it rolls up slower than this. Faster, and you just drive through.' },
+  { key = 'shops', group = 'Garage', title = 'Parts shops in town', type = 'bool', default = true,
+    desc = 'Stopping on a shop\'s blue marker opens its counter. Off: the shops are closed and you order everything from the garage.' },
+  { key = 'markers', group = 'Garage', title = 'Show door and shop markers', type = 'bool', default = true,
+    desc = 'The glowing markers in garage doorways and on shop forecourts. The doors and shops work without them.' },
   { key = 'playFilm', group = 'Garage', title = 'Drive-in film', type = 'bool', default = true,
     desc = 'Watch the car roll into the garage. Turn off to cut straight to the garage.' },
+  { key = 'driveSpeed', group = 'Garage', title = 'Drive-in and drive-out speed', type = 'range', min = 0.5, max = 2, step = 0.1, default = 1, unit = 'x',
+    desc = 'How briskly the car drives itself in and out.' },
+  { key = 'driverDoor', group = 'Garage', title = 'Driver\'s door opens on arrival', type = 'bool', default = true,
+    desc = 'When the car has parked, the driver\'s door swings open and shut as if someone got out.' },
+  { key = 'liftHeight', group = 'Garage', title = 'Lift height', type = 'range', min = 0.6, max = 1.9, step = 0.05, default = 1.35, unit = ' m',
+    desc = 'How high the lift raises the car.' },
+  { key = 'confirmSellAll', group = 'Garage', title = 'Ask before selling everything', type = 'bool', default = true,
+    desc = 'Sell everything needs a second click to go through.' },
+  { key = 'hints', group = 'Garage', title = 'Show the controls reminder', type = 'bool', default = true,
+    desc = 'The small list of mouse controls in the top right corner of the garage.' },
+  { key = 'cameraSensitivity', group = 'Garage', title = 'Camera drag sensitivity', type = 'range', min = 0.3, max = 2.5, step = 0.1, default = 1, unit = 'x',
+    desc = 'How far the camera turns for a given drag of the mouse.' },
   { key = 'highlight', group = 'Garage', title = 'Highlight the part under the cursor', type = 'bool', default = true,
     desc = 'Pulses the part a click would act on.' },
   { key = 'invertCameraX', group = 'Garage', title = 'Invert camera left / right', type = 'bool', default = false,

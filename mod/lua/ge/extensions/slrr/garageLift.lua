@@ -1,4 +1,4 @@
--- SLRR Garage: the car lift.
+-- Wrench Works: the car lift.
 -- A two-post lift stands at the parking spot of every garage. Its model is made here, out of
 -- plain boxes, and written once to /temp. The car drives in between the posts; when it has
 -- stopped, the four arms swing in under its sills, and when the lift is used they carry it

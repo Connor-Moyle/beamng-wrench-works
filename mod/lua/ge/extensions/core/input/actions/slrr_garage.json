@@ -1,4 +1,4 @@
 {
-"slrrGarageEnter" :{"cat":"gameplay", "order": 90, "ctx": "tlua", "onDown": "if slrr_garage then slrr_garage.enter() end", "title": "SLRR Garage: enter nearest garage", "desc": "Sends the car into the nearest SLRR garage on this map without driving up to the door." },
-"slrrGarageLeave" :{"cat":"gameplay", "order": 91, "ctx": "tlua", "onDown": "if slrr_garage then slrr_garage.leave() end", "title": "SLRR Garage: drive out", "desc": "Fits everything and drives out of the SLRR garage." }
+"slrrGarageEnter" :{"cat":"gameplay", "order": 90, "ctx": "tlua", "onDown": "if slrr_garage then slrr_garage.enter() end", "title": "Wrench Works: enter nearest garage", "desc": "Sends the car into the nearest garage on this map without driving up to the door." },
+"slrrGarageLeave" :{"cat":"gameplay", "order": 91, "ctx": "tlua", "onDown": "if slrr_garage then slrr_garage.leave() end", "title": "Wrench Works: drive out", "desc": "Fits everything and drives out of the garage." }
 }

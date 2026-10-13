@@ -1,4 +1,4 @@
-# Installs the SLRR Garage mod into BeamNG as an unpacked mod (a junction, so edits here are live)
+# Installs the Wrench Works mod into BeamNG as an unpacked mod (a junction, so edits here are live)
 # and copies the garage sounds out of your own Street Legal Racing: Redline install.
 param(
   [string]$SlrrPath = 'L:\SteamLibrary\steamapps\common\Street Legal Racing Redline',

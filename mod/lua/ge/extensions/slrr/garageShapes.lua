@@ -1,4 +1,4 @@
--- SLRR Garage: stand-alone 3D models of single parts.
+-- Wrench Works: stand-alone 3D models of single parts.
 -- A vehicle's meshes all live together in a few big Collada (.dae) files, and the game can only
 -- show them as part of a whole vehicle. To show one part on its own - turning in the catalog,
 -- lying on the shelf - this module cuts the part's geometry out of those files and writes it to

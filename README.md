@@ -1,4 +1,6 @@
-# Garage mod for BeamNG.drive
+# Wrench Works
+
+A hands-on garage mod for BeamNG.drive.
 
 A working garage for BeamNG.drive, built to feel like the one in *Street Legal Racing: Redline*. Roll up to a garage on West Coast USA, watch the car drive itself in onto the lift, then work on it by hand: click parts off, click them back on, tune, paint, repair, order new parts from the catalog, and drive out the other door.
 
@@ -10,14 +12,14 @@ Built on BeamNG.drive 0.39.4.
 
 ## Getting it running
 
-1. Download `slrr_garage.zip` from the Releases page.
+1. Download `wrench_works.zip` from the Releases page.
 2. Drop it into your BeamNG mods folder (`%LOCALAPPDATA%\BeamNG\BeamNG.drive\current\mods`).
 3. Load West Coast USA and drive into a garage doorway (orange marker) at walking pace. Faster than 15 km/h and you simply drive through; the limit is in Settings.
 
 | Garage | Doors |
 | --- | --- |
 | Belasco City Garage (service station) | main door and side door: in by one, out by the other |
-| Alder Dragway Garage | drive-through, either direction |
+| Alder Dragway Garage | a tent with one entrance: drive in, and the car backs out |
 | Industrial Garage | drive-through hall, either direction |
 
 The mod ships without sounds and is simply quiet. `tools/install.ps1` can copy a set of interface sounds from a Street Legal Racing: Redline install you own, if you want them.
@@ -75,7 +77,7 @@ The parts in the catalog and on the shelf are the real 3D models, with the game'
 
 - Parts keep their damage. Take a bent bumper off and it is still bent when you refit it, and the car leaves as damaged as it arrived, visit after visit, unless you pay to repair it.
 - In career mode the garage spends and earns your career money. Outside it you have a wallet of your own that goes down when you buy and up when you sell, and is remembered between sessions. Settings has the starting amount and an unlimited-money switch.
-- Prices, sell-back value, repair cost, the budget, camera direction, preview speed and direction and a few other things are in the Settings screen.
+- The Settings screen covers prices, sell-back value and repair cost, delivery times and charges, the entry speed, how fast the car drives itself in, the lift height, whether the driver's door opens on arrival, markers, shops, the controls reminder, camera direction and sensitivity, and preview speed and direction.
 
 ## Why working on the car does not stutter
 

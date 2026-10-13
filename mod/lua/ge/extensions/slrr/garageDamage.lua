@@ -1,4 +1,4 @@
--- SLRR Garage: bookkeeping for damage that has to survive vehicle rebuilds.
+-- Wrench Works: bookkeeping for damage that has to survive vehicle rebuilds.
 -- The vehicle side (lua/vehicle/extensions/slrrGarageVeh.lua) records and re-applies bent and
 -- broken beams. This module decides WHICH records belong to the car right now: when a part is
 -- taken off, its records travel with it to the shelf; when it is fitted again they come back.

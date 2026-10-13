@@ -1,4 +1,4 @@
--- SLRR Garage: parts shown as real 3D objects.
+-- Wrench Works: parts shown as real 3D objects.
 -- Two jobs, both done with the stand-alone part models written by garageShapes:
 --
 -- * previews: the turning parts in the catalog and on the shelf. The UI leaves a hole where a
@@ -215,7 +215,8 @@ end
 
 -- cam: { pos, forward, right, up, tanX, tanY }   spinRate: radians per second, sign = direction
 local function updateSlots(dt, cam, spinRate)
-  if lastPos and ((cam.pos - lastPos):squaredLength() > 2.5e-7 or cam.forward:dot(lastForward) < 1 - 2e-9) then
+  -- (a parked car's chase camera is never perfectly still; a pixel of tremble is not movement)
+  if lastPos and ((cam.pos - lastPos):squaredLength() > 2.5e-7 or (cam.forward - lastForward):squaredLength() > 4e-6) then
     M.park()
   else
     still = still + 1
@@ -324,6 +325,16 @@ function M.update(dt, cam, spinRate, frame)
 end
 
 function M.hasStandins() return next(standins) ~= nil end
+
+-- one line on what the previews are doing, for the console
+function M.status()
+  local n, ready = 0, 0
+  for _, slot in pairs(slots) do
+    n = n + 1
+    if slot.obj and (slot.age or 0) >= SETTLE_FRAMES then ready = ready + 1 end
+  end
+  return string.format('%d previews, %d in place, %s, camera still for %d frames', n, ready, parked and 'parked' or 'showing', still)
+end
 
 function M.clear()
   for _, slot in pairs(slots) do dropSlot(slot) end
