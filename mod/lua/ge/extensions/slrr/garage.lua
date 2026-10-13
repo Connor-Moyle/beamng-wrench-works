@@ -1,12 +1,12 @@
 -- SLRR Garage (extension name: slrr_garage)
 -- Street Legal Racing: Redline's garage, in BeamNG. Drive up to the Belasco City Garage on
--- West Coast USA: the car rolls in on its own while the camera follows it, the camera swings
--- round into the garage view, and from there you work on the car the SLRR way - click parts off
--- onto the shelf, click them back on, tune them with the screwdriver, order new ones from the
--- catalog, repair, respray, and drive out.
+-- West Coast USA: the car rolls in on its own, watched from inside, the camera swings round
+-- into the garage view, and from there you work on the car the SLRR way - click parts off onto
+-- the shelf, click them back on, tune them with the screwdriver, order new ones from the
+-- catalog, repair, respray, and drive out through the side door.
 --
 -- This file is the conductor: it owns the state machine (idle -> film -> garage <-> catalog ->
--- leaving) and wires the picker, the parts model, the camera, the damage keeper and the UI
+-- leaving, and idle <-> shop for the parts shops around the map) and wires the picker, the parts model, the camera, the damage keeper and the UI
 -- together.
 
 local M = {}
@@ -17,14 +17,17 @@ local picker = require('slrr/garagePicker')
 local parts = require('slrr/garageParts')
 local camera = require('slrr/garageCamera')
 local damage = require('slrr/garageDamage')
-local meshes = require('slrr/garageMeshes')
+local shapes = require('slrr/garageShapes')
+local preview = require('slrr/garagePreview')
 local settings = require('slrr/garageSettings')
-local studio = require('slrr/garageStudio')
+
+local im = ui_imgui
 
 local logTag = 'slrr_garage'
 local SOUND_DIR = '/art/sound/slrr_garage/'
-local FILM_SPEED = 4.2          -- m/s the car rolls in at
-local FILM_ACCEL = 1.6
+local FILM_SPEED = 5.2          -- m/s the car rolls in and out at
+local FILM_ACCEL = 2.4
+local FILM_START = -15          -- the drive-in starts no further out than this (metres along the axis)
 local FILM_TIMEOUT = 14
 local ENTER_MAX_SPEED = 14      -- m/s; faster than this and you are just driving past
 local FADE_TIME = 0.22
@@ -35,10 +38,15 @@ local blockedActions = core_input_actionFilter.createActionTemplate({
   "radialMenuActivate", "couplers", "vehicleTriggers", "nodegrabber",
 })
 
-local phase = 'idle'      -- idle | film | garage | catalog | busy | leaving
+local phase = 'idle'      -- idle | film | garage | catalog | busy | leaving | shop
+local shop                -- the parts shop we are in (phase 'shop')
+local shopArmed = true    -- a shop opens again only after you have driven off its marker
+local shopTimer = 0       -- how long the car has stood on a shop marker
+local deliveryTimer = 0
 local mode = 'mechanic'   -- mechanic (wrench: fit and remove) | tune (screwdriver: adjust and open)
 local tool                -- nil | 'repair' | 'sell' : what the next click on a part does instead
 local site                -- the garage we are in / entering
+local viaSide = false     -- this visit came in through the side door (and leaves by the front)
 local vehId
 local armed = true        -- auto-enter is switched off until the car has left the doorway again
 local fade = 0            -- what the UI's black overlay should be (0..1 target)
@@ -54,8 +62,9 @@ local settleFrames = 0
 local damageWaiter        -- function called when the vehicle has reported its damage
 local frame = 0
 local testHoverTimer       -- while set, a test is steering the hover and the real cursor is ignored
+local onCameraPose         -- set further down: places the part models for this frame's camera
+local sendTunePart         -- set further down
 local tuneSelected         -- part path picked with the screwdriver (outlined, its adjustments shown)
-local photoStamp = ''      -- changes with the car's paint, so repainted cars get fresh catalog photos
 
 ----------------------------------------------------------------------------------------------
 -- small helpers
@@ -98,12 +107,15 @@ local function freezeCar(frozen)
   end
 end
 
-local function placeCar(along, facingIn)
+local function placeCarAt(pos, dir)
   local v = veh()
-  if not v or not site then return end
-  local pos = sites.point(site, along, 0, 0.05)
-  local dir = facingIn and site.dir or -site.dir
+  if not v then return end
   spawn.safeTeleport(v, pos, quatFromDir(dir, vec3(0, 0, 1)), true, nil, false, true, false)
+end
+
+local function placeCar(along, facingIn)
+  if not site then return end
+  placeCarAt(sites.point(site, along, 0, 0.05), facingIn and site.dir or -site.dir)
 end
 
 local function carName()
@@ -124,6 +136,7 @@ local function inventoryForUi()
       id = item.id, part = item.part, name = item.name, slot = item.slot, section = item.section, photo = 'item_' .. item.id,
       value = parts.itemPrice(item), count = item.count or 1, new = item.new == true,
       damaged = parts.itemDamaged(item), repairCost = parts.itemRepairCost(item), sellValue = parts.sellValue(item),
+      contents = (item.count or 1) > 1 and parts.itemContents(item) or nil,
     }
   end
   return list
@@ -136,7 +149,8 @@ local function sendState()
     mode = mode,
     tool = tool,
     fade = fade,
-    garage = site and site.name or nil,
+    garage = (shop and shop.name) or (site and site.name) or nil,
+    shop = shop and { name = shop.name, trade = shop.trade, discount = settings.get('shopDiscount') } or nil,
     car = carName(),
     money = parts.getMoney(),
     career = parts.inCareer(),
@@ -150,9 +164,7 @@ local function sendState()
     repairAllCost = inGarage and parts.repairAllCost() or 0,
     previews = settings.get('previews'),
     paint = (parts.getPaints()[1] or {}).baseColor,
-    photos = settings.get('photoPreviews') and studio.isActive(),
-    photoStamp = photoStamp,
-    spinSpeed = settings.get('spinSpeed'),
+    paintSmoke = settings.get('paintSmoke'),
   })
 end
 
@@ -263,7 +275,6 @@ local function applyInGarage(job)
   setFade(1)
   job.sleep(FADE_TIME)
   respawnWithDesired(job, false)
-  studio.refill()      -- the screen is dark: a good moment to load the next lot of catalog parts
   job.sleep(0.2)
   freezeCar(true)
   parts.attach(vehId, true)
@@ -286,13 +297,16 @@ end
 ----------------------------------------------------------------------------------------------
 -- entering
 
-local function buildDrivePath(startFront, endFront)
-  local total = (endFront - startFront):length()
-  local dir = (endFront - startFront) / total
-  local path = {}
+-- points: world positions the front of the car passes through. Returns a timed path for the
+-- script AI (ease up to FILM_SPEED, ease down to a stop) and how long it takes.
+local function buildDrivePath(points)
+  local lengths, total = {}, 0
+  for i = 2, #points do
+    lengths[i] = (points[i] - points[i - 1]):length()
+    total = total + lengths[i]
+  end
   local accelDist = FILM_SPEED * FILM_SPEED / (2 * FILM_ACCEL)
   local function timeAt(s)
-    -- trapezoid speed profile: ease up to FILM_SPEED, ease down to a stop
     local a = FILM_ACCEL
     local d1 = math.min(accelDist, total / 2)
     if s <= d1 then return math.sqrt(2 * s / a) end
@@ -303,70 +317,111 @@ local function buildDrivePath(startFront, endFront)
     local rem = math.max(0, total - s)
     return t1 + cruise / vPeak + (t1 - math.sqrt(2 * rem / a))
   end
-  local step = 0.75
-  local s = 0
-  while s < total do
-    local p = startFront + dir * s
-    path[#path + 1] = { x = p.x, y = p.y, z = p.z, t = timeAt(s) }
-    s = s + step
+  local path = {}
+  local step, done = 0.75, 0
+  for i = 2, #points do
+    local len = lengths[i]
+    local s = 0
+    while s < len do
+      local p = points[i - 1] + (points[i] - points[i - 1]) * (s / len)
+      path[#path + 1] = { x = p.x, y = p.y, z = p.z, t = timeAt(done + s) }
+      s = s + step
+    end
+    done = done + len
   end
-  path[#path + 1] = { x = endFront.x, y = endFront.y, z = endFront.z, t = timeAt(total) }
+  local last = points[#points]
+  path[#path + 1] = { x = last.x, y = last.y, z = last.z, t = timeAt(total) }
   return path, timeAt(total)
 end
 
-local function sendPreview(partName, mesh)
-  if mesh then
-    guihooks.trigger('slrrGaragePreview', { part = partName, v = mesh.v, t = mesh.t, m = mesh.m, mats = mesh.mats })
-  else
-    guihooks.trigger('slrrGaragePreview', { part = partName, none = true })
+-- tell the UI which parts have no model, so it shows its icon for them instead
+local function sendPreview(partName, hasModel)
+  if not hasModel then guihooks.trigger('slrrGaragePreview', { part = partName, none = true }) end
+end
+
+-- ... and which previews are in place right now, so it opens a hole only over those
+local function sendPreviewLive(ids)
+  guihooks.trigger('slrrGaragePreviewLive', { ids = ids })
+end
+
+-- The garage has two doors: the front one on its axis and a side one, reached by a quarter
+-- turn to the left at the far end. A visit comes in through one and leaves through the other.
+local function leftOf(s) return vec3(-s.dir.y, s.dir.x, 0) end
+local function axisPoint(s, along, left) return s.spot + s.dir * along + leftOf(s) * left + vec3(0, 0, 0.3) end
+
+-- where the front of the car goes between the parking spot and the forecourt of the side door
+local function sideRoute(half, farLeft)
+  local turn, radius = site.exitTurnAlong, site.exitRadius
+  local points = { axisPoint(site, half, 0) }
+  if turn > half + 0.5 then points[#points + 1] = axisPoint(site, turn, 0) end
+  for i = 1, 8 do
+    local a = (i / 8) * math.pi * 0.5
+    points[#points + 1] = axisPoint(site, turn + radius * math.sin(a), radius - radius * math.cos(a))
   end
+  points[#points + 1] = axisPoint(site, turn + radius, farLeft)
+  return points
 end
 
-local function sendPhoto(key, info)
-  guihooks.trigger('slrrGaragePhoto', info)
-end
-
--- ask the studio for a shelf part's photographs. A part that came in on the car is photographed
--- where it sits on the studio car (livery, damage and all); anything else as a loose part.
-local function photographItem(item)
-  if not studio.isActive() then return end
-  local key = 'item_' .. item.id
-  if studio.hasPart(item.slotPath, item.part) then
-    studio.request({ key = key, slotPath = item.slotPath }, true)
-  else
-    studio.request({ key = key, part = item.part }, true)
+-- the drive in and the drive out of this visit:
+-- { points, startPos, startDir, parkDir } and { points, isOutside(carCentre), endPos, endDir }
+local function entryRoute(half)
+  local left = leftOf(site)
+  if viaSide then
+    -- in through the side door: round to the right, and stop facing the front door
+    local c = carCenter()
+    local startLeft = clamp((c - site.spot):dot(left), site.exitClear + half + 0.5, site.exitLeft + 3)
+    local turn, radius = site.exitTurnAlong, site.exitRadius
+    local points = { axisPoint(site, turn + radius, startLeft - half) }
+    for i = 7, 0, -1 do
+      local a = (i / 8) * math.pi * 0.5
+      points[#points + 1] = axisPoint(site, turn + radius * math.sin(a), radius - radius * math.cos(a))
+    end
+    points[#points + 1] = axisPoint(site, -half, 0)
+    return { points = points, startPos = axisPoint(site, turn + radius, startLeft) - vec3(0, 0, 0.25), startDir = -left, parkDir = -site.dir }
   end
+  local startAlong = clamp(sites.toAxis(site, carCenter()), math.max(site.approachDist, FILM_START), site.doorDist - 7)
+  return {
+    points = { axisPoint(site, startAlong + half, 0), axisPoint(site, half, 0) },
+    startPos = sites.point(site, startAlong, 0, 0.05), startDir = site.dir, parkDir = site.dir,
+  }
 end
 
--- the studio car sits on the garage roof, where nobody looks
-local function startStudio()
-  if not settings.get('previews') or not settings.get('photoPreviews') then return end
-  local vd = core_vehicle_manager.getVehicleData(vehId)
-  if not vd or not site then return end
-  local above = sites.point(site, -0.5, 0, 16)
-  local drop = castRayStatic(above, vec3(0, 0, -1), 40)
-  local roofZ = above.z - drop
-  if roofZ < site.spot.z + 2.5 then return end      -- no roof found over the garage
-  local paint = (vd.config.paints or {})[1]
-  local c = paint and paint.baseColor or {}
-  photoStamp = string.format('%d_%d_%d', (c[1] or 0) * 99, (c[2] or 0) * 99, (c[3] or 0) * 99)
-  -- the parts the catalog lists for this car, in the order of its chapters
-  local background, seen = {}, {}
-  local bySub = parts.buildCatalog()
-  for _, section in ipairs(parts.getSections()) do
-    for _, sub in ipairs(section.subs) do
-      for _, entry in ipairs(bySub[section.id .. '/' .. sub.id] or {}) do
-        if not seen[entry.part] then
-          seen[entry.part] = true
-          background[#background + 1] = { key = 'part_' .. entry.part .. '_' .. photoStamp, part = entry.part }
-        end
-      end
+local function exitRoute(half)
+  local left = leftOf(site)
+  if viaSide then
+    -- straight out of the front door
+    local far = site.doorDist - 12
+    return {
+      points = { axisPoint(site, -half, 0), axisPoint(site, far, 0) },
+      isOutside = function(c) return (c - site.spot):dot(site.dir) < site.doorDist - 2.5 end,
+      endPos = sites.point(site, far + half, 0, 0.05), endDir = -site.dir,
+    }
+  end
+  local points = sideRoute(half, site.exitLeft)
+  return {
+    points = points,
+    isOutside = function(c) return (c - site.spot):dot(left) > site.exitClear end,
+    endPos = points[#points] - left * half - vec3(0, 0, 0.25), endDir = left,
+  }
+end
+
+-- the driver gets out: the door on their side swings open and is pushed shut again
+local function driverDoorJob(job)
+  local vd = vehId and core_vehicle_manager.getVehicleData(vehId)
+  local name
+  for _, ctrl in pairs(vd and vd.vdata.controller or {}) do
+    if type(ctrl) == 'table' and ctrl.fileName == 'advancedCouplerControl' and type(ctrl.name) == 'string' then
+      local n = ctrl.name:lower()
+      if n:find('door_fl', 1, true) or (n:find('door_l', 1, true) and not name) then name = ctrl.name end
     end
   end
-  local ok = studio.start(vehId, vd.config, damage.buildApply(parts.getShelfDamages()),
-    vec3(above.x, above.y, roofZ + 0.4), quatFromDir(site.dir, vec3(0, 0, 1)), parts.resolvePart, sendPhoto, background)
-  if ok then
-    for _, item in ipairs(parts.getInventory()) do photographItem(item) end
+  local v = veh()
+  if not name or not v then return end
+  v:queueLuaCommand(string.format('do local c = controller.getControllerSafe(%q) if c and c.detachGroup then c.detachGroup() end end', name))
+  job.sleep(1.9)
+  v = veh()
+  if v and phase ~= 'idle' and phase ~= 'leaving' then
+    v:queueLuaCommand(string.format('do local c = controller.getControllerSafe(%q) if c and c.tryAttachGroupImpulse then c.tryAttachGroupImpulse() end end', name))
   end
 end
 
@@ -384,41 +439,36 @@ local function enterJob(job)
   core_input_actionFilter.setGroup('slrrGarageBlocked', blockedActions)
   core_input_actionFilter.addAction(0, 'slrrGarageBlocked', true)
   v:queueLuaCommand('ai.scriptStop(true, true) ai.setMode("disabled") input.event("throttle", 0, FILTER_DIRECT) input.event("brake", 0, FILTER_DIRECT)')
-  local startAlong = clamp(sites.toAxis(site, carCenter()), site.approachDist, site.doorDist - 7)
+  local route = entryRoute(half)
 
   captureDamage(job)                      -- note the dents before anything rebuilds the car
   parts.attach(vehId, false)
-  meshes.setup(parts.getModel(), parts.resolvePart, sendPreview)
-  if parts.countStageable() > 0 then
-    -- parts left on the shelf last time: load them now so they can be fitted without a wait
-    respawnWithDesired(job, false)
-    job.sleep(0.2)
-    parts.attach(vehId, true)
-  end
-  startStudio()
-  job.sleep(0.1)
+  shapes.setup(parts.resolvePart, parts.getSkin())
+  preview.setup(parts.getModel(), sendPreview, sendPreviewLive)
+  preview.setPaintFrom(v)
+  parts.collectDeliveries()                -- whatever was ordered and has arrived is on the shelf
+  parts.cartClear()
 
   v = veh()
   if not v then phase = 'idle' setFade(0) return end
-  camera.setup(site, carCenter, length)
+  camera.setup(site, carCenter, length, viaSide)
+  camera.onPose = onCameraPose
   mode, tool = 'mechanic', nil
 
   if settings.get('playFilm') then
     freezeCar(false)
     v:queueLuaCommand('input.event("parkingbrake", 0, FILTER_DIRECT)')
-    placeCar(startAlong, true)
+    placeCarAt(route.startPos, route.startDir)
     job.sleep(0.3)
     camera.startFilm()
     core_camera.setByName(0, 'slrrGarage', false)
     playSound('entergarage.wav')
-    local startFront = sites.point(site, startAlong + half, 0, 0.3)
-    local endFront = sites.point(site, half, 0, 0.3)
-    local path, duration = buildDrivePath(startFront, endFront)
+    local path, duration = buildDrivePath(route.points)
     v:queueLuaCommand('ai.startFollowing(' .. serialize({ path = path }) .. ', 0, 1, "neverReset")')
     job.sleep(0.1)
     setFade(0)
 
-    -- one unbroken shot: the camera trails the car through the door
+    -- one unbroken shot from inside the garage: the car comes in nose first, towards the camera
     local clock = hptimer()
     local t = 0
     while t < math.min(FILM_TIMEOUT, duration + 4) do
@@ -426,8 +476,9 @@ local function enterJob(job)
       t = clock:stop() / 1000
       v = veh()
       if not v then break end
-      local along = sites.toAxis(site, carCenter())
-      if along > -0.5 or (t > duration and v:getVelocity():length() < 0.3) then break end
+      local along, side = sites.toAxis(site, carCenter())
+      local arrived = viaSide and (along < 0.5 and math.abs(side) < 1.5) or (not viaSide and along > -0.5)
+      if arrived or (t > duration and v:getVelocity():length() < 0.3) then break end
     end
 
     v = veh()
@@ -440,15 +491,16 @@ local function enterJob(job)
       -- the car did not make it (stalled, broken, blocked): cut and park it properly
       setFade(1)
       job.sleep(FADE_TIME)
-      placeCar(0, true)
+      placeCarAt(sites.point(site, 0, 0, 0.05), route.parkDir)
       job.sleep(0.3)
       camera.startOrbit(false)
       setFade(0)
     end
     job.sleep(0.35)
     v:queueLuaCommand('input.event("brake", 0, FILTER_DIRECT)')
+    core_jobsystem.create(driverDoorJob)
   else
-    placeCar(0, true)
+    placeCarAt(sites.point(site, 0, 0, 0.05), route.parkDir)
     job.sleep(0.35)
     camera.startOrbit(false)
     core_camera.setByName(0, 'slrrGarage', false)
@@ -463,9 +515,10 @@ local function enterJob(job)
   sendHover()
 end
 
-local function startEnter(_site, id)
+local function startEnter(_site, id, side)
   if phase ~= 'idle' then return end
   site = _site
+  viaSide = side == true
   vehId = id
   phase = 'film'
   armed = false
@@ -482,8 +535,8 @@ local function cleanup()
   core_input_actionFilter.addAction(0, 'slrrGarageBlocked', false)
   camera.stop()
   picker.clear()
-  meshes.release()
-  studio.stop()
+  preview.clear()
+  shapes.release()
   parts.detach()
   damage.clear()
   hoverPath, tool, mode, tuneSelected = nil, nil, 'mechanic', nil
@@ -501,12 +554,14 @@ end
 
 local function leaveJob(job)
   local missing = parts.missingEssentials()
+  local v = veh()
+  local half = v and v:getInitialLength() * 0.5 or 2.2
   setFade(1)
   job.sleep(FADE_TIME + 0.05)
+  preview.setSlots({})
   if camera.isLift() then
     camera.setLift(false)
-    local v = veh()
-    if v then v:queueLuaCommand('if slrrGarageVeh then slrrGarageVeh.onReset() end') end
+    if v then v:queueLuaCommand('if slrrGarageVeh then slrrGarageVeh.releaseLift() end') end
     job.sleep(0.6)
   end
   if parts.isDirty() then
@@ -517,11 +572,46 @@ local function leaveJob(job)
     core_vehicle_partmgmt.setConfigPaints(parts.getPaints(), false)
   end
   parts.detach()
+  picker.clear()
   freezeCar(false)
-  placeCar(site.exitDist, false)
-  job.sleep(0.3)
-  playSound('leavegarage.wav')
-  parts.clearLoaderCache()
+
+  local route = exitRoute(half)
+  local outside = false
+  v = veh()
+  if v and settings.get('playFilm') and not missing then
+    -- the car drives itself out while the camera stays behind in the garage
+    v:queueLuaCommand('input.event("parkingbrake", 0, FILTER_DIRECT)')
+    camera.startExit()
+    job.sleep(0.5)
+    local path, duration = buildDrivePath(route.points)
+    v:queueLuaCommand('ai.startFollowing(' .. serialize({ path = path }) .. ', 0, 1, "neverReset")')
+    playSound('leavegarage.wav')
+    setFade(0)
+    local clock = hptimer()
+    local t, from = 0, carCenter()
+    while t < duration + 3 do
+      job.sleep(0.03)
+      t = clock:stop() / 1000
+      v = veh()
+      if not v then break end
+      local c = carCenter()
+      outside = route.isOutside(c)
+      -- it rolls to a stop on the forecourt before you get the wheel back
+      if outside and t > duration * 0.6 and v:getVelocity():length() < 0.5 then break end
+      if t > 3 and (c - from):length() < 1 then break end      -- it is not going anywhere
+    end
+    v = veh()
+    if v then v:queueLuaCommand('ai.scriptStop(true, true) ai.setMode("disabled") input.event("throttle", 0, FILTER_DIRECT) input.event("brake", 0, FILTER_DIRECT)') end
+    setFade(1)
+    job.sleep(FADE_TIME)
+  else
+    playSound('leavegarage.wav')
+  end
+  if not outside then
+    -- no film, or the car cannot move by itself: put it outside the door
+    placeCarAt(route.endPos, route.endDir)
+    job.sleep(0.3)
+  end
   cleanup()
   core_camera.resetCamera(0)
   job.sleep(0.15)
@@ -579,7 +669,7 @@ local function latchesOf(partPath)
 end
 
 -- tell the UI about the part picked with the screwdriver: what it is and what can be adjusted
-local function sendTunePart()
+sendTunePart = function()
   local d = tuneSelected and parts.describe(tuneSelected)
   if not d then
     tuneSelected = nil
@@ -662,7 +752,6 @@ local function click()
   hoverPath = nil
   sendHover()
   sendState()
-  photographItem(item)
   guihooks.trigger('slrrGarageItemAdded', { id = item.id })
 end
 
@@ -701,7 +790,6 @@ local function install(itemId)
     return
   end
   playSound('screw.wav')
-  for _, other in ipairs(parts.getInventory()) do photographItem(other) end   -- a swapped-out part may have landed there
   if needsLoad then
     core_jobsystem.create(applyInGarage)
   else
@@ -746,18 +834,30 @@ local function toggleFilter(section)
   sendState()
 end
 
+local function sendCart()
+  guihooks.trigger('slrrGarageCart', parts.cartSummary(shop ~= nil))
+end
+
 local function sendCatalog()
   local bySub = parts.buildCatalog()
+  local sells
+  if shop then
+    sells = {}
+    for _, key in ipairs(shop.sells) do sells[key] = true end
+  end
   local out = {}
   for _, section in ipairs(parts.getSections()) do
     local s = { id = section.id, title = section.title, subs = {} }
     for _, sub in ipairs(section.subs) do
-      local items = bySub[section.id .. '/' .. sub.id] or {}
-      s.subs[#s.subs + 1] = { id = sub.id, title = sub.title, items = items }
+      local key = section.id .. '/' .. sub.id
+      if not sells or sells[section.id] or sells[key] then
+        s.subs[#s.subs + 1] = { id = sub.id, title = sub.title, items = bySub[key] or {} }
+      end
     end
-    out[#out + 1] = s
+    if #s.subs > 0 then out[#out + 1] = s end
   end
   guihooks.trigger('slrrGarageCatalog', { sections = out, money = parts.getMoney() })
+  sendCart()
 end
 
 local function openCatalog()
@@ -770,67 +870,160 @@ local function openCatalog()
   sendCatalog()
 end
 
+local leaveShop
+
 local function closeCatalog()
+  if phase == 'shop' then leaveShop() return end
   if phase ~= 'catalog' then return end
   playSound('mnuback.wav')
-  if parts.countStageable() > 0 then
-    -- new parts on the shelf: load them now, behind the page turn, so fitting them is instant
-    core_jobsystem.create(applyInGarage)
-  else
-    phase = 'garage'
-    sendState()
-  end
+  phase = 'garage'
+  sendState()
 end
 
+-- "buy" in the catalog: onto the shopping list; nothing is paid until the order is confirmed
 local function buy(slotPath, partName)
-  if phase ~= 'catalog' then return end
-  local ok, res = parts.buy(slotPath, partName)
+  if phase ~= 'catalog' and phase ~= 'shop' then return end
+  local ok, res = parts.cartAdd(slotPath, partName)
   if not ok then
     playSound('warn.wav', 0.6)
     say(res)
     return
   end
+  playSound('mnuselect.wav', 0.7)
+  sendCart()
+end
+
+local function cartRemove(index)
+  parts.cartRemove(tonumber(index) or 0)
+  sendCart()
+end
+
+local function cartClear()
+  parts.cartClear()
+  sendCart()
+end
+
+-- confirm the shopping list: pay, and the parts go on the shelf (shop) or on their way (garage)
+local function checkout(shippingId)
+  if phase ~= 'catalog' and phase ~= 'shop' then return end
+  local ok, text = parts.checkout(tostring(shippingId), shop ~= nil)
+  if not ok then
+    playSound('warn.wav', 0.6)
+    say(text)
+    return
+  end
   playSound('money.wav')
+  say(text, 4)
+  sendCatalog()
+end
+
+-- deliveries that have arrived go on the shelf
+local function checkDeliveries()
+  local arrived = parts.collectDeliveries()
+  if arrived > 0 then
+    playSound('ok.wav')
+    say(arrived == 1 and 'A delivery has arrived. The part is on the shelf.' or (arrived .. ' parts have been delivered. They are on the shelf.'), 4)
+    if phase == 'catalog' then sendCart() end
+  end
+  return arrived
+end
+
+----------------------------------------------------------------------------------------------
+-- shops: over-the-counter parts in town
+
+local function enterShop(_shop, id)
+  if phase ~= 'idle' then return end
+  local v = getObjectByID(id)
+  if not v then return end
+  shop, vehId, site = _shop, id, nil
+  phase = 'shop'
+  shopArmed = false
+  previousGameState = core_gamestate.state and deepcopy(core_gamestate.state) or nil
+  core_gamestate.setGameState('slrrGarage', 'slrrGarage', 'freeroam')
+  core_input_actionFilter.setGroup('slrrGarageBlocked', blockedActions)
+  core_input_actionFilter.addAction(0, 'slrrGarageBlocked', true)
+  v:queueLuaCommand('controller.setFreeze(1) input.event("throttle", 0, FILTER_DIRECT)')
+  parts.attach(vehId, false)
+  parts.cartClear()
+  parts.setCounterDiscount(settings.get('shopDiscount') / 100)
+  shapes.setup(parts.resolvePart, parts.getSkin())
+  preview.setup(parts.getModel(), sendPreview, sendPreviewLive)
+  preview.setPaintFrom(v)
+  playSound('flip.wav')
   sendState()
   sendCatalog()
 end
 
--- the UI asks for the 3D models of the parts it is about to show
-local function requestPreviews(names)
-  if type(names) ~= 'table' or not settings.get('previews') then return end
-  if phase ~= 'garage' and phase ~= 'catalog' and phase ~= 'busy' then return end
-  meshes.request(names)
+leaveShop = function()
+  if phase ~= 'shop' then return end
+  local v = veh()
+  if v then v:queueLuaCommand('controller.setFreeze(0)') end
+  playSound('mnuback.wav')
+  parts.cartClear()
+  parts.setCounterDiscount(0)
+  preview.clear()
+  shapes.release()
+  parts.detach()
+  core_input_actionFilter.setGroup('slrrGarageBlocked', blockedActions)
+  core_input_actionFilter.addAction(0, 'slrrGarageBlocked', false)
+  if previousGameState and previousGameState.state and previousGameState.state ~= 'slrrGarage' then
+    core_gamestate.setGameState(previousGameState.state, previousGameState.appLayout, previousGameState.menuItems, previousGameState.options)
+  else
+    core_gamestate.setGameState('freeroam', 'freeroam', 'freeroam')
+  end
+  phase, shop, vehId = 'idle', nil, nil
+  sendState()
 end
 
--- the UI asks for photographs: shelf items by id, catalog parts by name
-local function requestPhotos(itemIds, partNames)
-  if not studio.isActive() then return end
-  studio.newPage()
-  for _, id in ipairs(type(itemIds) == 'table' and itemIds or {}) do
-    for _, item in ipairs(parts.getInventory()) do
-      if item.id == id then photographItem(item) end
-    end
-  end
-  for _, name in ipairs(type(partNames) == 'table' and partNames or {}) do
-    if type(name) == 'string' then
-      studio.request({ key = 'part_' .. name .. '_' .. photoStamp, part = name }, true)
-    end
-  end
+-- the UI says where on the screen it wants which part shown (see garagePreview)
+local function setPreviewSlots(list)
+  local showing = (phase == 'garage' or phase == 'catalog' or phase == 'busy' or phase == 'shop') and settings.get('previews')
+  preview.setSlots(showing and type(list) == 'table' and list or {})
 end
 
--- tuning: the UI sends back the values the player set; they take effect with one rebuild
+-- tuning: the UI sends back the values the player set. Nothing is rebuilt for them here; the
+-- car gets them when it is built for the drive out.
 local function applyTuning(values)
   if phase ~= 'garage' then return end
   if parts.setTuning(values) and parts.varsDirty() then
     playSound('screw.wav')
-    core_jobsystem.create(applyInGarage)
-  else
-    sendTuning()
+    say('Adjusted. The car is set up this way when you drive out.', 3)
   end
+  sendTuning()
+  sendTunePart()
 end
 
 local function requestTuning()
   sendTuning()
+end
+
+-- the camera as the previews and the paint cloud need it
+local function cameraInfo(pos, q, fovDeg)
+  q = q or core_camera.getQuat()
+  pos = pos or core_camera.getPosition()
+  if not q or not pos then return nil end
+  local tanY = math.tan(math.rad(fovDeg or core_camera.getFovDeg() or 60) * 0.5)
+  local mode = GFXDevice.getVideoMode()
+  local aspect = (mode and mode.height and mode.height > 0) and (mode.width / mode.height) or (16 / 9)
+  return { pos = pos, forward = q * vec3(0, 1, 0), right = q * vec3(1, 0, 0), up = q * vec3(0, 0, 1), tanY = tanY, tanX = tanY * aspect }
+end
+
+-- the box on the screen that holds the car, in fractions of the screen: { x, y, w, h }
+local function carScreenRect()
+  local v = veh()
+  local cam = cameraInfo()
+  if not v or not cam then return { x = 0.25, y = 0.3, w = 0.5, h = 0.4 } end
+  local box = v:getSpawnWorldOOBB()
+  local minX, minY, maxX, maxY = 1, 1, 0, 0
+  for i = 0, 7 do
+    local r = box:getPoint(i) - cam.pos
+    local depth = math.max(0.3, r:dot(cam.forward))
+    local sx = 0.5 + 0.5 * r:dot(cam.right) / (depth * cam.tanX)
+    local sy = 0.5 - 0.5 * r:dot(cam.up) / (depth * cam.tanY)
+    minX, minY, maxX, maxY = math.min(minX, sx), math.min(minY, sy), math.max(maxX, sx), math.max(maxY, sy)
+  end
+  minX, minY, maxX, maxY = clamp(minX, 0, 1), clamp(minY, 0, 1), clamp(maxX, 0, 1), clamp(maxY, 0, 1)
+  return { x = minX, y = minY, w = math.max(0.1, maxX - minX), h = math.max(0.1, maxY - minY) }
 end
 
 -- paint booth
@@ -864,8 +1057,26 @@ local function setPaint(index, paint)
     say(why)
     return
   end
-  core_vehicle_manager.liveUpdateVehicleColors(vehId, v, index, clean)
+  local function spray()
+    local car = veh()
+    if not car or phase == 'idle' then return end
+    core_vehicle_manager.liveUpdateVehicleColors(vehId, car, index, clean)
+    preview.setPaintFrom(car)
+  end
   playSound('spray.wav')
+  if settings.get('paintSmoke') then
+    -- the car disappears in a cloud of the new colour and comes out of it resprayed
+    guihooks.trigger('slrrGaragePaintFx', { color = clean.baseColor, rect = carScreenRect() })
+    core_jobsystem.create(function(job)
+      job.sleep(0.7)
+      spray()
+      job.sleep(0.1)
+      local car = veh()
+      if car then preview.setPaintFrom(car) end
+    end)
+  else
+    spray()
+  end
   sendState()
   sendPaint()
 end
@@ -948,7 +1159,9 @@ local function setSetting(key, value)
 end
 
 local function cameraDrag(dx, dy)
-  camera.rotate(tonumber(dx) or 0, tonumber(dy) or 0)
+  dx = tonumber(dx) or 0
+  if settings.get('invertCameraX') then dx = -dx end
+  camera.rotate(dx, tonumber(dy) or 0)
 end
 
 local function cameraZoom(steps)
@@ -992,7 +1205,11 @@ local function enterNearest()
     local d = (v:getPosition() - s.spot):length()
     if not bestDist or d < bestDist then best, bestDist = s, d end
   end
-  if best then startEnter(best, v:getID()) end
+  if best then
+    -- from the side-door forecourt it goes in that way
+    local c = v:getSpawnWorldOOBB():getCenter()
+    startEnter(best, v:getID(), (c - best.spot):dot(leftOf(best)) > best.exitClear - 2)
+  end
 end
 
 ----------------------------------------------------------------------------------------------
@@ -1000,8 +1217,8 @@ end
 
 -- a soft beacon in front of the door, like SLRR's garage marker, so the way in is obvious
 local markerColor, markerTextColor, markerTextBg = ColorF(1, 0.4, 0, 0.28), ColorF(1, 1, 1, 1), ColorI(20, 20, 24, 200)
-local function drawMarker(s, distance)
-  local base = sites.point(s, (s.triggerNear + s.triggerFar) * 0.5, 0, 0)
+local function drawMarker(s, distance, base)
+  base = base or sites.point(s, (s.triggerNear + s.triggerFar) * 0.5, 0, 0)
   local pulse = 0.5 + 0.5 * math.sin(os.clock() * 3)
   markerColor.a = 0.16 + 0.14 * pulse
   debugDrawer:drawCylinder(base, base + vec3(0, 0, 0.12), s.triggerHalfWidth * 0.8, markerColor)
@@ -1012,21 +1229,71 @@ local function drawMarker(s, distance)
   end
 end
 
-local function updateIdle()
+-- shops: a blue marker on their forecourt; stop on it to go in
+local shopColor = ColorF(0.1, 0.55, 1, 0.25)
+local function updateShops(v, dt)
+  local pos = v:getPosition()
+  local on
+  for _, s in ipairs(sites.getShops()) do
+    local d = (pos - s.pos):length()
+    if d < 120 then
+      local pulse = 0.5 + 0.5 * math.sin(os.clock() * 3)
+      shopColor.a = 0.16 + 0.12 * pulse
+      debugDrawer:drawCylinder(s.pos, s.pos + vec3(0, 0, 0.12), 3.2, shopColor)
+      debugDrawer:drawCylinder(s.pos, s.pos + vec3(0, 0, 2.6 + 0.3 * pulse), 0.07, shopColor)
+      if d < 60 then
+        debugDrawer:drawTextAdvanced(s.pos + vec3(0, 0, 3.1), String(s.name .. ' - ' .. s.trade), ColorF(1, 1, 1, 1), true, false, ColorI(20, 20, 24, 200))
+      end
+    end
+    if d < 4.5 then on = s end
+  end
+  if not on then
+    shopArmed, shopTimer = true, 0
+  elseif shopArmed and v:getVelocity():length() < 0.6 then
+    shopTimer = shopTimer + dt
+    if shopTimer > 0.8 then
+      shopTimer = 0
+      enterShop(on, v:getID())
+    end
+  else
+    shopTimer = 0
+  end
+end
+
+local function updateIdle(dt)
   local v = getPlayerVehicle(0)
   if not v then return end
+  updateShops(v, dt)
+  if phase ~= 'idle' then return end
   local list = sites.getSites()
   if #list == 0 then return end
   local pos = v:getPosition()
   for _, s in ipairs(list) do
     local distSq = (pos - s.spot):squaredLength()
-    if distSq < 90 * 90 then drawMarker(s, math.sqrt(distSq)) end
+    local sideDoor = s.spot + s.dir * (s.exitTurnAlong + s.exitRadius) + leftOf(s) * (s.exitClear + 4.5)
+    if distSq < 90 * 90 then
+      drawMarker(s, math.sqrt(distSq))
+      drawMarker(s, (pos - sideDoor):length(), sideDoor)
+    end
     if distSq < 60 * 60 then
       local along, side = sites.toAxis(s, v:getSpawnWorldOOBB():getCenter())
       local inBand = along < s.triggerNear and along > s.triggerFar and math.abs(side) < s.triggerHalfWidth
+      -- the same band in front of the side door, which you approach heading right
+      local left = -side
+      local doorAlong = s.exitTurnAlong + s.exitRadius
+      local inSideBand = left > s.exitClear + 2 and left < s.exitClear + 10 and math.abs(along - doorAlong) < s.triggerHalfWidth - 1
       if not armed then
-        -- re-arm once the car is well clear of the doorway
-        if along < s.triggerFar - 4 or math.abs(side) > s.triggerHalfWidth + 6 or along > s.backDist + 3 then armed = true end
+        -- re-arm once the car is well clear of both doorways
+        local clearFront = along < s.triggerFar - 4 or math.abs(side) > s.triggerHalfWidth + 6
+        local clearSide = left > s.exitClear + 14 or left < s.exitClear - 12 or math.abs(along - doorAlong) > s.triggerHalfWidth + 6
+        if clearFront and clearSide then armed = true end
+      elseif inSideBand and settings.get('autoEnter') then
+        local vel = v:getVelocity()
+        local inward = -leftOf(s)
+        if vel:length() < ENTER_MAX_SPEED and v:getDirectionVector():dot(inward) > 0.55 and vel:dot(inward) > 0.5 then
+          startEnter(s, v:getID(), true)
+          return
+        end
       elseif inBand and settings.get('autoEnter') then
         local vel = v:getVelocity()
         local speed = vel:length()
@@ -1042,6 +1309,13 @@ end
 
 local function updateGarage(dt)
   picker.update()
+  deliveryTimer = deliveryTimer + dt
+  if deliveryTimer > 1.5 then
+    deliveryTimer = 0
+    if checkDeliveries() > 0 then sendState() end
+  end
+  -- middle mouse button: look at the part under the cursor
+  if not mouseOverUi and im.IsMouseClicked(2) then focus() end
   if testHoverTimer then
     testHoverTimer = testHoverTimer - dt
     if testHoverTimer <= 0 then testHoverTimer = nil end
@@ -1077,14 +1351,10 @@ local function onUpdate(dtReal)
       sendState()
     end
   end
-  if phase ~= 'idle' and phase ~= 'leaving' then studio.update(dtReal) end
   if phase == 'idle' then
-    updateIdle()
+    updateIdle(dtReal)
   elseif phase == 'garage' then
     updateGarage(dtReal)
-    if frame % 2 == 0 then meshes.update() end
-  elseif phase == 'catalog' then
-    if frame % 2 == 0 then meshes.update() end
   elseif phase == 'busy' or phase == 'film' then
     picker.update()
   end
@@ -1094,24 +1364,34 @@ end
 -- game hooks
 
 local function onVehicleSpawned(id)
-  studio.onVehicleSpawned(id)
   if id ~= vehId then return end
   if respawnWaiter then
     settleFrames = 3
   end
 end
 
-local function onPreRender()
+local function onPreRender(dtReal)
   if settleFrames > 0 then
     settleFrames = settleFrames - 1
     if settleFrames == 0 and respawnWaiter then respawnWaiter() end
   end
+  -- in a shop the camera is the player's own; the previews follow it from here
+  if phase == 'shop' then onCameraPose(nil, nil, nil, dtReal or 0.016) end
+end
+
+-- Part models - the turning previews in front of the camera and the stand-ins on the car - are
+-- placed from inside the camera's own update, so they never trail a frame behind it.
+onCameraPose = function(pos, rot, fovDeg, dt)
+  if phase ~= 'garage' and phase ~= 'catalog' and phase ~= 'busy' and phase ~= 'shop' then return end
+  local speed = settings.get('spinSpeed') * 0.75 * (settings.get('spinClockwise') and 1 or -1)
+  preview.update(dt, cameraInfo(pos, rot, fovDeg), speed, preview.hasStandins() and picker.getFrame() or nil)
 end
 
 -- something pulled the rug (vehicle switched or removed, mod reloaded): undo the visit so the
 -- shelf and the car cannot disagree about where a part is
 local function abort()
   if phase == 'idle' then return end
+  if phase == 'shop' then leaveShop() return end
   local v = veh()
   local config = parts.revertVisit()
   if v then
@@ -1146,11 +1426,11 @@ local function onClientEndMission()
   if phase ~= 'idle' then
     camera.stop()
     picker.clear()
-    meshes.release()
-    studio.stop()
+    preview.clear()
+    shapes.release()
     parts.detach()
     damage.clear()
-    phase, site, vehId, fade = 'idle', nil, nil, 0
+    phase, site, vehId, fade, shop = 'idle', nil, nil, 0, nil
   end
   armed = true
 end
@@ -1167,18 +1447,17 @@ end
 local function requestState()
   sendState()
   sendHover()
-  if phase == 'catalog' then sendCatalog() end
+  if phase == 'catalog' or phase == 'shop' then sendCatalog() end
   if mode == 'tune' and phase == 'garage' then
     sendTuning()
     sendTunePart()
   end
 end
 
--- the game calls this while it assembles a vehicle from jbeam; the parts model uses it to add
--- hidden meshes for shelf parts. Other vehicles and our own off-screen loads are left alone.
+-- the game calls this while it assembles a vehicle from jbeam; the parts model uses it to
+-- leave out the driver aids on a car that is built without wheels
 M.onJbeamLoadingPhase2 = function(loadingProgress, objID, vehicle)
   parts.onJbeamLoadingPhase2(objID, vehicle)
-  if not parts.isHeadlessLoad() then studio.onJbeamLoadingPhase2(objID, vehicle) end
 end
 
 M.onUpdate = onUpdate
@@ -1204,8 +1483,12 @@ M.toggleFilter = toggleFilter
 M.openCatalog = openCatalog
 M.closeCatalog = closeCatalog
 M.buy = buy
-M.requestPreviews = requestPreviews
-M.requestPhotos = requestPhotos
+M.cartRemove = cartRemove
+M.cartClear = cartClear
+M.checkout = checkout
+M.requestCart = sendCart
+M.setPreviewSlots = setPreviewSlots
+M.parkPreviews = function() preview.park() end
 M.requestTuning = requestTuning
 M.applyTuning = applyTuning
 M.toggleOpen = toggleOpen

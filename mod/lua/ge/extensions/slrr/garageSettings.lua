@@ -18,6 +18,15 @@ M.defs = {
   { key = 'paintPrice', group = 'Money', title = 'Respray price', type = 'number', min = 0, max = 100000, step = 50, default = 300,
     desc = 'Cost of changing one paint colour in the paint booth.' },
 
+  { key = 'shopDiscount', group = 'Money', title = 'Shop discount', type = 'range', min = 0, max = 50, step = 1, default = 5, unit = '%',
+    desc = 'Parts bought over the counter at a shop in town are this much cheaper than ordering them from the garage.' },
+  { key = 'deliveryFactor', group = 'Money', title = 'Delivery charges', type = 'range', min = 0, max = 3, step = 0.05, default = 1, unit = 'x',
+    desc = 'Multiplies what delivery of ordered parts costs. The charge goes by weight and bulk: a hood costs far more to send than a hub cap. 0 makes delivery free.' },
+  { key = 'expressMultiplier', group = 'Money', title = 'Express delivery', type = 'range', min = 1, max = 6, step = 0.25, default = 2.5, unit = 'x',
+    desc = 'How much more express delivery costs than standard. It arrives ten times sooner.' },
+  { key = 'deliveryMinutes', group = 'Money', title = 'Standard delivery time', type = 'range', min = 0, max = 15, step = 0.5, default = 3, unit = ' min',
+    desc = 'How long a standard delivery takes to reach the garage. 0 delivers at once. Parts bought in a shop in town never wait: you take them with you.' },
+
   { key = 'keepDamage', group = 'Garage', title = 'Parts keep their damage', type = 'bool', default = true,
     desc = 'A bent bumper is still bent after you take it off and refit it, and the car leaves as damaged as it came in unless you pay for repairs.' },
   { key = 'autoEnter', group = 'Garage', title = 'Drive up to the door to enter', type = 'bool', default = true,
@@ -26,13 +35,17 @@ M.defs = {
     desc = 'Watch the car roll into the garage. Turn off to cut straight to the garage.' },
   { key = 'highlight', group = 'Garage', title = 'Highlight the part under the cursor', type = 'bool', default = true,
     desc = 'Pulses the part a click would act on.' },
+  { key = 'invertCameraX', group = 'Garage', title = 'Invert camera left / right', type = 'bool', default = false,
+    desc = 'Swaps which way the camera goes round the car when you drag sideways.' },
+  { key = 'paintSmoke', group = 'Garage', title = 'Spray cloud when painting', type = 'bool', default = true,
+    desc = 'A respray hides the car in a cloud of the new colour for a moment.' },
 
   { key = 'previews', group = 'Catalog', title = '3D part previews', type = 'bool', default = true,
-    desc = 'Show each part as a turning white 3D model in the catalog and on the shelf.' },
-  { key = 'photoPreviews', group = 'Catalog', title = 'Photographed previews', type = 'bool', default = false,
-    desc = 'Instead of white models, photograph parts on a hidden copy of your car so previews show real textures, paint and livery. Entering the garage takes a little longer and new parts take a moment to appear.' },
+    desc = 'Show each part as a turning 3D model in the catalog and on the shelf. They are drawn by the game itself, at the quality of your graphics settings.' },
   { key = 'spinSpeed', group = 'Catalog', title = 'Preview turn speed', type = 'range', min = 0, max = 3, step = 0.1, default = 1, unit = 'x',
     desc = 'How fast the previews turn.' },
+  { key = 'spinClockwise', group = 'Catalog', title = 'Previews turn clockwise', type = 'bool', default = true,
+    desc = 'Seen from above. Turn off for anticlockwise.' },
 }
 
 local values = {}

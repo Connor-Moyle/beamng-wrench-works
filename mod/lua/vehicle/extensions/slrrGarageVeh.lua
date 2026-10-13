@@ -6,6 +6,22 @@
 
 local M = {}
 
+-- Damage this car was given by apply(). The physics core only reports deformation it caused
+-- itself, so on the next visit these records are handed back along with any new damage.
+local carried
+
+-- Latches (doors, hood, boot) that were shut when the damage was recorded. Moving bent panels
+-- back into their bent shape pops them; they are pushed shut again a moment later.
+local relatch, relatchTimer
+
+local function latchStates()
+  local states = {}
+  for name, c in pairs(controller.getAllControllers and controller.getAllControllers() or {}) do
+    if type(c) == 'table' and c.tryAttachGroupImpulse and c.getGroupState then states[name] = c.getGroupState() end
+  end
+  return states
+end
+
 local function frame()
   local rn = v.data.refNodes and v.data.refNodes[0]
   if not rn then return nil end
@@ -18,7 +34,7 @@ end
 
 -- record the damage and send it to the garage
 local function capture()
-  local data = { nodes = {}, beams = {} }
+  local data = { nodes = {}, beams = {}, latches = latchStates() }
   local o, x, y, z = frame()
   local nodes, beams = v.data.nodes, v.data.beams
   if o and nodes and beams then
@@ -41,6 +57,22 @@ local function capture()
             }
             touched[lo], touched[hi] = true, true
           end
+        end
+      end
+    end
+    -- damage put back on this car earlier is still on it
+    if carried then
+      local seen = {}
+      for _, rec in ipairs(data.beams) do seen[rec.a .. '|' .. rec.b .. '|' .. rec.i] = true end
+      local byName = {}
+      for cid, node in pairs(nodes) do
+        if node.name then byName[node.name] = cid end
+      end
+      for _, rec in ipairs(carried.beams or {}) do
+        local ca, cb = byName[rec.a], byName[rec.b]
+        if ca and cb and nodes[ca].partPath == rec.pa and nodes[cb].partPath == rec.pb and not seen[rec.a .. '|' .. rec.b .. '|' .. rec.i] then
+          data.beams[#data.beams + 1] = rec
+          touched[ca], touched[cb] = true, true
         end
       end
     end
@@ -96,6 +128,25 @@ local function apply(data)
     end
   end
   if applied > 0 then obj:commitLoad() end
+  carried = data
+  if type(data.latches) == 'table' and next(data.latches) then
+    relatch, relatchTimer = data.latches, 0.6
+  end
+end
+
+local function updateLatches(dt)
+  relatchTimer = relatchTimer - dt
+  if relatchTimer > 0 then return end
+  local pending = false
+  for name, state in pairs(relatch) do
+    local c = controller.getControllerSafe(name)
+    if state == 'attached' and c and c.getGroupState and c.getGroupState() ~= 'attached' then
+      c.tryAttachGroupImpulse()
+      pending = true
+    end
+  end
+  relatch.tries = (relatch.tries or 0) + 1
+  if pending and relatch.tries < 4 then relatchTimer = 0.5 else relatch = nil end
 end
 
 -- The lift. The garage has no lift model, so the car is simply held up: every node of the
@@ -126,6 +177,7 @@ local function setLift(height)
 end
 
 local function updateGFX(dt)
+  if relatch then updateLatches(dt) end
   if not liftNodes then return end
   dt = math.min(dt, 0.05)
   if liftHeight < liftTarget then liftHeight = math.min(liftTarget, liftHeight + liftSpeed * dt)
@@ -150,13 +202,20 @@ local function updateGFX(dt)
   end
 end
 
-local function onReset()
+local function releaseLift()
   liftNodes, liftHeight, liftTarget = nil, 0, 0
+end
+
+-- the player reset the car: it is as new again
+local function onReset()
+  releaseLift()
+  carried, relatch = nil, nil
 end
 
 M.capture = capture
 M.apply = apply
 M.setLift = setLift
+M.releaseLift = releaseLift
 M.updateGFX = updateGFX
 M.onReset = onReset
 

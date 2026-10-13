@@ -26,6 +26,7 @@ function M.setCar(data)
   if type(data) ~= 'table' then return end
   for _, rec in ipairs(data.nodes or {}) do car.nodes[#car.nodes + 1] = rec end
   for _, rec in ipairs(data.beams or {}) do car.beams[#car.beams + 1] = rec end
+  car.latches = type(data.latches) == 'table' and data.latches or nil   -- which doors and lids were shut
 end
 
 local function split(list, belongs)
@@ -93,6 +94,7 @@ end
 -- are loaded (hidden) on the car, so they are still bent when they are shown again
 function M.buildApply(shelfDamages)
   local out = empty()
+  out.latches = car.latches
   for _, rec in ipairs(car.nodes) do out.nodes[#out.nodes + 1] = rec end
   for _, rec in ipairs(car.beams) do out.beams[#out.beams + 1] = rec end
   for _, damage in ipairs(shelfDamages or {}) do

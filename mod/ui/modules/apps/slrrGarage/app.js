@@ -108,10 +108,12 @@ angular.module('beamng.apps')
     '  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:5px;padding:6px 8px 7px 8px;text-align:center;overflow:hidden}',
     '.sg-slot.sg-empty{background:rgba(255,255,255,.02);border:1px dashed rgba(255,255,255,.12)}',
     '.sg-slot.sg-item{cursor:pointer}',
+    '.sg-open>.sg-glyph{display:none}',
     '.sg-slot.sg-item:hover{background:rgba(255,102,0,.22);border-color:#ff6600}',
     '.sg-slot.sg-fresh{animation:sgdrop .45s ease-out}',
     '@keyframes sgdrop{0%{transform:translateY(-26px);opacity:0}100%{transform:none;opacity:1}}',
-    '.sg-slot canvas,.sg-card canvas{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none}',
+    '.sg-slot .sg-prev{position:absolute;left:5px;right:5px;top:26px;bottom:42px;pointer-events:none}',
+    '.sg-card .sg-prev{position:absolute;left:0;right:0;top:0;bottom:24px;pointer-events:none}',
     '.sg-slot .sg-glyph{position:absolute;left:50%;top:38%;width:38px;height:38px;margin:-19px 0 0 -19px;color:rgba(255,255,255,.5)}',
     '.sg-slot .sg-txt{position:relative;width:100%;padding-top:3px;background:linear-gradient(rgba(0,0,0,0),rgba(0,0,0,.55) 35%)}',
     '.sg-slot .sg-name{font-size:14px;font-weight:600;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
@@ -119,6 +121,11 @@ angular.module('beamng.apps')
     '.sg-badges{position:absolute;left:6px;top:5px;display:flex;flex-direction:column;align-items:flex-start}',
     '.sg-badge{font-size:10px;font-weight:700;letter-spacing:.5px;padding:1px 6px;border-radius:3px;margin-bottom:3px;background:rgba(0,0,0,.6);color:#fff}',
     '.sg-badge.sg-new{background:#ff6600}',
+    '.sg-badge.sg-more{cursor:pointer}',
+    '.sg-badge.sg-more:hover{background:#ff6600}',
+    '.sg-contents{position:absolute;z-index:6;min-width:200px;max-width:320px;max-height:46vh;overflow-y:auto;padding:8px 12px;background:rgba(20,20,22,.96);border:1px solid rgba(255,255,255,.18);border-top:3px solid #ff6600;border-radius:5px;pointer-events:auto}',
+    '.sg-ctitle{font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#ff9a4d;margin-bottom:5px}',
+    '.sg-cline{font-size:13px;line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
     '.sg-badge.sg-dmg{background:#c0271b}',
     '.sg-val{position:absolute;right:7px;top:5px;font-size:12px;font-weight:700;color:#fff;background:rgba(0,0,0,.55);padding:1px 6px;border-radius:3px}',
     '.sg-val.sg-gain{background:#2f8f3a}',
@@ -207,6 +214,26 @@ angular.module('beamng.apps')
     '.sg-sub-row.sg-act{color:#ff8533;font-weight:700}',
     '.sg-sub-row.sg-none{color:#6a6a6a;cursor:default;pointer-events:none}',
     '.sg-sub-row i{margin-left:auto;font-style:normal;font-size:11px;opacity:.7}',
+    '.sg-cart{margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.14);font-size:13px}',
+    '.sg-carth{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#ffb380;margin-bottom:5px}',
+    '.sg-carth i{font-style:normal;margin-left:8px;padding:0 6px;border-radius:8px;background:#ff6600;color:#fff}',
+    '.sg-cartlist{max-height:17vh;overflow-y:auto}',
+    '.sg-cartrow{display:flex;align-items:center;line-height:1.55}',
+    '.sg-cartn{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+    '.sg-cartp{margin-left:8px;color:#e8e8e8;font-variant-numeric:tabular-nums}',
+    '.sg-cartx{margin-left:8px;width:18px;text-align:center;cursor:pointer;color:#bbb;border-radius:3px}',
+    '.sg-cartx:hover{background:#c0271b;color:#fff}',
+    '.sg-carthint{color:#9a9a9a;font-size:12px;line-height:1.35}',
+    '.sg-ship{display:flex;align-items:center;margin-top:5px;padding:5px 8px;border:1px solid rgba(255,255,255,.14);border-radius:4px;cursor:pointer}',
+    '.sg-ship.sg-act{border-color:#ff6600;background:rgba(255,102,0,.14)}',
+    '.sg-dot{width:10px;height:10px;border-radius:50%;border:2px solid #bbb;margin-right:8px}',
+    '.sg-ship.sg-act .sg-dot{border-color:#ff6600;background:#ff6600}',
+    '.sg-shipt{flex:1}.sg-shipt small{display:block;font-size:11px;color:#a8a8a8}',
+    '.sg-total{display:flex;justify-content:space-between;margin-top:8px;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#ffb380}',
+    '.sg-total b{font-size:17px;color:#fff;letter-spacing:0}',
+    '.sg-cartbtns{display:flex;justify-content:space-between;margin-top:8px}',
+    '.sg-onway{margin-top:9px;font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:#9fc6ff}',
+    '.sg-onway .sg-cartrow{font-size:13px;letter-spacing:0;text-transform:none;color:#ddd}',
     '.sg-wallet{margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.14);font-size:11px;letter-spacing:1px;color:#ffb380;text-transform:uppercase}',
     '.sg-wallet b{display:block;font-size:24px;color:#fff;letter-spacing:0}',
     '.sg-head{display:flex;align-items:center;padding-bottom:10px;margin-bottom:10px;border-bottom:1px solid rgba(255,255,255,.16)}',
@@ -218,7 +245,10 @@ angular.module('beamng.apps')
     '.sg-grid{flex:1;display:flex;flex-wrap:wrap;align-content:flex-start;margin:0 -6px;overflow:hidden;min-height:0}',
     '.sg-card{width:calc(33.333% - 12px);height:calc(50% - 12px);margin:6px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:6px;',
     '  display:flex;flex-direction:column;position:relative;min-width:0;overflow:hidden}',
-    '.sg-card .sg-stage{position:relative;flex:1;min-height:0;background:radial-gradient(ellipse at 50% 55%,rgba(255,255,255,.26),rgba(255,255,255,.04) 72%)}',
+    '.sg-card .sg-stage{position:relative;flex:1;min-height:0;background:#0a0a0c}',
+    '.sg-smoke{position:absolute;pointer-events:none;z-index:4}',
+    '.sg-puff{position:absolute;border-radius:50%;opacity:0;animation:sgpuff 2.3s ease-out forwards}',
+    '@keyframes sgpuff{0%{opacity:0;transform:scale(.25)}18%{opacity:1}55%{opacity:1;transform:scale(1.05)}100%{opacity:0;transform:scale(1.35) translateY(-6%)}}',
     '.sg-card .sg-glyph{position:absolute;left:50%;top:50%;width:64px;height:64px;margin:-32px 0 0 -32px;color:rgba(255,255,255,.22)}',
     '.sg-card .sg-meta{padding:8px 12px 10px 12px;background:rgba(0,0,0,.35)}',
     '.sg-card .sg-cslot{font-size:11px;letter-spacing:1px;color:#ffb380;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
@@ -226,7 +256,8 @@ angular.module('beamng.apps')
     '.sg-card .sg-buyrow{display:flex;align-items:center;margin-top:6px}',
     '.sg-price{font-size:19px;font-weight:700}',
     '.sg-card .sg-btn{margin-left:auto;padding:6px 18px}',
-    '.sg-card .sg-badges{left:8px;top:8px}',
+    '.sg-card .sg-badges{left:8px;top:auto;bottom:3px;flex-direction:row}',
+    '.sg-card .sg-badges .sg-badge{margin-right:5px}',
     '.sg-foot{display:flex;align-items:center;justify-content:center;padding-top:10px;font-size:13px;color:#c8c8c8}',
     '.sg-foot .sg-btn{margin:0 14px}',
     '.sg-blank{flex:1;display:flex;align-items:center;justify-content:center;font-size:15px;color:#9a9a9a;text-align:center;line-height:1.6}',
@@ -292,12 +323,12 @@ angular.module('beamng.apps')
     '    </div>',
     '    <div class="sg-slots">',
     '      <div class="sg-slot" ng-repeat="slot in visibleSlots() track by $index" ng-class="{\'sg-empty\': !slot, \'sg-item\': slot, \'sg-fresh\': slot && slot.id === freshId}" ng-click="slot && install(slot)">',
-    '        <span class="sg-glyph" ng-if="slot && !hasPicture(slot.part, slot.photo)" ng-bind-html="icon(slot.section)"></span>',
-    '        <canvas class="sg-prev" ng-if="slot && s.previews" data-part="{{slot.part}}" data-photo="{{slot.photo}}" data-spin="hover"></canvas>',
+    '        <span class="sg-glyph" ng-if="slot" ng-bind-html="icon(slot.section)"></span>',
+    '        <div class="sg-prev" ng-if="slot && hasModel(slot.part)" data-part="{{slot.part}}" data-id="s{{slot.id}}" data-spin="hover"></div>',
     '        <div class="sg-badges" ng-if="slot">',
     '          <span class="sg-badge sg-new" ng-if="slot.new">NEW</span>',
     '          <span class="sg-badge sg-dmg" ng-if="slot.damaged">DAMAGED</span>',
-    '          <span class="sg-badge" ng-if="slot.count > 1">+{{slot.count - 1}} parts</span>',
+    '          <span class="sg-badge sg-more" ng-if="slot.count > 1" ng-click="showContents(slot, $event)">+{{slot.count - 1}} parts &#9662;</span>',
     '        </div>',
     '        <div class="sg-val" ng-if="slot && !s.tool">{{money(slot.value)}}</div>',
     '        <div class="sg-val sg-gain" ng-if="slot && s.tool === \'sell\'">+{{money(slot.sellValue)}}</div>',
@@ -399,10 +430,12 @@ angular.module('beamng.apps')
     '</div>',
 
     /* catalog */
-    '<div class="sg-cat" ng-if="s.phase === \'catalog\'">',
+    '<div class="sg-cat" ng-if="s.phase === \'catalog\' || s.phase === \'shop\'">',
     '  <div class="sg-book">',
     '    <div class="sg-page-l">',
-    '      <h1 class="sg-h">Catalog</h1><div class="sg-for">Parts for your {{s.car}}</div>',
+    '      <h1 class="sg-h">{{s.shop ? s.shop.name : \'Catalog\'}}</h1>',
+    '      <div class="sg-for" ng-if="!s.shop">Parts for your {{s.car}}, delivered to the garage</div>',
+    '      <div class="sg-for" ng-if="s.shop">{{s.shop.trade}} for your {{s.car}}. Over the counter: no delivery charge, no waiting<span ng-if="s.shop.discount > 0">, and {{s.shop.discount}}% off</span>.</div>',
     '      <div class="sg-scrolly">',
     '        <div ng-repeat="sec in cat.sections">',
     '          <div class="sg-sec sg-h" ng-class="{\'sg-act\': sec.id === cur.section}" ng-click="openSection(sec)"><span ng-bind-html="icon(sec.id)"></span>{{sec.title}}</div>',
@@ -411,20 +444,37 @@ angular.module('beamng.apps')
     '          </div>',
     '        </div>',
     '      </div>',
+    '      <div class="sg-cart">',
+    '        <div class="sg-carth">Shopping list<i ng-if="cart.items.length">{{cart.items.length}}</i></div>',
+    '        <div class="sg-cartlist">',
+    '          <div class="sg-cartrow" ng-repeat="c in cart.items track by $index" title="{{c.weight}} kg, {{c.size}} m: {{money(c.fee)}} to deliver">',
+    '            <span class="sg-cartn">{{c.name}}</span><span class="sg-cartp">{{money(c.price)}}</span><span class="sg-cartx" ng-click="cartRemove($index)">&times;</span></div>',
+    '          <div class="sg-carthint" ng-if="!cart.items.length">Nothing yet. &ldquo;Add&rdquo; puts a part on the list; you pay when you confirm.</div>',
+    '        </div>',
+    '        <div ng-if="cart.items.length">',
+    '          <div class="sg-ship" ng-repeat="o in cart.shipping" ng-class="{\'sg-act\': o.id === ship.id}" ng-click="ship.id = o.id">',
+    '            <span class="sg-dot"></span><span class="sg-shipt">{{o.title}}<small ng-if="o.seconds > 0">arrives in {{eta(o.seconds)}}</small></span><span class="sg-cartp">{{o.fee > 0 ? money(o.fee) : \'free\'}}</span></div>',
+    '          <div class="sg-total">Total<b>{{money(shipOption().total)}}</b></div>',
+    '          <div class="sg-cartbtns"><div class="sg-btn" ng-click="lua(\'cartClear()\')">Clear</div>',
+    '            <div class="sg-btn sg-go" ng-class="{\'sg-nope\': shipOption().total > s.money}" ng-click="checkout()">Confirm purchase</div></div>',
+    '        </div>',
+    '        <div class="sg-onway" ng-if="cart.orders.length">On its way to the garage',
+    '          <div class="sg-cartrow" ng-repeat="o in cart.orders track by $index"><span class="sg-cartn">{{o.name}}</span><span class="sg-cartp">{{eta(o.seconds)}}</span></div></div>',
+    '      </div>',
     '      <div class="sg-wallet">{{s.career ? \'Career money\' : \'Freeroam budget\'}}<b>{{money(s.money)}}</b></div>',
     '    </div>',
     '    <div class="sg-page-r">',
     '      <div class="sg-head"><div class="sg-h">{{curSub() ? curSub().title : \'Choose a chapter\'}}</div><div class="sg-crumb" ng-if="curSec()">{{curSec().title}} &middot; {{shownItems().length}} parts</div>',
     '        <input class="sg-search" type="text" placeholder="Search this chapter" ng-model="cur.search" ng-change="searchChanged()" ng-if="curSub() && curSub().items.length > 6">',
-    '        <div class="sg-btn sg-go" ng-click="lua(\'closeCatalog()\')">Back to garage</div></div>',
+    '        <div class="sg-btn sg-go" ng-click="lua(\'closeCatalog()\')">{{s.shop ? \'Leave shop\' : \'Back to garage\'}}</div></div>',
     '      <div class="sg-grid" ng-if="pageItems().length">',
     '        <div class="sg-card" ng-repeat="it in pageItems() track by it.slotPath + it.part">',
-    '          <div class="sg-stage"><span class="sg-glyph" ng-if="!hasPicture(it.part, photoKey(it.part))" ng-bind-html="icon(curSec().id)"></span>',
-    '            <canvas class="sg-prev" ng-if="s.previews" data-part="{{it.part}}" data-photo="{{photoKey(it.part)}}" data-spin="always"></canvas>',
+    '          <div class="sg-stage"><span class="sg-glyph" ng-bind-html="icon(curSec().id)"></span>',
+    '            <div class="sg-prev" ng-if="hasModel(it.part)" data-part="{{it.part}}" data-id="c{{it.part}}" data-spin="always"></div>',
     '            <div class="sg-badges"><span class="sg-badge" ng-if="it.fitted">On the car</span><span class="sg-badge sg-new" ng-if="it.owned > 0">On the shelf &times;{{it.owned}}</span></div>',
     '          </div>',
     '          <div class="sg-meta"><div class="sg-cslot">{{it.slot}}</div><div class="sg-cname" title="{{it.part}}">{{it.name}}</div>',
-    '            <div class="sg-buyrow"><div class="sg-price">{{money(it.price)}}</div><div class="sg-btn sg-go" ng-class="{\'sg-nope\': it.price > s.money}" ng-click="buy(it)">Buy</div></div></div>',
+    '            <div class="sg-buyrow"><div class="sg-price">{{money(it.price)}}</div><div class="sg-btn sg-go" ng-click="buy(it)">Add</div></div></div>',
     '        </div>',
     '      </div>',
     '      <div class="sg-blank" ng-if="!pageItems().length && !cur.search">Pick a chapter on the left.<br>Everything you buy lands on the shelf in the garage,<br>ready to be fitted with one click.</div>',
@@ -438,198 +488,40 @@ angular.module('beamng.apps')
     '  </div>',
     '</div>',
 
+    '<div class="sg-contents" ng-if="contents" ng-style="{left: contents.x + \'px\', bottom: contents.b + \'px\'}">',
+    '  <div class="sg-ctitle">Comes with the {{contents.name}}</div>',
+    '  <div class="sg-cline" ng-repeat="n in contents.list track by $index">{{n}}</div>',
+    '</div>',
     '<div class="sg-msg" ng-if="s.message">{{s.message}}</div>',
     '<div class="sg-fade" ng-class="{\'sg-in\': s.fade > 0.5}"></div>',
     '</div>'
   ].join('\n');
 
-  // ---- renderer for the part previews --------------------------------------------------------
-  // Parts are shown as smooth white models on a turntable. A small depth-buffered triangle
-  // rasteriser draws each part once per turntable step; the pictures are then simply played
-  // back. The game's UI allows no worker threads, so the drawing is done a few milliseconds at
-  // a time between screen updates.
-  var FRAMES = 60;               // pictures per full turn
-  var FRAME_SIZE = 176;          // picture size in pixels
-  var KEEP_PARTS = 12;           // parts whose pictures are kept in memory at once
-  var DRAW_BUDGET = 7;           // milliseconds of drawing per screen update
+  // ---- part previews --------------------------------------------------------------------------
+  // The turning parts in the catalog and on the shelf are real 3D objects that the game holds
+  // in front of the camera. All the UI does is leave a hole where each one goes and tell the
+  // game where the holes are.
+  var noModel = {};              // part name -> true when the game has no model for it
 
-  function rasterCore() {
-    var models = {};
-    var TILT = 0.40, COS_T = Math.cos(TILT), SIN_T = Math.sin(TILT);
-    var LX = -0.39, LY = 0.54, LZ = 0.75;
-    var zbuf = null, shade = null, sx = null, sy = null, sz = null, lit = null;
-
-    function store(part, v, t) {
-      var nv = v.length / 3, nt = t.length / 3, i;
-      var min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
-      for (i = 0; i < v.length; i++) { var ax = i % 3; if (v[i] < min[ax]) min[ax] = v[i]; if (v[i] > max[ax]) max[ax] = v[i]; }
-      var cx = (min[0] + max[0]) / 2, cy = (min[1] + max[1]) / 2, cz = (min[2] + max[2]) / 2;
-      // scale by the diagonal so the part fits whichever way it is turned
-      var diag = Math.sqrt(Math.pow(max[0] - min[0], 2) + Math.pow(max[1] - min[1], 2) + Math.pow(max[2] - min[2], 2)) || 1;
-      var V = new Float32Array(nv * 3), N = new Float32Array(nv * 3), T = new Uint32Array(t);
-      for (i = 0; i < nv; i++) { V[i * 3] = (v[i * 3] - cx) / diag; V[i * 3 + 1] = (v[i * 3 + 1] - cy) / diag; V[i * 3 + 2] = (v[i * 3 + 2] - cz) / diag; }
-      // smooth normals: every vertex takes the area-weighted average of the faces around it
-      for (i = 0; i < nt; i++) {
-        var a = T[i * 3] * 3, b = T[i * 3 + 1] * 3, c = T[i * 3 + 2] * 3;
-        var ux = V[b] - V[a], uy = V[b + 1] - V[a + 1], uz = V[b + 2] - V[a + 2];
-        var wx = V[c] - V[a], wy = V[c + 1] - V[a + 1], wz = V[c + 2] - V[a + 2];
-        var nx = uy * wz - uz * wy, ny = uz * wx - ux * wz, nz = ux * wy - uy * wx;
-        // faces that point the other way round still describe the same surface
-        if (N[a] * nx + N[a + 1] * ny + N[a + 2] * nz < 0) { nx = -nx; ny = -ny; nz = -nz; }
-        N[a] += nx; N[a + 1] += ny; N[a + 2] += nz; N[b] += nx; N[b + 1] += ny; N[b + 2] += nz; N[c] += nx; N[c + 1] += ny; N[c + 2] += nz;
+  // cut see-through holes into `container` at the given screen rectangles
+  function punch(container, rects) {
+    if (!container) return;
+    var value = '';
+    if (rects.length) {
+      var box = container.getBoundingClientRect();
+      var w = Math.round(box.width), h = Math.round(box.height);
+      var pts = ['0px 0px', w + 'px 0px', w + 'px ' + h + 'px', '0px ' + h + 'px', '0px 0px'];
+      for (var i = 0; i < rects.length; i++) {
+        var r = rects[i], x1 = Math.round(r.left - box.left), y1 = Math.round(r.top - box.top), x2 = Math.round(r.right - box.left), y2 = Math.round(r.bottom - box.top);
+        pts.push(x1 + 'px ' + y1 + 'px', x2 + 'px ' + y1 + 'px', x2 + 'px ' + y2 + 'px', x1 + 'px ' + y2 + 'px', x1 + 'px ' + y1 + 'px', '0px 0px');
       }
-      for (i = 0; i < nv; i++) {
-        var l = Math.sqrt(N[i * 3] * N[i * 3] + N[i * 3 + 1] * N[i * 3 + 1] + N[i * 3 + 2] * N[i * 3 + 2]) || 1;
-        N[i * 3] /= l; N[i * 3 + 1] /= l; N[i * 3 + 2] /= l;
-      }
-      models[part] = { V: V, N: N, T: T };
+      value = 'polygon(evenodd, ' + pts.join(', ') + ')';
     }
-
-    // one picture: RGBA bytes, size x size, see-through around the part
-    function render(part, angle, size) {
-      var model = models[part];
-      if (!model) return null;
-      var V = model.V, N = model.N, T = model.T, nv = V.length / 3, nt = T.length / 3, i;
-      var w = size * 2;                        // drawn at twice the size and scaled down, for smooth edges
-      if (!sx || sx.length < nv) { sx = new Float32Array(nv); sy = new Float32Array(nv); sz = new Float32Array(nv); lit = new Float32Array(nv); }
-      if (!zbuf || zbuf.length !== w * w) { zbuf = new Float32Array(w * w); shade = new Float32Array(w * w); }
-      for (i = 0; i < w * w; i++) { zbuf[i] = Infinity; shade[i] = -1; }
-      var ca = Math.cos(angle), sa = Math.sin(angle), scale = w * 0.98, o = w / 2;
-      for (i = 0; i < nv; i++) {
-        var x = V[i * 3], y = V[i * 3 + 1], z = V[i * 3 + 2];
-        var rx = x * ca - y * sa, ry = x * sa + y * ca;                 // turn about the upright axis
-        sx[i] = o + rx * scale;
-        sy[i] = o - (z * COS_T - ry * SIN_T) * scale;                   // camera tilted down a little
-        sz[i] = ry * COS_T + z * SIN_T;                                 // depth: smaller is nearer
-        var nx = N[i * 3], ny = N[i * 3 + 1], nz = N[i * 3 + 2];
-        var nrx = nx * ca - ny * sa, nry = nx * sa + ny * ca;
-        // normal in view space: right, up, towards the viewer
-        var vx = nrx, vy = nz * COS_T - nry * SIN_T, vz = -(nry * COS_T + nz * SIN_T);
-        if (vz < 0) { vx = -vx; vy = -vy; vz = -vz; }                   // thin parts are lit on both faces
-        var d = vx * LX + vy * LY + vz * LZ;
-        lit[i] = 0.34 + 0.6 * Math.max(0, d) + 0.1 * Math.max(0, -d) + 0.1 * Math.pow(Math.max(0, d), 18);
-      }
-      for (i = 0; i < nt; i++) {
-        var a = T[i * 3], b = T[i * 3 + 1], c = T[i * 3 + 2];
-        var ax = sx[a], ay = sy[a], bx = sx[b], by = sy[b], cx = sx[c], cy = sy[c];
-        var area = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
-        if (area > -1e-7 && area < 1e-7) continue;
-        var minX = Math.max(0, Math.floor(Math.min(ax, bx, cx))), maxX = Math.min(w - 1, Math.ceil(Math.max(ax, bx, cx)));
-        var minY = Math.max(0, Math.floor(Math.min(ay, by, cy))), maxY = Math.min(w - 1, Math.ceil(Math.max(ay, by, cy)));
-        if (minX > maxX || minY > maxY) continue;
-        var inv = 1 / area;
-        for (var yy = minY; yy <= maxY; yy++) {
-          var pyc = yy + 0.5, row = yy * w;
-          for (var xx = minX; xx <= maxX; xx++) {
-            var pxc = xx + 0.5;
-            var w0 = ((bx - pxc) * (cy - pyc) - (by - pyc) * (cx - pxc)) * inv;
-            var w1 = ((cx - pxc) * (ay - pyc) - (cy - pyc) * (ax - pxc)) * inv;
-            var w2 = 1 - w0 - w1;
-            if (w0 < -0.001 || w1 < -0.001 || w2 < -0.001) continue;
-            var depth = w0 * sz[a] + w1 * sz[b] + w2 * sz[c];
-            var k = row + xx;
-            if (depth >= zbuf[k]) continue;
-            zbuf[k] = depth;
-            shade[k] = w0 * lit[a] + w1 * lit[b] + w2 * lit[c];
-          }
-        }
-      }
-      var out = new Uint8ClampedArray(size * size * 4);
-      for (var py = 0; py < size; py++) {
-        for (var px = 0; px < size; px++) {
-          var k0 = py * 2 * w + px * 2, sum = 0, n = 0, q;
-          q = shade[k0]; if (q >= 0) { sum += q; n++; }
-          q = shade[k0 + 1]; if (q >= 0) { sum += q; n++; }
-          q = shade[k0 + w]; if (q >= 0) { sum += q; n++; }
-          q = shade[k0 + w + 1]; if (q >= 0) { sum += q; n++; }
-          if (!n) continue;
-          var g = sum / n * 255, at = (py * size + px) * 4;
-          out[at] = g * 0.975; out[at + 1] = g * 0.985; out[at + 2] = g; out[at + 3] = n * 63.75;
-        }
-      }
-      return out;
+    if (container.__punch !== value) {
+      container.__punch = value;
+      container.style.clipPath = value;
+      container.style.webkitClipPath = value;
     }
-
-    return { store: store, render: render, drop: function (part) { delete models[part]; } };
-  }
-
-  // meshes[part] = true (model handed to the renderer) | false (no model)
-  // clay[part] = { list: [canvas per turntable step], count, used }
-  var meshes = {}, clay = {};
-  var raster = rasterCore();
-  // draw one turntable step of a part into clay[part]
-  function drawStep(part, idx) {
-    var entry = clay[part];
-    var out = raster.render(part, -idx * 2 * Math.PI / FRAMES, FRAME_SIZE);     // clockwise seen from above
-    var c = document.createElement('canvas'); c.width = FRAME_SIZE; c.height = FRAME_SIZE;
-    if (out) c.getContext('2d').putImageData(new ImageData(out, FRAME_SIZE, FRAME_SIZE), 0, 0);
-    entry.list[idx] = c; entry.count++;
-  }
-
-  // ---- photographed previews ----------------------------------------------------------------
-  // photos[key] = { frames: [canvas...], ready } | false (nothing to show) ; filled from pictures
-  // the game saved, one per turntable step.
-  var photos = {};
-  function loadPhoto(info, done) {
-    var count = info.frames, old = photos[info.key], bust = Date.now();
-    if (old && old.count >= count) return;
-    // a single still may already be showing; it stays up until the full turn has loaded
-    var left = count, imgs = new Array(count), failed = false;
-    var entry = { frames: old ? old.frames : null, ready: !!(old && old.ready), count: count };
-    photos[info.key] = entry;
-    function finish() {
-      if (failed) { if (!entry.ready) photos[info.key] = false; done(); return; }
-      // the pictures come on a magenta backdrop; make it transparent so the card shows through
-      entry.frames = imgs.map(function (img) {
-        var c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
-        var x = c.getContext('2d'); x.drawImage(img, 0, 0);
-        var d = x.getImageData(0, 0, c.width, c.height), p = d.data;
-        for (var i = 0; i < p.length; i += 4) {
-          var m = Math.min(p[i], p[i + 2]) - p[i + 1];      // how much backdrop is in this pixel
-          if (m <= 24) continue;
-          if (m >= 235) { p[i + 3] = 0; continue; }
-          var a = 1 - m / 255;                               // edge pixel: take the backdrop back out
-          p[i] = Math.max(0, (p[i] - 255 * (1 - a)) / a); p[i + 2] = Math.max(0, (p[i + 2] - 255 * (1 - a)) / a);
-          p[i + 3] = Math.round(255 * a);
-        }
-        x.putImageData(d, 0, 0);
-        return c;
-      });
-      entry.ready = true;
-      done();
-    }
-    for (var i = 0; i < count; i++) (function (i) {
-      var img = new Image();
-      img.onload = function () { imgs[i] = img; if (--left === 0) finish(); };
-      img.onerror = function () { failed = true; if (--left === 0) finish(); };
-      img.src = info.base + '_' + i + '.png?' + bust;
-    })(i);
-  }
-
-  // show a turntable at `turn` (in turns). list may still have gaps while it is being drawn.
-  function drawTurn(canvas, list, turn, zoom) {
-    var cw = canvas.clientWidth, ch = canvas.clientHeight;
-    if (!cw || !ch) return;
-    if (canvas.width !== cw || canvas.height !== ch) { canvas.width = cw; canvas.height = ch; }
-    var n = list.length, f = ((turn % 1) + 1) % 1 * n, i0 = Math.floor(f) % n, i1 = (i0 + 1) % n, t = f - Math.floor(f);
-    var ctx = canvas.getContext('2d');
-    var side = Math.min(cw, ch) * zoom, x = (cw - side) / 2, y = (ch - side) / 2 - ch * 0.03;
-    ctx.clearRect(0, 0, cw, ch);
-    if (!list[i0]) {
-      // not drawn yet: hold the nearest step that is
-      for (var back = 1; back < n; back++) { var j = (i0 - back + n) % n; if (list[j]) { ctx.drawImage(list[j], x, y, side, side); break; } }
-      return;
-    }
-    ctx.drawImage(list[i0], x, y, side, side);
-    if (t > 0.02 && list[i1]) { ctx.globalAlpha = t; ctx.drawImage(list[i1], x, y, side, side); ctx.globalAlpha = 1; }   // blend into the next step
-  }
-
-  // forget the pictures of parts that have not been on screen for a while
-  function trimFrames(now) {
-    var parts = Object.keys(clay);
-    if (parts.length <= KEEP_PARTS) return;
-    parts.sort(function (p, q) { return clay[p].used - clay[q].used; });
-    for (var i = 0; i < parts.length - KEEP_PARTS; i++) if (now - clay[parts[i]].used > 1500) delete clay[parts[i]];
   }
 
   return {
@@ -731,7 +623,15 @@ angular.module('beamng.apps')
         return out;
       };
       $scope.scroll = function (d) { $scope.line = Math.max(0, Math.min($scope.lineCount() - 1, $scope.line + d)); wantPreviews(); };
-      $scope.install = function (item) { $scope.lua('install(' + item.id + ')'); };
+      $scope.install = function (item) { $scope.contents = null; $scope.lua('install(' + item.id + ')'); };
+      // the list behind a "+3 parts" badge
+      $scope.contents = null;
+      $scope.showContents = function (slot, ev) {
+        ev.stopPropagation();
+        if ($scope.contents && $scope.contents.id === slot.id) { $scope.contents = null; return; }
+        var r = ev.currentTarget.getBoundingClientRect();
+        $scope.contents = { id: slot.id, name: slot.name, list: slot.contents || [], x: Math.round(r.left), b: Math.round(window.innerHeight - r.top + 6) };
+      };
 
       // ---- catalog
       $scope.curSec = function () {
@@ -779,97 +679,134 @@ angular.module('beamng.apps')
       $scope.turn = function (d) { $scope.cur.page = Math.max(0, Math.min($scope.pageCount() - 1, $scope.cur.page + d)); $scope.lua('uiSound("flip.wav")'); wantPreviews(); };
       $scope.buy = function (it) { $scope.lua('buy(' + JSON.stringify(it.slotPath) + ',' + JSON.stringify(it.part) + ')'); };
 
-      // ---- previews: ask Lua for the models of whatever is on screen
-      var asked = {};
-      $scope.hasMesh = function (part) { return !!meshes[part]; };
-      $scope.photoKey = function (part) { return 'part_' + part + '_' + ($scope.s.photoStamp || ''); };
-      $scope.hasPicture = function (part, photo) { return !!(photos[photo] && photos[photo].ready) || !!(clay[part] && clay[part].count); };
-      var askedPhotos = {};
-      function wantPreviews() {
-        if (!$scope.s.previews) return;
-        var names = [], items = [], catalogParts = [], i;
-        var slots = $scope.visibleSlots();
-        for (i = 0; i < slots.length; i++) if (slots[i]) { names.push(slots[i].part); items.push(slots[i].id); }
-        if ($scope.s.phase === 'catalog') { var page = $scope.pageItems(); for (i = 0; i < page.length; i++) { names.push(page[i].part); catalogParts.push(page[i].part); } }
-        if ($scope.s.photos) {
-          // photographs: ask every time, the game side drops what is no longer on screen
-          var key = items.join(',') + '|' + catalogParts.join(',');
-          if (key !== askedPhotos.last) {
-            askedPhotos.last = key;
-            bngApi.engineLua('slrr_garage.requestPhotos(' + bngApi.serializeToLua(items) + ',' + bngApi.serializeToLua(catalogParts) + ')');
-          }
-          return;
-        }
-        var need = [];
-        for (i = 0; i < names.length; i++) if (meshes[names[i]] === undefined && !asked[names[i]]) { asked[names[i]] = true; need.push(names[i]); }
-        if (need.length) bngApi.engineLua('slrr_garage.requestPreviews(' + bngApi.serializeToLua(need) + ')');
-      }
-      $scope.$on('slrrGaragePhoto', function (ev, info) {
-        if (!info || !info.key) return;
-        if (info.none || !info.frames) { photos[info.key] = false; askedPhotos.last = null; return; }
-        loadPhoto(info, function () { $scope.$evalAsync(function () {}); });
+      // ---- shopping list
+      $scope.cart = { items: [], shipping: [], orders: [] };
+      $scope.ship = { id: null };
+      $scope.shipOption = function () {
+        var list = $scope.cart.shipping;
+        for (var i = 0; i < list.length; i++) if (list[i].id === $scope.ship.id) return list[i];
+        return list[0] || { total: 0, fee: 0 };
+      };
+      $scope.eta = function (seconds) {
+        seconds = Math.max(0, Math.round(seconds));
+        return seconds >= 60 ? Math.floor(seconds / 60) + ':' + ('0' + (seconds % 60)).slice(-2) + ' min' : seconds + ' s';
+      };
+      $scope.cartRemove = function (index) { $scope.lua('cartRemove(' + (index + 1) + ')'); };
+      $scope.checkout = function () { $scope.lua('checkout(' + JSON.stringify($scope.shipOption().id || '') + ')'); };
+      $scope.$on('slrrGarageCart', function (ev, data) {
+        $scope.$evalAsync(function () {
+          data = data || {};
+          ['items', 'shipping', 'orders'].forEach(function (k) { if (!Array.isArray(data[k])) data[k] = []; });
+          $scope.cart = data;
+          var known = false;
+          for (var i = 0; i < data.shipping.length; i++) if (data.shipping[i].id === $scope.ship.id) known = true;
+          if (!known) $scope.ship.id = data.shipping.length ? data.shipping[0].id : null;
+        });
       });
+      // parts on their way count down while the catalog is open
+      var cartTick = window.setInterval(function () {
+        if (($scope.s.phase === 'catalog' || $scope.s.phase === 'shop') && $scope.cart.orders.length) $scope.lua('requestCart()');
+      }, 1000);
+
+      // ---- previews: tell the game where the holes for the 3D parts are
+      $scope.hasModel = function (part) { return !!$scope.s.previews && !noModel[part]; };
+      function wantPreviews() {}     // the frame loop below notices changes by itself
       $scope.$on('slrrGaragePreview', function (ev, data) {
-        if (!data || !data.part) return;
-        if (data.none || !Array.isArray(data.v) || !Array.isArray(data.t) || !data.t.length) meshes[data.part] = false;
-        else { raster.store(data.part, data.v, data.t); meshes[data.part] = true; delete clay[data.part]; }
-        $scope.$evalAsync(function () {});
+        if (!data || !data.part || !data.none) return;
+        $scope.$evalAsync(function () { noModel[data.part] = true; });
       });
 
       var rootEl = $element[0];
-      var spinStart = Date.now(), lastDraw = 0, rafId = null, hoverTurn = {};
+      var rafId = null, sentSlots = '', mouseX = -1, mouseY = -1, holes = [];
+      var live = {};                 // preview id -> true while its model is in place behind the UI
+      var heldDrag = null;           // camera drag waiting for the previews to be put away
+      $scope.$on('slrrGaragePreviewLive', function (ev, data) {
+        live = {};
+        var ids = (data && data.ids) || [];
+        if (Array.isArray(ids)) for (var i = 0; i < ids.length; i++) live[ids[i]] = true;
+      });
+      // the camera is about to move: close the holes now, the models cannot keep up with it
+      function parkPreviews() {
+        var any = false;
+        for (var id in live) { any = true; break; }
+        live = {};
+        bngApi.engineLua('slrr_garage.parkPreviews()');
+        return any;
+      }
+      function holeAt(x, y) {
+        for (var i = 0; i < holes.length; i++) {
+          var r = holes[i].rect;
+          if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return holes[i];
+        }
+        return null;
+      }
       function frame() {
         rafId = window.requestAnimationFrame(frame);
-        var now = Date.now();
-        if (now - lastDraw < 12) return;       // a higher bar would drop every other update of a 30 fps UI
-        var dt = Math.min(0.1, (now - lastDraw) / 1000); lastDraw = now;
-        if (!$scope.s.previews || $scope.s.phase === 'idle' || $scope.s.phase === 'film') return;
-        var speed = ($scope.s.spinSpeed === undefined ? 1 : $scope.s.spinSpeed) * 0.75;
-        var canvases = rootEl.querySelectorAll('canvas.sg-prev');
-        var unfinished = [];                          // parts that still need pictures drawn
-        for (var i = 0; i < canvases.length; i++) {
-          var c = canvases[i], part = c.getAttribute('data-part');
-          var photo = photos[c.getAttribute('data-photo')];
-          var isPhoto = !!(photo && photo.ready), list, zoom, have;
-          if (isPhoto) { list = photo.frames; zoom = 1.3; have = list.length; }
-          else if (meshes[part]) {
-            var entry = clay[part] || (clay[part] = { list: new Array(FRAMES), count: 0, used: 0 });
-            entry.used = now;
-            list = entry.list; zoom = 1.12; have = entry.count;
-          } else { if (c.width) c.width = 0; continue; }
-          var turn, moving = true;                    // position on the turntable, in turns
-          if (c.getAttribute('data-spin') === 'always') {
-            turn = ((now - spinStart) / 1000) * speed / (2 * Math.PI) + i * 0.11;
-          } else {
-            // shelf parts rest at a three-quarter view and turn while the cursor is on them
-            turn = hoverTurn[part] === undefined ? 0.11 : hoverTurn[part];
-            moving = !!(c.parentElement && c.parentElement.matches(':hover'));
-            if (moving) turn += dt * speed * 1.5 / (2 * Math.PI);
-            hoverTurn[part] = turn;
+        var phase = $scope.s.phase, on = $scope.s.previews && (phase === 'garage' || phase === 'catalog' || phase === 'busy' || phase === 'shop');
+        var els = on ? rootEl.querySelectorAll('.sg-prev') : [];
+        var W = window.innerWidth || 1, H = window.innerHeight || 1;
+        var list = [], shelfRects = [], bookRects = [], key = '';
+        holes = [];
+        for (var i = 0; i < els.length; i++) {
+          var el = els[i], r = el.getBoundingClientRect();
+          if (r.width < 8 || r.height < 8) continue;
+          var inBook = el.getAttribute('data-spin') === 'always';
+          // on the shelf the catalog covers the parts, so they are put away while it is open
+          if (!inBook && phase === 'catalog') continue;
+          var id = el.getAttribute('data-id'), open = !!live[id];
+          if (el.parentElement && el.__open !== open) { el.__open = open; el.parentElement.classList.toggle('sg-open', open); }
+          if (open) {
+            holes.push({ el: el, rect: r });
+            (inBook ? bookRects : shelfRects).push(r);
           }
-          if (!isPhoto && have < FRAMES) {
-            unfinished.push({ part: part, entry: clay[part], at: ((Math.floor(turn * FRAMES) % FRAMES) + FRAMES) % FRAMES });
-            if (!have) { drawStep(part, unfinished[unfinished.length - 1].at); have = 1; }     // never leave a card empty
-          }
-          if (!have) { if (c.width) c.width = 0; continue; }
-          var stamp = list.length + ':' + have + ':' + turn;
-          if (!moving && c.__stamp === stamp && c.width === c.clientWidth) continue;
-          c.__stamp = stamp;
-          drawTurn(c, list, turn, zoom);
+          var spin = inBook || (mouseX >= r.left && mouseX <= r.right && mouseY >= r.top && mouseY <= r.bottom);
+          var entry = { id: id, part: el.getAttribute('data-part'), x: r.left / W, y: r.top / H, w: r.width / W, h: r.height / H, spin: spin, card: inBook ? 'book' : 'shelf' };
+          list.push(entry);
+          key += entry.id + ':' + Math.round(r.left) + ',' + Math.round(r.top) + ',' + Math.round(r.width) + ',' + Math.round(r.height) + (spin ? 's' : '') + ';';
         }
-        // spare time goes to the part that is furthest behind, starting from where it is showing now
-        var drawUntil = now + DRAW_BUDGET;
-        while (unfinished.length && Date.now() < drawUntil) {
-          var job = unfinished[0];
-          for (var u = 1; u < unfinished.length; u++) if (unfinished[u].entry.count < job.entry.count) job = unfinished[u];
-          if (job.entry.count >= FRAMES) break;
-          var step = job.at;
-          while (job.entry.list[step]) step = (step + 1) % FRAMES;
-          drawStep(job.part, step);
+        punch(rootEl.querySelector('.sg-shelf'), shelfRects);
+        punch(rootEl.querySelector('.sg-cat'), bookRects);
+        if (key !== sentSlots) {
+          sentSlots = key;
+          bngApi.engineLua('slrr_garage.setPreviewSlots(' + bngApi.serializeToLua(list) + ')');
         }
-        trimFrames(now);
+        // a held camera drag goes ahead once the closed holes have been on screen for a frame
+        if (heldDrag && --heldDrag.frames <= 0) {
+          var held = heldDrag; heldDrag = null;
+          if (held.dx || held.dy) bngApi.engineLua('slrr_garage.cameraDrag(' + held.dx + ',' + held.dy + ')');
+          if (held.zoom) bngApi.engineLua('slrr_garage.cameraZoom(' + held.zoom + ')');
+        }
       }
       rafId = window.requestAnimationFrame(frame);
+
+      // ---- the cloud of spray that hides the car while it changes colour
+      $scope.$on('slrrGaragePaintFx', function (ev, data) {
+        if (!data || !Array.isArray(data.color) || !data.rect) return;
+        var W = window.innerWidth, H = window.innerHeight, r = data.rect;
+        function ch(v) { return Math.round(255 * Math.max(0, Math.min(1, Math.pow(parseFloat(v) || 0, 1 / 2.2)))); }
+        var rgb = ch(data.color[0]) + ',' + ch(data.color[1]) + ',' + ch(data.color[2]);
+        var box = document.createElement('div');
+        box.className = 'sg-smoke';
+        var bw = r.w * W * 1.5, bh = r.h * H * 1.6;
+        box.style.left = ((r.x + r.w / 2) * W - bw / 2) + 'px';
+        box.style.top = ((r.y + r.h / 2) * H - bh / 2) + 'px';
+        box.style.width = bw + 'px';
+        box.style.height = bh + 'px';
+        for (var i = 0; i < 22; i++) {
+          var puff = document.createElement('div');
+          puff.className = 'sg-puff';
+          var size = bh * (0.55 + Math.random() * 0.5);
+          puff.style.width = size + 'px';
+          puff.style.height = size + 'px';
+          puff.style.left = (Math.random() * (bw - size * 0.6) - size * 0.2) + 'px';
+          puff.style.top = (Math.random() * (bh - size * 0.7) - size * 0.15) + 'px';
+          puff.style.background = 'radial-gradient(circle, rgba(' + rgb + ',1) 0%, rgba(' + rgb + ',.93) 38%, rgba(' + rgb + ',0) 70%)';
+          puff.style.animationDelay = (Math.random() * 0.28) + 's';
+          box.appendChild(puff);
+        }
+        rootEl.appendChild(box);
+        window.setTimeout(function () { if (box.parentNode) box.parentNode.removeChild(box); }, 2800);
+      });
 
       // ---- tuning
       $scope.shown = function (v) {
@@ -974,7 +911,11 @@ angular.module('beamng.apps')
       $scope.viewDown = function (ev) {
         ev.preventDefault();
         down = { button: ev.button, x: ev.clientX, y: ev.clientY, lastX: ev.clientX, lastY: ev.clientY, moved: 0 };
-        if (ev.button === 2) { $scope.drag.active = true; $scope.lua('setDragging(true)'); }
+        $scope.contents = null;
+        if (ev.button === 2) {
+          $scope.drag.active = true; $scope.lua('setDragging(true)');
+          if (parkPreviews()) heldDrag = { frames: 2, dx: 0, dy: 0, zoom: 0 };
+        }
       };
       // Lua picks the part under the cursor itself; it only needs to know whether the cursor is
       // on the 3D view or on one of our panels. Worked out from every mouse move, so it can
@@ -982,25 +923,32 @@ angular.module('beamng.apps')
       var lastOverView = null;
       function trackOver(ev) {
         var t = ev.target;
-        var overView = !!(t && t.classList && t.classList.contains('sg-view'));
+        var overView = !!(t && t.classList && t.classList.contains('sg-view')) && !holeAt(ev.clientX, ev.clientY);
         if (overView !== lastOverView) {
           lastOverView = overView;
           bngApi.engineLua('slrr_garage.setMouseOverUi(' + (overView ? 'false' : 'true') + ')');
         }
       }
       function onMove(ev) {
+        mouseX = ev.clientX; mouseY = ev.clientY;
         if ($scope.s.phase === 'garage') trackOver(ev); else lastOverView = null;
         if (!down) return;
         var dx = ev.clientX - down.lastX, dy = ev.clientY - down.lastY;
         down.lastX = ev.clientX; down.lastY = ev.clientY;
         down.moved += Math.abs(dx) + Math.abs(dy);
-        if (down.button === 2 && (dx || dy)) bngApi.engineLua('slrr_garage.cameraDrag(' + dx + ',' + dy + ')');
+        if (down.button === 2 && (dx || dy)) {
+          if (heldDrag) { heldDrag.dx += dx; heldDrag.dy += dy; }
+          else bngApi.engineLua('slrr_garage.cameraDrag(' + dx + ',' + dy + ')');
+        }
       }
       function onUp() {
         if (!down) return;
         var d = down; down = null;
         if (d.button === 2) { $scope.$evalAsync(function () { $scope.drag.active = false; }); $scope.lua('setDragging(false)'); return; }
         if (d.moved > 6 || $scope.s.phase !== 'garage') return;
+        // a click that lands in the hole of a shelf part is a click on that part
+        var hole = holeAt(d.x, d.y);
+        if (hole) { if (d.button === 0 && hole.el.parentElement) hole.el.parentElement.click(); return; }
         if (d.button === 0) $scope.lua('click()');
         else if (d.button === 1) $scope.lua('focus()');
       }
@@ -1009,7 +957,10 @@ angular.module('beamng.apps')
         var t = ev.target;
         if (!t || !t.classList || !t.classList.contains('sg-view')) return;
         ev.preventDefault();
-        bngApi.engineLua('slrr_garage.cameraZoom(' + (ev.deltaY < 0 ? 1 : -1) + ')');
+        var steps = ev.deltaY < 0 ? 1 : -1;
+        if (heldDrag) heldDrag.zoom += steps;
+        else if (parkPreviews()) heldDrag = { frames: 2, dx: 0, dy: 0, zoom: steps };
+        else bngApi.engineLua('slrr_garage.cameraZoom(' + steps + ')');
       }
       window.addEventListener('mousemove', onMove);
       window.addEventListener('mouseup', onUp);
@@ -1026,7 +977,8 @@ angular.module('beamng.apps')
           if ($scope.line > $scope.lineCount() - 1) $scope.line = $scope.lineCount() - 1;
           if (data.phase !== 'garage') $scope.hover = {};
           if (data.phase === 'garage' && wasPhase === 'film') { $scope.line = 0; $scope.panel = null; }
-          if (data.phase === 'idle' || data.phase === 'leaving') { $scope.panel = null; asked = {}; askedPhotos = {}; photos = {}; }
+          if (data.phase === 'idle' || data.phase === 'leaving') { $scope.panel = null; $scope.contents = null; }
+          if (data.phase === 'idle') noModel = {};      // another car, another livery: ask again next time
           if (data.mode !== 'tune' && $scope.panel === 'tune') $scope.panel = null;
           if (data.mode !== 'tune') $scope.pt = { vars: [] };
           wantPreviews();
@@ -1072,6 +1024,7 @@ angular.module('beamng.apps')
         window.removeEventListener('mouseup', onUp);
         window.removeEventListener('wheel', onWheel);
         if (rafId) window.cancelAnimationFrame(rafId);
+        window.clearInterval(cartTick);
         if (rootEl.parentNode) rootEl.parentNode.removeChild(rootEl);
         if (placeholder.parentNode) placeholder.parentNode.removeChild(placeholder);
       });

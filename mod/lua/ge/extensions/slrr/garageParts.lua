@@ -14,6 +14,9 @@ local jbeamLoader = require('jbeam/loader')
 local catalogDef = require('slrr/garageCatalog')
 local settings = require('slrr/garageSettings')
 local damage = require('slrr/garageDamage')
+local shapes = require('slrr/garageShapes')
+local preview = require('slrr/garagePreview')
+local picker = require('slrr/garagePicker')
 
 local SAVE_FILE = '/settings/slrr_garage/save.json'
 
@@ -25,8 +28,8 @@ local loadedMeshes = {}  -- part path -> { meshName, ... }  (everything the spaw
 local loadedParts = {}   -- part path -> true for every part in the loaded tree
 local loadedTree         -- the parts tree the game really spawned
 local entryTree          -- the desired tree as it was when the car rolled in
-local pendingExtras      -- hidden extra meshes to add to the next spawn of our vehicle (see collectExtras)
-local injectedPaths = {} -- part path -> true for parts that are loaded only as hidden extra meshes
+local virtualParts = {}  -- part path -> true for parts shown as stand-in models (see loadStandins)
+local loadStandins        -- defined further down
 local headlessLoad = false
 local entrySnapshot       -- shelf and money as they were on the way in, for undoing an interrupted visit
 local meshAlpha = {}     -- mesh name -> alpha we last set
@@ -37,7 +40,9 @@ local desiredVars, entryVars       -- tuning variables the player wants / came i
 local desiredPaints, entryPaints   -- paint slots the player wants / came in with
 local visitNet = 0                 -- money spent minus money earned during this visit (career refunds on undo)
 
-local save = { inventory = {}, nextId = 1 }
+local save = { inventory = {}, nextId = 1, orders = {} }
+local cart = {}                    -- the shopping list: { slotPath, part } until the order is confirmed
+local freightCache = {}
 local partInfoCache = {}
 local slotInfoCache = {}
 
@@ -49,6 +54,7 @@ local function loadSave()
   if type(data) == 'table' then
     save.inventory = type(data.inventory) == 'table' and data.inventory or {}
     save.nextId = tonumber(data.nextId) or 1
+    save.orders = type(data.orders) == 'table' and data.orders or {}
   end
 end
 
@@ -81,8 +87,12 @@ function M.getMoney()
 end
 
 -- catalog price of something worth `value` in the game's own part data
+local counterDiscount = 0    -- share taken off prices while buying over the counter in a shop
+
+function M.setCounterDiscount(fraction) counterDiscount = clamp(tonumber(fraction) or 0, 0, 0.9) end
+
 local function priced(value)
-  return math.floor((value or 0) * settings.get('priceMultiplier') + 0.5)
+  return math.floor((value or 0) * settings.get('priceMultiplier') * (1 - counterDiscount) + 0.5)
 end
 
 local function spend(amount, label)
@@ -170,7 +180,8 @@ local function slotInfo(node, parentNode)
   if parentNode and parentNode.chosenPartName and parentNode.chosenPartName ~= '' then
     local def = partInfo(parentNode.chosenPartName).slots[node.id]
     if def then
-      res.description = def.description or res.description
+      -- some parts describe a slot with a table (translations); the id reads fine then
+      if type(def.description) == 'string' and def.description ~= '' then res.description = def.description end
       res.coreSlot = def.coreSlot
     end
   end
@@ -236,7 +247,11 @@ end
 local function setAlpha(veh, mesh, alpha)
   if meshAlpha[mesh] == alpha then return end
   meshAlpha[mesh] = alpha
-  veh:setMeshAlpha(alpha, mesh, false)
+  if mesh:byte(1) == 64 then          -- "@...": a stand-in model, not a mesh of the vehicle
+    preview.setStandinVisible(mesh, alpha > 0.01)
+  else
+    veh:setMeshAlpha(alpha, mesh, false)
+  end
 end
 
 -- make the car look like the desired tree
@@ -286,7 +301,7 @@ function M.updateHighlight(dt)
   local alpha = 0.78 + 0.14 * math.sin(highlightPhase)
   for _, p in ipairs(subtreePartPaths(node)) do
     for _, mesh in ipairs(loadedMeshes[p] or {}) do
-      if meshAlpha[mesh] and meshAlpha[mesh] > 0.01 then
+      if meshAlpha[mesh] and meshAlpha[mesh] > 0.01 and mesh:byte(1) ~= 64 then
         meshAlpha[mesh] = alpha
         veh:setMeshAlpha(alpha, mesh, false)
       end
@@ -317,7 +332,6 @@ local function readLoaded()
   walk(loadedTree, function(node)
     if isChosen(node) then loadedParts[(node.path or '/') .. node.chosenPartName] = true end
   end)
-  for partPath in pairs(injectedPaths) do loadedParts[partPath] = true end
   local rn = vd.vdata.refNodes and vd.vdata.refNodes[0]
   chassisPath = rn and rn.partPath or nil
 end
@@ -334,6 +348,9 @@ function M.attach(id, keepDesired)
     keepDesired = false
   end
   model = newModel
+  -- whatever was standing in for a part is either really on the car now or gone
+  virtualParts = {}
+  preview.clearStandins()
   readLoaded()
   if not keepDesired or not desired then
     desired = deepcopy(vd.config.partsTree or {})
@@ -369,12 +386,22 @@ function M.detach()
   local veh = vehId and getObjectByID(vehId)
   if veh then veh:setMeshAlpha(1, '', false) end
   vehId, desired, highlightPath, loadedTree, entryTree = nil, nil, nil, nil, nil
-  pendingExtras, injectedPaths, entrySnapshot = nil, {}, nil
+  virtualParts, entrySnapshot = {}, nil
+  preview.clearStandins()
   desiredVars, entryVars, desiredPaints, entryPaints = nil, nil, nil, nil
   slotIndex, partIndex, loadedMeshes, loadedParts, meshAlpha = {}, {}, {}, {}, {}
 end
 
 function M.getVehicleId() return vehId end
+
+-- the livery the car wears (nil for plain paint)
+function M.getSkin()
+  local vd = vehData()
+  for _, fb in pairs(vd and vd.vdata.flexbodies or {}) do
+    if type(fb.globalSkin) == 'string' and fb.globalSkin ~= '' then return fb.globalSkin end
+  end
+  return nil
+end
 function M.getModel() return model end
 
 ----------------------------------------------------------------------------------------------
@@ -386,10 +413,10 @@ function M.describe(partPath)
   local info = partInfo(node.chosenPartName)
   local sInfo = slotInfo(node, parentOf[node])
   local count = countParts(node)
-  local removable = parentOf[node] ~= nil and partPath ~= chassisPath and not sInfo.coreSlot
+  -- everything comes off except the shell the rest hangs on
+  local removable = parentOf[node] ~= nil and partPath ~= chassisPath
   local reason
-  if not parentOf[node] or partPath == chassisPath then reason = "The chassis stays on the lift."
-  elseif sInfo.coreSlot then reason = "This part can only be swapped, not removed." end
+  if not removable then reason = "The body shell stays where it is." end
   local value = priced(subtreeValue(node))
   local damaged = damage.countPart(node.path) > 0
   return {
@@ -543,6 +570,7 @@ function M.installItem(itemId)
   slot.decisionMethod = 'user'
   table.remove(inventory(), idx)
   reindex()
+  if M.needsLoad() then loadStandins() end
   walk(slot, function(node, parent) slotInfo(node, parent or parentOf[node]) end)
   applyVisibility()
   writeSave()
@@ -559,9 +587,11 @@ end
 
 -- true when the spawned vehicle differs from the desired tree in any way
 function M.isDirty()
-  if M.needsLoad() then return true end
+  for partPath in pairs(partIndex) do
+    if not loadedParts[partPath] or virtualParts[partPath] then return true end
+  end
   for partPath in pairs(loadedParts) do
-    if not partIndex[partPath] then return true end
+    if not partIndex[partPath] and not virtualParts[partPath] then return true end
   end
   return M.varsDirty()
 end
@@ -606,99 +636,78 @@ local function keepLoadedParts(dNode, lNode)
   end
 end
 
-local function findSlot(tree, slotPath)
-  local found
-  walk(tree, function(node) if node.path == slotPath then found = node end end)
-  return found
-end
-
--- Also park shelf parts in their (empty) slots, hidden, so they can be fitted with no loading.
--- Returns the number of shelf parts newly staged this way.
-local function stageShelfParts(tree)
-  local staged = 0
-  for _, item in ipairs(inventory()) do
-    local slot = findSlot(tree, item.slotPath)
-    if slot and not isChosen(slot) and fits(slot, item.part) then
-      local sub = deepcopy(item.tree)
-      rebase(sub, slot.path)
-      slot.chosenPartName, slot.partPath, slot.children, slot.decisionMethod = sub.chosenPartName, sub.partPath, sub.children, 'user'
-      if not loadedParts[sub.partPath] then staged = staged + 1 end
-    end
-  end
-  return staged
-end
-
--- Shelf parts whose slot is taken by another part cannot be staged in the real tree - a slot
--- holds one part. For those, load the car's jbeam once more off-screen with the shelf part
--- swapped in, lift the mesh definitions of that part out of the result, and hand them to the
--- real spawn as extra, hidden flexmeshes (bound to nodes the real car has). The part can then
--- be swapped in by flipping visibility, with no loading at all.
-local function collectExtras(tree)
+-- Parts fitted in the garage that the spawned car was not built with are shown as models placed
+-- on the car, so nothing has to be loaded while you work. One off-screen build of the car's
+-- jbeam (no vehicle is spawned) tells where the game would put each of their meshes, and which
+-- sub-parts a freshly bought part comes with.
+loadStandins = function()
   local vd = vehData()
-  if not vd then return nil end
-  local wanted, taken = {}, {}
-  for _, item in ipairs(inventory()) do
-    local slot = findSlot(tree, item.slotPath)
-    if slot and isChosen(slot) and slot.chosenPartName ~= item.part and fits(slot, item.part) and not taken[item.slotPath] then
-      -- skip slots nested inside another slot we are already swapping
-      local nested = false
-      for other in pairs(taken) do
-        if item.slotPath:sub(1, #other) == other or other:sub(1, #item.slotPath) == item.slotPath then nested = true end
-      end
-      if not nested then
-        taken[item.slotPath] = true
-        wanted[#wanted + 1] = item
-      end
-    end
-  end
-  if #wanted == 0 then return nil end
-
+  if not vd or not desired then return false end
   local cfg = deepcopy(vd.config)
-  cfg.partsTree = deepcopy(tree)
-  for _, item in ipairs(wanted) do
-    local slot = findSlot(cfg.partsTree, item.slotPath)
-    local sub = deepcopy(item.tree)
-    rebase(sub, slot.path)
-    slot.chosenPartName, slot.partPath, slot.children, slot.decisionMethod = sub.chosenPartName, sub.partPath, sub.children, 'user'
-  end
-
+  cfg.partsTree = deepcopy(desired)
   local dirs = vd.directoriesLoaded or { vd.vehicleDirectory, '/vehicles/common/' }
   headlessLoad = true
   local ok, bundle = pcall(jbeamLoader.loadJbeam, -1, nil, dirs, cfg)
   headlessLoad = false
   if not ok or type(bundle) ~= 'table' or not bundle.vdata then
-    log('W', 'slrr_garage', 'could not pre-load shelf parts: ' .. tostring(bundle))
-    return nil
+    log('W', 'slrr_garage', 'could not work out where the new parts go: ' .. tostring(bundle))
+    return false
   end
 
-  local extras = { flex = {}, paths = {}, keys = {} }
-  local nodes = bundle.vdata.nodes or {}
-  for _, item in ipairs(wanted) do
-    local prefix = item.slotPath
-    for _, fb in pairs(bundle.vdata.flexbodies or {}) do
-      if type(fb.partPath) == 'string' and fb.partPath:sub(1, #prefix) == prefix and fb.mesh and fb._group_nodes then
-        local names = {}
-        for _, cid in ipairs(fb._group_nodes) do
-          local node = nodes[cid]
-          if node and node.name then names[#names + 1] = node.name end
-        end
-        local entry = deepcopy(fb)
-        entry._group_nodes, entry.fid, entry.meshLoaded, entry.cid = nil, nil, nil, nil
-        extras.flex[#extras.flex + 1] = { entry = entry, nodeNames = names, slotPath = prefix }
-      end
+  -- a part that has never been on a car only knows itself; take its sub-parts from the build
+  local resolved = {}
+  walk(bundle.config and bundle.config.partsTree or {}, function(node) if node.path then resolved[node.path] = node end end)
+  local grew = false
+  walk(desired, function(node)
+    local built = resolved[node.path]
+    if isChosen(node) and not node.children and built and built.chosenPartName == node.chosenPartName and built.children then
+      node.children = deepcopy(built.children)
+      grew = true
     end
-    local resolved = findSlot(bundle.config.partsTree or {}, item.slotPath)
-    if resolved and resolved.chosenPartName == item.part then
-      for _, partPath in ipairs(subtreePartPaths(resolved)) do extras.paths[partPath] = true end
-      if not item.tree.children and resolved.children then
-        item.tree = deepcopy(resolved)
-        item.count = countParts(resolved)
+  end)
+  if grew then reindex() end
+
+  local rowsOf = {}
+  for _, fb in pairs(bundle.vdata.flexbodies or {}) do
+    local path = fb.partPath
+    if type(path) == 'string' and partIndex[path] and not loadedParts[path] and type(fb.mesh) == 'string' then
+      local rows = rowsOf[path]
+      if not rows then rows = {}; rowsOf[path] = rows end
+      -- wheels and the like are written relative to their hub; the hub's place comes on top
+      -- (mirrored for the left side), which the game only does when it really builds the car
+      local pos, off = fb.pos or {}, fb.nodeOffset
+      if type(off) == 'table' then
+        local px = tonumber(pos.x) or 0
+        pos = { x = px + (px < 0 and -1 or 1) * (tonumber(off.x) or 0), y = (tonumber(pos.y) or 0) + (tonumber(off.y) or 0), z = (tonumber(pos.z) or 0) + (tonumber(off.z) or 0) }
       end
+      rows[#rows + 1] = { mesh = fb.originalMesh or fb.mesh, pos = pos, rot = fb.rot, scale = fb.scale, origin = fb.partOrigin or partIndex[path].chosenPartName }
     end
-    extras.keys[#extras.keys + 1] = item.slotPath .. item.part
   end
-  table.sort(extras.keys)
-  return extras
+  shapes.setup(M.resolvePart, M.getSkin())
+  for path in pairs(partIndex) do
+    if not loadedParts[path] then
+      loadedParts[path] = true
+      virtualParts[path] = true
+      local rows = rowsOf[path]
+      if rows then
+        -- the same part sits elsewhere on a car with other suspension or body parts
+        local where = {}
+        for _, row in ipairs(rows) do
+          local pos = row.pos or {}
+          where[#where + 1] = string.format('%s:%.3f,%.3f,%.3f', row.mesh, tonumber(pos.x) or 0, tonumber(pos.y) or 0, tonumber(pos.z) or 0)
+        end
+        local shape = shapes.get(model, 'on' .. path .. '|' .. table.concat(where, ';'), rows, true)
+        if shape then
+          local key = '@' .. path
+          preview.addStandin(key, shape.path)
+          if shape.verts then picker.addStatic(key, path, shape.verts) end
+          loadedMeshes[path] = { key }
+          meshAlpha[key] = 1
+        end
+      end
+    end
+  end
+  return true
 end
 
 -- The game's electronic driver aids (ABS, traction and stability control) assume four wheels
@@ -735,78 +744,18 @@ function M.onJbeamLoadingPhase2(objID, vehicle)
   if headlessLoad then return end
   local okAids, errAids = pcall(dropDriverAidsWithoutWheels, vehicle)
   if not okAids then log('W', 'slrr_garage', 'driver-aid check failed: ' .. tostring(errAids)) end
-  if not pendingExtras or objID ~= vehId then return end
-  local extras = pendingExtras
-  pendingExtras = nil
-  injectedPaths = {}
-  local ok, err = pcall(function()
-    local byName, bySlot = {}, {}
-    for _, node in pairs(vehicle.nodes or {}) do
-      if node.name and node.cid then byName[node.name] = node.cid end
-    end
-    local chassisNodes = {}
-    local refPart = vehicle.refNodes and vehicle.refNodes[0] and vehicle.refNodes[0].partPath
-    for _, node in pairs(vehicle.nodes or {}) do
-      if node.cid and node.partPath == refPart and #chassisNodes < 160 then chassisNodes[#chassisNodes + 1] = node.cid end
-    end
-    local nextKey = 0
-    for key in pairs(vehicle.flexbodies or {}) do
-      if type(key) == 'number' and key >= nextKey then nextKey = key + 1 end
-    end
-    vehicle.flexbodies = vehicle.flexbodies or {}
-    local added = 0
-    for _, extra in ipairs(extras.flex) do
-      -- bind the mesh to nodes this car really has: its own where they exist by name,
-      -- otherwise those of the part sitting in its slot, otherwise the chassis
-      local group = {}
-      for _, name in ipairs(extra.nodeNames) do
-        if byName[name] then group[#group + 1] = byName[name] end
-      end
-      if #group < 4 then
-        local sub = bySlot[extra.slotPath]
-        if not sub then
-          sub = {}
-          for _, node in pairs(vehicle.nodes or {}) do
-            if node.cid and type(node.partPath) == 'string' and node.partPath:sub(1, #extra.slotPath) == extra.slotPath and #sub < 160 then
-              sub[#sub + 1] = node.cid
-            end
-          end
-          bySlot[extra.slotPath] = sub
-        end
-        group = #sub >= 4 and sub or chassisNodes
-      end
-      if #group >= 3 then
-        local entry = deepcopy(extra.entry)
-        entry._group_nodes = group
-        entry.cid = nextKey
-        entry.slrrExtra = true
-        vehicle.flexbodies[nextKey] = entry
-        nextKey = nextKey + 1
-        added = added + 1
-      end
-    end
-    if added > 0 then injectedPaths = extras.paths end
-    log('I', 'slrr_garage', string.format('pre-loaded %d hidden meshes for %d shelf parts', added, #extras.keys))
-  end)
-  if not ok then log('E', 'slrr_garage', 'adding hidden shelf meshes failed: ' .. tostring(err)) end
 end
 
 -- Vehicle config for a respawn.
 --   final = true : exactly what the player built (used when driving out)
---   final = false: the same car to look at, plus hidden extras (removed and shelf parts)
+--   final = false: the same car to look at; parts taken off stay loaded, hidden, so they
+--                  can go straight back on
 function M.buildConfig(final)
   local vd = vehData()
   if not vd or not desired then return nil end
   local config = deepcopy(vd.config)
   local tree = deepcopy(desired)
-  pendingExtras = nil
-  if not final then
-    keepLoadedParts(tree, loadedTree)
-    stageShelfParts(tree)
-    pendingExtras = collectExtras(tree)
-  end
-  -- the game caches built vehicles per config; ours differ by the hidden extras, so start clean
-  jbeamLoader.onFileChanged()
+  if not final then keepLoadedParts(tree, loadedTree) end
   config.partsTree = tree
   if desiredVars then config.vars = deepcopy(desiredVars) end
   if desiredPaints and #desiredPaints > 0 then config.paints = deepcopy(desiredPaints) end
@@ -814,26 +763,6 @@ function M.buildConfig(final)
 end
 
 function M.isHeadlessLoad() return headlessLoad end
-
--- forget cached vehicle builds that contain our hidden extras
-function M.clearLoaderCache()
-  jbeamLoader.onFileChanged()
-end
-
--- how many shelf parts could be pre-loaded right now to make fitting them instant
-function M.countStageable()
-  if not desired then return 0 end
-  local tree = deepcopy(desired)
-  keepLoadedParts(tree, loadedTree)
-  local n = stageShelfParts(tree)
-  for _, item in ipairs(inventory()) do
-    local slot = findSlot(tree, item.slotPath)
-    if slot and isChosen(slot) and slot.chosenPartName ~= item.part and fits(slot, item.part) and not loadedParts[item.slotPath .. item.part] then
-      n = n + 1
-    end
-  end
-  return n
-end
 
 -- What is the car leaving without? Nothing stops you driving out stripped - this is only so
 -- the garage can say so on the way out.
@@ -1176,11 +1105,11 @@ function M.buildCatalog()
   return bySub
 end
 
-function M.buy(slotPath, partName)
+-- a brand new part for a slot of this car, as a shelf item (not paid for, not on the shelf yet)
+local function newPart(slotPath, partName)
   local slot = slotIndex[slotPath]
-  if not slot or not fits(slot, partName) then return false, "That part does not fit this car." end
+  if not slot or not fits(slot, partName) then return nil end
   local info = partInfo(partName)
-  if not spend(priced(info.value), 'Bought ' .. info.name) then return false, "Not enough money." end
   local sInfo = slotInfo(slot, parentOf[slot])
   local node = {
     id = slot.id, path = slot.path, chosenPartName = partName, partPath = slot.path .. partName,
@@ -1189,15 +1118,168 @@ function M.buy(slotPath, partName)
   local item = newItem(node, sInfo.description)
   item.value = info.value
   item.new = true
-  table.insert(inventory(), item)
+  return item
+end
+
+----------------------------------------------------------------------------------------------
+-- ordering: shopping list, delivery, parts on their way
+
+-- How heavy and how bulky is a part? Read from its own jbeam nodes; parts without any (wheels,
+-- electronics) get a sensible guess. Returns weight in kg and longest dimension in metres.
+local function freight(partName)
+  local hit = freightCache[partName]
+  if hit then return hit.weight, hit.size end
+  local part = getPart(partName)
+  local weight, count = 0, 0
+  local lo, hi = vec3(math.huge, math.huge, math.huge), vec3(-math.huge, -math.huge, -math.huge)
+  local nodeWeight = 25
+  for _, row in ipairs(part and type(part.nodes) == 'table' and part.nodes or {}) do
+    if type(row) == 'table' then
+      if tonumber(row.nodeWeight) then nodeWeight = tonumber(row.nodeWeight) end
+      local x, y, z = tonumber(row[2]), tonumber(row[3]), tonumber(row[4])
+      if type(row[1]) == 'string' and x and y and z then
+        local w = type(row[5]) == 'table' and tonumber(row[5].nodeWeight) or nodeWeight
+        weight, count = weight + w, count + 1
+        local p = vec3(x, y, z)
+        lo:setMin(p); hi:setMax(p)
+      end
+    end
+  end
+  local size = count > 1 and (hi - lo):length() or 0
+  if count == 0 then
+    local n = partName:lower()
+    if n:find('tire') or n:find('tyre') then weight, size = 11, 0.68
+    elseif n:find('wheel') or n:find('rim') then weight, size = 9, 0.5
+    elseif n:find('engine') then weight, size = 120, 0.8
+    else weight, size = 2, 0.3 end
+  end
+  size = math.max(size, 0.2)
+  freightCache[partName] = { weight = weight, size = size }
+  return weight, size
+end
+
+-- ways to get an order: collect (only in a shop, you carry it out yourself), standard, express
+local function shippingOptions(inShop)
+  if inShop then return { { id = 'collect', title = 'Take it with you', factor = 0, seconds = 0 } } end
+  local standard = settings.get('deliveryMinutes') * 60
+  return {
+    { id = 'standard', title = 'Standard delivery', factor = 1, seconds = standard },
+    { id = 'express', title = 'Express delivery', factor = settings.get('expressMultiplier'), seconds = standard * 0.1 },
+  }
+end
+
+-- what it costs to deliver one part by standard delivery: a base, by the kilo, and for bulk
+local function deliveryFee(partName)
+  local weight, size = freight(partName)
+  return (6 + weight * 0.9 + size * size * 14) * settings.get('deliveryFactor')
+end
+
+function M.cartAdd(slotPath, partName)
+  local slot = slotIndex[slotPath]
+  if not slot or not fits(slot, partName) then return false, "That part does not fit this car." end
+  cart[#cart + 1] = { slotPath = slotPath, part = partName }
+  return true
+end
+
+function M.cartRemove(index)
+  if cart[index] then table.remove(cart, index) end
+end
+
+function M.cartClear() cart = {} end
+
+-- the shopping list with prices, for the UI
+function M.cartSummary(inShop)
+  local out = { items = {}, subtotal = 0, shipping = {}, orders = {} }
+  local base = 0
+  for i, entry in ipairs(cart) do
+    local info = partInfo(entry.part)
+    local weight, size = freight(entry.part)
+    local fee = deliveryFee(entry.part)
+    local price = priced(info.value)
+    out.items[i] = { name = info.name, part = entry.part, price = price, weight = math.floor(weight * 10 + 0.5) / 10, size = math.floor(size * 100 + 0.5) / 100, fee = math.floor(fee + 0.5) }
+    out.subtotal = out.subtotal + price
+    base = base + fee
+  end
+  for _, option in ipairs(shippingOptions(inShop)) do
+    local fee = math.floor(base * option.factor + 0.5)
+    out.shipping[#out.shipping + 1] = { id = option.id, title = option.title, fee = fee, seconds = math.floor(option.seconds + 0.5), total = out.subtotal + fee }
+  end
+  local now = os.time()
+  for _, order in ipairs(save.orders) do
+    if order.model == model then
+      out.orders[#out.orders + 1] = { name = order.item.name, seconds = math.max(0, (order.due or 0) - now) }
+    end
+  end
+  out.money = M.getMoney()
+  return out
+end
+
+-- pay for the shopping list and send it on its way. Returns ok, message.
+function M.checkout(shippingId, inShop)
+  if #cart == 0 then return false, "The shopping list is empty." end
+  local option
+  for _, o in ipairs(shippingOptions(inShop)) do
+    if o.id == shippingId then option = o end
+  end
+  option = option or shippingOptions(inShop)[1]
+  local subtotal, base, items = 0, 0, {}
+  for _, entry in ipairs(cart) do
+    local item = newPart(entry.slotPath, entry.part)
+    if item then
+      items[#items + 1] = item
+      subtotal = subtotal + priced(item.value)
+      base = base + deliveryFee(entry.part)
+    end
+  end
+  local total = subtotal + math.floor(base * option.factor + 0.5)
+  if not spend(total, #items == 1 and ('Bought ' .. items[1].name) or ('Bought ' .. #items .. ' parts')) then return false, "Not enough money." end
+  local due = os.time() + math.floor(option.seconds + 0.5)
+  for _, item in ipairs(items) do
+    if option.seconds <= 0 then
+      table.insert(inventory(), item)
+    else
+      save.orders[#save.orders + 1] = { item = item, due = due, model = model }
+    end
+  end
+  cart = {}
   writeSave()
-  return true, item
+  if option.seconds <= 0 then return true, #items == 1 and (items[1].name .. ' is on your shelf at the garage.') or (#items .. ' parts are on your shelf at the garage.') end
+  local minutes = option.seconds / 60
+  return true, string.format('Ordered. Delivery to the garage in %s.', minutes >= 1 and string.format('%.0f min', minutes) or string.format('%.0f s', option.seconds))
+end
+
+-- put orders that have arrived on the shelf; returns how many
+function M.collectDeliveries()
+  local now, arrived, keep = os.time(), 0, {}
+  for _, order in ipairs(save.orders) do
+    if order.model == model and (order.due or 0) <= now then
+      table.insert(inventory(), order.item)
+      arrived = arrived + 1
+    else
+      keep[#keep + 1] = order
+    end
+  end
+  if arrived > 0 then
+    save.orders = keep
+    writeSave()
+  end
+  return arrived
 end
 
 ----------------------------------------------------------------------------------------------
 -- state for the UI
 
 function M.getInventory() return inventory() end
+
+-- names of everything bolted to a shelf part (what "+3 parts" stands for)
+function M.itemContents(item)
+  local names = {}
+  walk(item.tree, function(node, parent)
+    if parent and isChosen(node) then names[#names + 1] = partInfo(node.chosenPartName).name end
+  end)
+  table.sort(names)
+  return names
+end
 function M.itemPrice(item) return itemPrice(item) end
 function M.itemDamaged(item) return damage.count(item.damage) > 0 end
 function M.itemRepairCost(item) return damage.count(item.damage) > 0 and repairPriceOf(item.value) or 0 end

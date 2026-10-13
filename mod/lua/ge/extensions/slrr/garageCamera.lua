@@ -1,8 +1,9 @@
 -- SLRR Garage: the camera.
--- One orbit rig does everything, so nothing ever cuts: during the drive-in it trails the car
--- through the door, and once the car has stopped it swings round in a single move to the
--- garage's working view - an orbit you turn with the right mouse button and zoom with the
--- wheel, with the soft follow of Street Legal Racing: Redline's garage camera.
+-- One orbit rig does everything, so nothing ever cuts: during the drive-in it waits inside
+-- the garage and watches the car come in nose first, and once the car has stopped it swings
+-- round in a single short move to the garage's working view - an orbit you turn with the
+-- right mouse button and zoom with the wheel, with the soft follow of Street Legal Racing:
+-- Redline's garage camera. On the way out it stays behind and watches the car leave.
 
 local M = {}
 
@@ -11,11 +12,11 @@ local sites = require('slrr/garageSites')
 local min, max, sin, cos, rad, exp = math.min, math.max, math.sin, math.cos, math.rad, math.exp
 
 local ORBIT_FOV = 60
-local FILM_FOV = 46
+local FILM_FOV = 50
 local PITCH_MIN, PITCH_MAX = rad(-4), rad(62)
 local PITCH_MIN_LIFT = rad(-24)     -- with the car on the lift you may look up at it from below
 local WALL_MARGIN = 0.45
-local SETTLE_TIME = 2.6             -- seconds for the swing from the film view to the working view
+local SETTLE_TIME = 1.7             -- seconds for the swing from the film view to the working view
 
 local active = false
 local site
@@ -32,7 +33,9 @@ local wallTarget = 1
 local filming = false
 local settleT                   -- running time of the swing into the working view (nil = done)
 local lift = false
+local flip = 0                  -- 180 degrees when the car is parked facing the front door
 local rate = 9                  -- how eagerly the smoothed values chase their targets
+local lastDist = 5              -- how far from its target the camera really was last frame
 
 local function smooth(current, target, r, dt)
   return current + (target - current) * (1 - exp(-r * dt))
@@ -97,12 +100,18 @@ function M.update(dt)
   local offset = orbitOffset(sYaw, sPitch, sDist)
   local k = roomLimit(sFocus, offset)
   offset = offset * (1 + (k - 1) * wallWeight)
+  lastDist = offset:length()
   local pos = sFocus + offset
-  return pos, quatFromDir((sFocus - pos):normalized(), vec3(0, 0, 1)), sFov, sFocus
+  local rot = quatFromDir((sFocus - pos):normalized(), vec3(0, 0, 1))
+  -- whoever draws things that must sit still on the screen needs this frame's camera, not the last
+  if M.onPose then M.onPose(pos, rot, sFov, dt) end
+  return pos, rot, sFov, sFocus
 end
 
-function M.setup(_site, centerFn, length)
+-- facingOut: the car came in through the side door and is parked nose to the front door
+function M.setup(_site, centerFn, length, facingOut)
   site = _site
+  flip = facingOut and math.pi or 0
   getCarCenter = centerFn
   carLength = max(2.5, length or 4.5)
   distMin = max(2.0, carLength * 0.5)
@@ -110,17 +119,30 @@ function M.setup(_site, centerFn, length)
 end
 
 local function workingView()
-  return rad(-145), rad(14), clamp(carLength * 1.25, distMin, distMax)
+  return rad(-145) + flip, rad(14), clamp(carLength * 1.25, distMin, distMax)
 end
 
--- the drive-in: sit behind the car, a little above, and trail it through the door
+-- the drive-in: look at the front of the car from inside. The camera's
+-- arm is far longer than the garage, so the walls hold the camera at the back of the room
+-- and it waits there, sinking a little, while the car comes towards it.
 function M.startFilm()
   active, filming, settleT, lift = true, true, nil, false
   focus, sFocus = nil, nil
-  yaw, pitch, dist, fov = rad(0), rad(9), carLength * 1.45, FILM_FOV
-  sYaw, sPitch, sDist, sFov = yaw + rad(16), pitch + rad(5), dist * 1.25, FILM_FOV + 6
-  wallWeight, wallTarget = 0, 0
+  -- the same side of the car as the working view, so the swing that follows is a short one
+  yaw, pitch, dist, fov = rad(-194) + flip, rad(5), 30, FILM_FOV
+  sYaw, sPitch, sDist, sFov = yaw, pitch, dist, FILM_FOV
+  wallWeight, wallTarget = 1, 1
   rate = 1.6
+end
+
+-- the drive out: stay in the garage and watch the car go
+function M.startExit()
+  if not active then return end
+  filming, settleT, lift = true, nil, false
+  focus = nil
+  yaw, pitch, dist, fov = rad(-35) + flip, rad(12), carLength * 1.3, FILM_FOV
+  wallTarget = 1
+  rate = 2.5
 end
 
 -- the car has stopped: swing round to the working view in one move and hand over the controls
@@ -131,6 +153,7 @@ function M.startOrbit(fromFilm)
   wallTarget = 1
   focus = nil
   if fromFilm and filming then
+    sDist = lastDist          -- the walls were holding it closer than its arm
     settleT = 0
     rate = 1.4
   else
@@ -144,6 +167,7 @@ function M.startOrbit(fromFilm)
 end
 
 function M.stop()
+  M.onPose = nil
   active, filming, settleT, lift = false, false, nil, false
   site, getCarCenter, focus, sFocus = nil, nil, nil, nil
 end

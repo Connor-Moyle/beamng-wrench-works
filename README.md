@@ -1,6 +1,8 @@
-# SLRR Garage for BeamNG.drive
+# Garage mod for BeamNG.drive
 
-The garage from *Street Legal Racing: Redline*, rebuilt inside BeamNG.drive. Roll up to the Belasco City Garage on West Coast USA, watch the car drive itself in, then work on it the SLRR way: click parts off, click them back on, tune, paint, repair, order new parts from the catalog, and drive out.
+A working garage for BeamNG.drive, built to feel like the one in *Street Legal Racing: Redline*. Roll up to the Belasco City Garage on West Coast USA, watch the car drive itself in, then work on it by hand: click parts off, click them back on, tune, paint, repair, order new parts from the catalog, and drive out the other door.
+
+It is a tribute to how that game's garage plays. Nothing from Street Legal Racing: Redline is used or included: all code here is written for BeamNG, and all models and textures come from BeamNG itself.
 
 Built on BeamNG.drive 0.39.4.
 
@@ -8,9 +10,9 @@ Built on BeamNG.drive 0.39.4.
 
 1. Download `slrr_garage.zip` from the Releases page.
 2. Drop it into your BeamNG mods folder (`%LOCALAPPDATA%\BeamNG\BeamNG.drive\current\mods`).
-3. Load West Coast USA and drive at the orange marker in front of the Belasco City Garage door.
+3. Load West Coast USA and drive at one of the orange markers at the Belasco City Garage. There is one in front of the main door and one outside the side door; you go in through one and come out of the other.
 
-Sounds are optional. If you own Street Legal Racing: Redline, run `tools/install.ps1` from a clone of this repo and it copies the garage sounds over from your own install (they are not included here). Without them the garage is simply silent.
+The mod ships without sounds and is simply quiet. `tools/install.ps1` can copy a set of interface sounds from a Street Legal Racing: Redline install you own, if you want them.
 
 ## In the garage
 
@@ -18,55 +20,80 @@ Sounds are optional. If you own Street Legal Racing: Redline, run `tools/install
 | --- | --- |
 | Click a part on the car | It comes off and lands on the shelf at the bottom, with everything bolted to it |
 | Click a part on the shelf | It goes back on. If something is already in that slot, the two swap |
+| Click the "+3 parts" tag on a shelf part | A list of what is bolted to it |
 | Right-drag | Orbit the camera |
 | Mouse wheel | Zoom |
 | Middle-click a part | Look at that part |
 
-The icon bar along the top is SLRR's garage menu:
+Every part comes off except the body shell itself. Take off what you like and drive out without it.
 
-- **Drive out** – builds the car as you left it and puts you back on the street. You can leave with parts missing, wheels included.
-- **Catalog** – every part that fits the car, in five sections (Engine, Body, Running Gear, Interior, Paint) split into small chapters such as Front Bumpers, Rear Suspension or Front Tyres, with a search box per chapter. Each part is shown as a white 3D model turning on the spot. Whatever you buy lands on the shelf.
+The icon bar along the top:
+
+- **Drive out** – builds the car as you left it and drives it out of the other door.
+- **Catalog** – every part that fits the car, in five sections (Engine, Body, Running Gear, Interior, Paint) split into small chapters such as Front Bumpers, Rear Suspension or Front Tyres, with a search box per chapter. Parts go on a shopping list; you pay when you confirm it, and they are delivered to the shelf (see below).
 - **Car info** – specs, part count and value, damage and repair cost.
 - **Mechanic (wrench)** – the default mode: fit and remove parts.
-- **Tune (screwdriver)** – click a door, hood or boot to open it; click any other part and it is outlined and a small panel pops up with just that part's adjustments (tyre pressure for a tyre, camber for the suspension, and so on). The full list is in the drawer on the right.
-- **Lift** – raises the car about 1.3 m so you can get the camera underneath it. Press again to lower it.
-- **Paint booth** – factory colours or mix your own, three colour slots.
+- **Tune (screwdriver)** – click a door, hood or boot to open it; click any other part and it is outlined and a small panel pops up with just that part's adjustments (tyre pressure for a tyre, camber for the suspension, and so on). The full list is in the drawer on the right. Adjustments take effect when you drive out.
+- **Lift** – raises the car about 1.3 m so you can get the camera underneath it.
+- **Paint booth** – factory colours or mix your own, three colour slots. The car disappears in a cloud of the new colour while it is sprayed.
 - **Test engine**, **Advance time**, **Whole car** (camera reset) and **Settings**.
 
 The mechanic's buttons sit left of the shelf: **Repair part**, **Repair car**, **Sell part**, and four toggles that hide the engine, body, running gear or interior so you can reach what is behind them.
 
+## Ordering parts, delivery and shops
+
+- **Shopping list.** "Add" in the catalog puts a part on the list. Nothing is paid until you press Confirm purchase.
+- **Delivery.** Parts ordered from the garage are delivered, and delivery is charged by weight and bulk: a hood costs many times what a mirror or a hub cap does. Standard delivery takes a few minutes; express costs more and arrives ten times sooner. Arrivals drop onto the shelf while you are in the garage, or are waiting there next time.
+- **Shops in town.** Six businesses on West Coast USA sell parts over the counter. Stop on the blue marker on their forecourt. You take the parts with you (they are on the shelf when you reach the garage), there is no delivery charge, and prices are 5% lower.
+
+| Shop | Sells |
+| --- | --- |
+| Torres Tires | wheels, tyres, hubs |
+| Belasco City Exhaust | exhausts and intakes |
+| Fast Automotive | engines, turbos, nitrous, gearboxes, cooling, differentials |
+| Smash Auto Repairs | body panels, lights, glass, spoilers, body kits |
+| Jerry Riggs | suspension, brakes, steering, chassis bracing |
+| Belasco Auto | interiors, trim, paint designs, accessories |
+
+Delivery charges, the express surcharge, delivery time and the shop discount can all be changed in Settings.
+
+## Part previews
+
+The parts in the catalog and on the shelf are the real 3D models, with the game's own textures, your paint and your livery, turning at the game's frame rate. They are held in front of the camera, so on the shelf they step aside while the camera is moving and come back when it rests.
+
 ## Damage and money
 
-- Parts keep their damage. Take a bent bumper off and it is still bent when you refit it, and the car leaves as damaged as it arrived unless you pay to repair it.
+- Parts keep their damage. Take a bent bumper off and it is still bent when you refit it, and the car leaves as damaged as it arrived, visit after visit, unless you pay to repair it.
 - In career mode the garage spends and earns your career money. Everywhere else you get a fixed budget that never runs down.
-- Prices, sell-back value, repair cost, the budget and a few other things are in the Settings screen. There is also an option to swap the white preview models for photographs of the real parts, livery included; it makes entering the garage slower, so it is off unless you want it.
+- Prices, sell-back value, repair cost, the budget, camera direction, preview speed and direction and a few other things are in the Settings screen.
 
-## Why swapping parts does not stutter
+## Why working on the car does not stutter
 
-Changing a part in BeamNG normally rebuilds the whole vehicle, which freezes the game for about a second. Here nothing is rebuilt while you work:
+Changing a part in BeamNG normally rebuilds the whole vehicle, which freezes the game for about a second. Here the car is not rebuilt while you work:
 
 - taking a part off or refitting it only switches its meshes off and on;
-- parts you buy are loaded once, behind the fade when the catalog closes, and kept hidden on the car until you fit them;
-- the one real rebuild happens when you drive out, behind the fade to the street.
+- a part the car was not built with, such as one you just bought, is shown as its model placed on the car where it belongs;
+- tuning changes are just noted;
+- the one real rebuild happens when you drive out, behind the fade. Repairs are the exception: they rebuild the car on the spot.
 
 ## Good to know
 
 - The shelf is saved per car model in `settings/slrr_garage/save.json` in your BeamNG user folder.
 - Two actions can be bound under Options > Controls > Gameplay: enter the nearest garage, and drive out. Handy when the car cannot drive itself to the door.
 - Career mode: only money is wired up. The garage does not know about career's own parts inventory.
-- More garages can be added in `lua/ge/extensions/slrr/garageSites.lua` (parking spot, direction, door and wall distances).
+- More garages and shops can be added in `lua/ge/extensions/slrr/garageSites.lua` (a garage needs its parking spot, direction, door and wall distances and the way out; a shop needs a position and the catalog chapters it sells).
 
 ## Source layout
 
 | File | Job |
 | --- | --- |
-| `lua/ge/extensions/slrr/garage.lua` | state machine: door trigger, drive-in, garage, catalog, drive out |
-| `lua/ge/extensions/slrr/garageParts.lua` | parts tree, shelf, catalog, money, hidden pre-loading |
+| `lua/ge/extensions/slrr/garage.lua` | state machine: door triggers, drive-in, garage, catalog, drive out, shop visits |
+| `lua/ge/extensions/slrr/garageParts.lua` | parts tree, shelf, catalog, shopping list and deliveries, money, stand-in parts |
 | `lua/ge/extensions/slrr/garagePicker.lua` | finds the part under the cursor |
-| `lua/ge/extensions/slrr/garageCamera.lua` | drive-in and orbit camera |
-| `lua/ge/extensions/slrr/garageDamage.lua`, `lua/vehicle/extensions/slrrGarageVeh.lua` | damage that survives rebuilding the car |
-| `lua/ge/extensions/slrr/garageMeshes.lua` | reads part models for the 3D previews |
-| `lua/ge/extensions/slrr/garageStudio.lua` | optional photographed previews (off by default) |
+| `lua/ge/extensions/slrr/garageCamera.lua` | drive-in, orbit and drive-out camera |
+| `lua/ge/extensions/slrr/garageDamage.lua`, `lua/vehicle/extensions/slrrGarageVeh.lua` | damage that survives rebuilding the car, the lift |
+| `lua/ge/extensions/slrr/garageShapes.lua` | cuts single parts out of the vehicle's model files |
+| `lua/ge/extensions/slrr/garagePreview.lua` | shows those parts: turning previews and parts placed on the car |
 | `lua/ge/extensions/slrr/garageCatalog.lua`, `garageSettings.lua` | catalog chapters, settings |
 | `ui/modules/apps/slrrGarage/app.js` | the garage screen |
 

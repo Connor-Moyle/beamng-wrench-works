@@ -122,6 +122,40 @@ end
 
 function M.isReady() return ready end
 
+-- Add a mesh the vehicle does not have (a stand-in model placed on the car). verts is a flat
+-- list x, y, z, ... in the vehicle's jbeam space; `mesh` is the name it is picked and hidden by.
+function M.addStatic(mesh, partPath, list)
+  M.removeStatic(mesh)
+  local n = math.floor(#list / 3)
+  if n <= 0 then return end
+  local verts = ffi.new("float[?]", n * 3)
+  local minx, miny, minz, maxx, maxy, maxz = huge, huge, huge, -huge, -huge, -huge
+  for i = 0, n - 1 do
+    local x, y, z = list[i * 3 + 1], list[i * 3 + 2], list[i * 3 + 3]
+    verts[i * 3], verts[i * 3 + 1], verts[i * 3 + 2] = x, y, z
+    minx, miny, minz = min(minx, x), min(miny, y), min(minz, z)
+    maxx, maxy, maxz = max(maxx, x), max(maxy, y), max(maxz, z)
+  end
+  local dx, dy, dz = maxx - minx, maxy - miny, maxz - minz
+  local radius = clamp(1.15 * sqrt((dx * dy + dy * dz + dx * dz) / n), MIN_RADIUS, MAX_RADIUS)
+  entries[#entries + 1] = {
+    mesh = mesh, partPath = partPath, n = n, verts = verts, radius = radius, static = true,
+    minx = minx, miny = miny, minz = minz, maxx = maxx, maxy = maxy, maxz = maxz,
+  }
+end
+
+function M.removeStatic(mesh)
+  for i = #entries, 1, -1 do
+    if entries[i].static and entries[i].mesh == mesh then table.remove(entries, i) end
+  end
+end
+
+-- where the vehicle's jbeam space sits in the world right now: { origin, y, z }
+function M.getFrame()
+  if not vehId or not updateFrame() then return nil end
+  return { origin = localToWorld(vec3(0, 0, 0)), y = wy, z = wz }
+end
+
 function M.clear()
   entries = {}
   buildQueue = nil
