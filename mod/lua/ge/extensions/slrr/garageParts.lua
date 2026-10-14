@@ -86,6 +86,13 @@ end
 -- money: career money in career mode; elsewhere a wallet of its own that is spent and earned
 -- like any other, unless the player has switched to unlimited money
 
+-- Another mod can keep the money instead (Street Legal's career does):
+-- { get = function() -> amount, add = function(amount, label) -> ok, walkIn = false to keep body shells off sale }
+local provider
+
+function M.setMoneyProvider(p) provider = type(p) == 'table' and type(p.get) == 'function' and type(p.add) == 'function' and p or nil end
+function M.providerAllows(what) return not provider or provider[what] ~= false end
+
 local function inCareer()
   return career_career ~= nil and career_career.isActive ~= nil and career_career.isActive() and career_modules_playerAttributes ~= nil
 end
@@ -93,7 +100,7 @@ end
 function M.inCareer() return inCareer() end
 
 local function unlimited()
-  return not inCareer() and settings.get('unlimitedMoney')
+  return not provider and not inCareer() and settings.get('unlimitedMoney')
 end
 
 function M.isUnlimited() return unlimited() end
@@ -104,6 +111,7 @@ local function wallet()
 end
 
 function M.getMoney()
+  if provider then return provider.get() or 0 end
   if inCareer() then return career_modules_playerAttributes.getAttributeValue('money') or 0 end
   if unlimited() then return 999999999 end
   return wallet()
@@ -127,7 +135,9 @@ end
 local function spend(amount, label)
   if amount <= 0 then return true end
   if M.getMoney() < amount then return false end
-  if inCareer() then
+  if provider then
+    if not provider.add(-amount, label) then return false end
+  elseif inCareer() then
     local ok = career_modules_payment.pay({ money = { amount = amount } }, { label = label, tags = { 'buying', 'slrrGarage' } })
     if not ok then return false end
   elseif not unlimited() then
@@ -139,7 +149,9 @@ end
 
 local function earn(amount, label)
   if amount <= 0 then return end
-  if inCareer() then
+  if provider then
+    provider.add(amount, label)
+  elseif inCareer() then
     career_modules_playerAttributes.addAttributes({ money = amount }, { label = label, tags = { 'selling', 'slrrGarage' } })
   elseif not unlimited() then
     save.wallet = wallet() + amount
@@ -149,6 +161,26 @@ end
 
 -- pay for something that is not a part (a body shell); counts towards this visit. Returns ok.
 function M.pay(amount, label) return spend(amount, label) end
+
+-- money won or lost outside the garage (street races): not part of a garage visit, saved at once.
+-- amount > 0 is paid in, amount < 0 taken out; returns false if the player cannot cover a loss.
+function M.changeMoney(amount, label)
+  amount = math.floor(tonumber(amount) or 0)
+  if amount == 0 or unlimited() then return true end
+  if amount < 0 and M.getMoney() < -amount then return false end
+  if provider then return provider.add(amount, label) ~= false end      -- the career keeps the money
+  if inCareer() then
+    if amount > 0 then
+      career_modules_playerAttributes.addAttributes({ money = amount }, { label = label, tags = { 'gameplay', 'slrrRaces' } })
+    else
+      return career_modules_payment.pay({ money = { amount = -amount } }, { label = label, tags = { 'gameplay', 'slrrRaces' } })
+    end
+  else
+    save.wallet = wallet() + amount
+    writeSave()
+  end
+  return true
+end
 
 ----------------------------------------------------------------------------------------------
 -- jbeam lookups
@@ -922,8 +954,12 @@ end
 -- vehicle config to respawn with when the spawned car no longer matches how it came in.
 function M.revertVisit()
   if not entrySnapshot or not model then return nil end
-  if not inCareer() and not unlimited() and visitNet ~= 0 then save.wallet = wallet() + visitNet end
-  if inCareer() and visitNet ~= 0 then
+  if provider then
+    if visitNet ~= 0 then provider.add(visitNet, 'Garage visit undone') end
+  elseif not inCareer() and not unlimited() and visitNet ~= 0 then
+    save.wallet = wallet() + visitNet
+  end
+  if not provider and inCareer() and visitNet ~= 0 then
     career_modules_playerAttributes.addAttributes({ money = visitNet }, { label = 'Garage visit undone', tags = { 'slrrGarage' } })
   end
   visitNet = 0

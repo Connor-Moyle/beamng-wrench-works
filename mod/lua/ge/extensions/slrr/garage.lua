@@ -261,6 +261,7 @@ local function captureDamage(job)
 end
 
 local function onDamageCaptured(id, data)
+  extensions.hook('onWrenchWorksDamage', id, data)      -- other mods may keep a car's dents too
   if id ~= vehId then return end
   damage.setCar(data)
   if damageWaiter then damageWaiter() end
@@ -1597,7 +1598,7 @@ local function enterNearest()
     end
   end
   if best and v:getJBeamFilename() == 'unicycle' then
-    startLot(best)
+    if parts.providerAllows('walkIn') then startLot(best) end
   elseif best then
     startEnter(best, v:getID(), second)
   end
@@ -1688,7 +1689,7 @@ local function updateIdle(dt)
           local vel = v:getVelocity()
           if onFoot then
             -- walking in: the lift is empty, and there are body shells for sale
-            if settings.get('walkIn') and vel:dot(door.inward) > 0.3 then
+            if settings.get('walkIn') and parts.providerAllows('walkIn') and vel:dot(door.inward) > 0.3 then
               startLot(s)
               return
             end
