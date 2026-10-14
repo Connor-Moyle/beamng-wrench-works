@@ -449,9 +449,9 @@ function M.stripToShell()
   local function strip(parent)
     for _, child in pairs(parent.children or {}) do
       if isChosen(child) then
-        if keep[child] then
-          strip(child)
-        elseif not slotInfo(child, parent).coreSlot then
+        if keep[child] or slotInfo(child, parent).coreSlot then
+          strip(child)          -- it stays, but what is bolted to it does not
+        else
           child.chosenPartName, child.partPath, child.children, child.decisionMethod = '', nil, nil, 'user-empty'
         end
       end
@@ -661,9 +661,15 @@ function M.installNew()
       if #a.slotPath ~= #b.slotPath then return #a.slotPath < #b.slotPath end
       return a.id < b.id
     end)
+    -- where the new parts go is worked out once per round, not once per part (it is an off-screen
+    -- build of the whole car); a round makes room for the parts that bolt to what it fitted
+    deferStandins = true
     for _, item in ipairs(todo) do
-      if M.installItem(item.id) then fitted, progress = fitted + 1, true end
+      local ok = pcall(M.installItem, item.id) and true
+      if ok and not findItem(item.id) then fitted, progress = fitted + 1, true end
     end
+    deferStandins = false
+    if progress and M.needsLoad() then loadStandins() end
   end
   return fitted, M.needsLoad()
 end
