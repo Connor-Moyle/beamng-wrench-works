@@ -1832,7 +1832,10 @@ local function abort()
   elseif v then
     v:setMeshAlpha(1, '', false)
     v:queueLuaCommand('controller.setFreeze(0) if slrrGarageVeh then slrrGarageVeh.setLift(0) end')
-    if config then v:respawn(serialize(config)) end
+    if config then
+      v:setDynDataFieldbyName('autoEnterVehicle', 0, 'false')   -- the player may be elsewhere by now: a respawn would take them
+      v:respawn(serialize(config))
+    end
   end
   cleanup()
   fade = 0
