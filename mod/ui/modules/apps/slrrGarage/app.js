@@ -190,6 +190,8 @@ angular.module('beamng.apps')
     '.sg-veil{position:absolute;left:-200px;top:-200px;right:-200px;bottom:-200px;padding:200px;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;pointer-events:auto}',
     '.sg-modal{width:620px;max-height:82%;display:flex;flex-direction:column;padding:18px 20px 16px 20px;background:rgba(18,18,20,.94);border-radius:8px;border-top:4px solid #ff6600}',
     '.sg-modal.sg-wide{width:760px}',
+    '.sg-delta{margin-left:6px;font-size:12px;color:#ff8a80}.sg-delta.sg-up{color:#7ee08a}',
+    '.sg-btn.sg-small{display:inline-block;padding:5px 10px;font-size:11px;margin-top:8px;text-transform:none}',
     '.sg-dyno{display:block;width:100%;height:190px;margin-top:8px;background:rgba(255,255,255,.04);border-radius:4px}',
     '.sg-dkey{font-size:11px;color:#b8b8b8;margin-top:4px}',
     '.sg-dkey i{display:inline-block;width:14px;height:3px;margin:0 6px 3px 0;vertical-align:middle}',
@@ -535,14 +537,17 @@ angular.module('beamng.apps')
     '      <div class="sg-note" style="margin-top:10px" ng-if="info.note">{{info.note}}</div>',
     '      <div ng-if="dyno.path">',
     '        <div class="sg-grp">Engine</div>',
-    '        <div class="sg-kv"><span>Peak power</span><b>{{dyno.maxPower}} hp at {{dyno.maxPowerRPM}} rpm</b></div>',
-    '        <div class="sg-kv"><span>Peak torque</span><b>{{dyno.maxTorque}} Nm at {{dyno.maxTorqueRPM}} rpm</b></div>',
+    '        <div class="sg-kv"><span>Peak power</span><b>{{dyno.maxPower}} hp at {{dyno.maxPowerRPM}} rpm <span class="sg-delta" ng-if="dyno.base" ng-class="{\'sg-up\': dyno.dPower > 0}">{{dyno.dPower > 0 ? \'+\' : \'\'}}{{dyno.dPower}} hp</span></b></div>',
+    '        <div class="sg-kv"><span>Peak torque</span><b>{{dyno.maxTorque}} Nm at {{dyno.maxTorqueRPM}} rpm <span class="sg-delta" ng-if="dyno.base" ng-class="{\'sg-up\': dyno.dTorque > 0}">{{dyno.dTorque > 0 ? \'+\' : \'\'}}{{dyno.dTorque}} Nm</span></b></div>',
     '        <svg class="sg-dyno" viewBox="0 0 560 190" preserveAspectRatio="none">',
     '          <path ng-attr-d="{{dyno.grid}}" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="1"/>',
     '          <path ng-attr-d="{{dyno.torquePath}}" fill="none" stroke="#6fb7ff" stroke-width="2.5"/>',
+    '          <path ng-if="dyno.base" ng-attr-d="{{dyno.basePath}}" fill="none" stroke="#ff6600" stroke-opacity=".45" stroke-width="2" stroke-dasharray="6 5"/>',
+    '          <path ng-if="dyno.base" ng-attr-d="{{dyno.baseTorquePath}}" fill="none" stroke="#6fb7ff" stroke-opacity=".45" stroke-width="2" stroke-dasharray="6 5"/>',
     '          <path ng-attr-d="{{dyno.path}}" fill="none" stroke="#ff6600" stroke-width="2.5"/>',
     '        </svg>',
-    '        <div class="sg-dkey"><i style="background:#ff6600"></i>power<i style="background:#6fb7ff"></i>torque<span>0 &ndash; {{dyno.maxRPM}} rpm</span></div>',
+    '        <div class="sg-dkey"><i style="background:#ff6600"></i>power<i style="background:#6fb7ff"></i>torque<span ng-if="dyno.base">dashed: before</span><span>0 &ndash; {{dyno.maxRPM}} rpm</span></div>',
+    '        <div class="sg-btn sg-small" ng-click="lua(\'pinDyno()\')">Pin this run as the "before"</div>',
     '      </div>',
     '      <div class="sg-grp">Saved builds</div>',
     '      <div class="sg-kv" ng-repeat="b in info.builds track by $index"><span class="sg-bname">{{b.name}}</span>',
@@ -1263,17 +1268,23 @@ angular.module('beamng.apps')
         $scope.$evalAsync(function () {
           if (!data || !Array.isArray(data.power) || data.power.length < 3) { $scope.dyno = {}; return; }
           var W = 560, H = 190, n = data.power.length;
-          var top = Math.max(1, Math.max.apply(null, data.power), Math.max.apply(null, data.torque)) * 1.08;
-          function line(values) {
-            var d = '';
-            for (var i = 0; i < n; i++) d += (i ? 'L' : 'M') + (i / (n - 1) * W).toFixed(1) + ' ' + (H - Math.max(0, values[i]) / top * H).toFixed(1);
+          var b = data.baseline && Array.isArray(data.baseline.power) && data.baseline.power.length > 2 ? data.baseline : null;
+          var maxRPM = Math.max(data.maxRPM || 1, b ? b.maxRPM || 1 : 1);
+          var top = Math.max(1, Math.max.apply(null, data.power), Math.max.apply(null, data.torque),
+            b ? Math.max.apply(null, b.power) : 0, b ? Math.max.apply(null, b.torque) : 0) * 1.08;
+          // a curve on the common rpm scale (the "before" may rev to another limit): points every `step` rpm
+          function line(values, curveMax) {
+            var d = '', m = values.length;
+            for (var i = 0; i < m; i++) d += (i ? 'L' : 'M') + (i / (m - 1) * (curveMax || maxRPM) / maxRPM * W).toFixed(1) + ' ' + (H - Math.max(0, values[i]) / top * H).toFixed(1);
             return d;
           }
           var grid = '';
           for (var g = 1; g < 4; g++) grid += 'M0 ' + (H * g / 4) + 'H' + W;
-          for (var rpm = 1000; rpm < data.maxRPM; rpm += 1000) grid += 'M' + (rpm / data.maxRPM * W).toFixed(1) + ' 0V' + H;
+          for (var rpm = 1000; rpm < maxRPM; rpm += 1000) grid += 'M' + (rpm / maxRPM * W).toFixed(1) + ' 0V' + H;
           $scope.dyno = {
-            path: line(data.power), torquePath: line(data.torque), grid: grid, maxRPM: data.maxRPM,
+            path: line(data.power, data.maxRPM), torquePath: line(data.torque, data.maxRPM), grid: grid, maxRPM: maxRPM,
+            base: !!b, basePath: b ? line(b.power, b.maxRPM) : '', baseTorquePath: b ? line(b.torque, b.maxRPM) : '',
+            dPower: b ? Math.round(data.maxPower - b.maxPower) : 0, dTorque: b ? Math.round(data.maxTorque - b.maxTorque) : 0,
             maxPower: Math.round(data.maxPower), maxTorque: Math.round(data.maxTorque),
             maxPowerRPM: Math.round((data.maxPowerRPM || 0) / 50) * 50, maxTorqueRPM: Math.round((data.maxTorqueRPM || 0) / 50) * 50
           };
