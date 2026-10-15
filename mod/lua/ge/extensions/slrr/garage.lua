@@ -174,6 +174,7 @@ local function inventoryForUi()
       value = parts.itemPrice(item), count = item.count or 1, new = item.new == true, used = item.used == true,
       damaged = parts.itemDamaged(item), repairCost = parts.itemRepairCost(item), sellValue = parts.sellValue(item),
       contents = (item.count or 1) > 1 and parts.itemContents(item) or nil,
+      wear = item.wear and math.floor(item.wear * 100 + 0.5) or nil,     -- (market parts: worn this much, in %)
     }
   end
   return list
@@ -2234,5 +2235,6 @@ end
 M.uiSound = function(name) if type(name) == 'string' and name:match('^[%w_]+%.wav$') then playSound(name, 0.7) end end
 M.getPhase = function() return phase end
 M.markJobCar = function(id, on) jobCars[id] = on ~= false or nil end
+M.addShelfPart = function(model, p) return parts.addShelfPart(model, p) end
 
 return M

@@ -996,7 +996,8 @@ end
 
 function M.sellValue(item)
   if item.foreign then return 0 end      -- (off someone else's car: nothing over the counter)
-  local value = itemPrice(item) * settings.get('sellFactor')
+  -- a part bought second-hand from another mod's market is worth what was paid, whatever the price setting
+  local value = (item.market and item.value or itemPrice(item)) * settings.get('sellFactor')
   if damage.count(item.damage) > 0 then value = value * 0.5 end   -- bent parts fetch half
   return math.floor(value + 0.5)
 end
@@ -1728,6 +1729,22 @@ end
 -- state for the UI
 
 function M.getInventory() return inventory() end
+
+-- a part bought elsewhere (a career's used-parts market) onto the shelf for a model, with no car on the lift:
+-- p = { part, name, slotId (the slot type it fits), value (what was paid), wear 0..1 }. Fitted like any other
+-- shelf part (by slot type); sells back for half of what was paid
+function M.addShelfPart(modelName, p)
+  if type(modelName) ~= 'string' or type(p) ~= 'table' or type(p.part) ~= 'string' then return nil end
+  local section, sub = catalogDef.classify(p.slotId or '', p.part)
+  local item = { id = save.nextId, part = p.part, name = p.name or prettify(p.part), slotId = p.slotId, slot = prettify(p.slotId or p.part),
+    section = section, sub = sub, value = tonumber(p.value) or 0, count = 1, used = true, market = true,
+    wear = tonumber(p.wear), tree = { id = p.slotId, chosenPartName = p.part, decisionMethod = 'user' } }
+  save.nextId = save.nextId + 1
+  save.inventory[modelName] = save.inventory[modelName] or {}
+  table.insert(save.inventory[modelName], item)
+  writeSave()
+  return item.id
+end
 
 -- names of everything bolted to a shelf part (what "+3 parts" stands for)
 function M.itemContents(item)

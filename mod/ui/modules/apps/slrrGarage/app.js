@@ -439,7 +439,7 @@ angular.module('beamng.apps')
     '        <div class="sg-prev" ng-if="slot && hasModel(slot.part)" data-part="{{slot.part}}" data-id="s{{slot.id}}" data-spin="hover"></div>',
     '        <div class="sg-badges" ng-if="slot">',
     '          <span class="sg-badge sg-new" ng-if="slot.new">NEW</span>',
-    '          <span class="sg-badge sg-used" ng-if="slot.used">USED</span>',
+    '          <span class="sg-badge sg-used" ng-if="slot.used">USED<span ng-if="slot.wear != null"> &middot; {{slot.wear}}% WORN</span></span>',
     '          <span class="sg-badge sg-dmg" ng-if="slot.damaged">DAMAGED</span>',
     '          <span class="sg-badge sg-more" ng-if="slot.count > 1" ng-click="showContents(slot, $event)">+{{slot.count - 1}} parts &#9662;</span>',
     '        </div>',
