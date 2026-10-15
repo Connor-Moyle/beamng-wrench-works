@@ -1645,11 +1645,12 @@ function M.checkout(shippingId, inShop)
     if o.id == shippingId then option = o end
   end
   option = option or shippingOptions(inShop)[1]
-  local subtotal, base, items = 0, 0, {}
+  local subtotal, base, items, bought = 0, 0, {}, {}
   for _, entry in ipairs(cart) do
     local item = newPart(entry.slotPath, entry.part)
     if item then
       items[#items + 1] = item
+      bought[#bought + 1] = { slotPath = entry.slotPath, part = entry.part, price = cartPrice(entry) }
       subtotal = subtotal + cartPrice(entry)
       base = base + entryFee(entry)
       if entry.children then
@@ -1680,9 +1681,9 @@ function M.checkout(shippingId, inShop)
   end
   cart = {}
   writeSave()
-  if option.seconds <= 0 then return true, #items == 1 and (items[1].name .. ' is on your shelf at the garage.') or (#items .. ' parts are on your shelf at the garage.') end
+  if option.seconds <= 0 then return true, #items == 1 and (items[1].name .. ' is on your shelf at the garage.') or (#items .. ' parts are on your shelf at the garage.'), bought end
   local minutes = option.seconds / 60
-  return true, string.format('Ordered. Delivery to the garage in %s.', minutes >= 1 and string.format('%.0f min', minutes) or string.format('%.0f s', option.seconds))
+  return true, string.format('Ordered. Delivery to the garage in %s.', minutes >= 1 and string.format('%.0f min', minutes) or string.format('%.0f s', option.seconds)), bought
 end
 
 -- orders (for any car) that have arrived and have not been announced yet; each counts once

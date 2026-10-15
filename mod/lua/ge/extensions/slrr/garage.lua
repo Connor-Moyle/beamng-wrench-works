@@ -1311,11 +1311,14 @@ end
 -- confirm the shopping list: pay, and the parts go on the shelf (shop) or on their way (garage)
 local function checkout(shippingId)
   if phase ~= 'catalog' and phase ~= 'shop' then return end
-  local ok, text = parts.checkout(tostring(shippingId), shop ~= nil)
+  local ok, text, bought = parts.checkout(tostring(shippingId), shop ~= nil)
   if not ok then
     playSound('warn.wav', 0.6)
     say(text)
     return
+  end
+  for _, p in ipairs(bought or {}) do     -- paid: other mods may count spending (a career's tune-to-spec budget)
+    extensions.hook('onWrenchWorksPartBought', vehId, p.slotPath, p.part, p.price)
   end
   playSound('money.wav')
   say(text, 4)
