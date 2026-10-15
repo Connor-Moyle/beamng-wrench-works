@@ -66,8 +66,9 @@ M.defs = {
     desc = 'How fast the work goes when it takes time.' },
   { key = 'driveSpeed', group = 'Garage', title = 'Drive-in and drive-out speed', type = 'range', min = 0.5, max = 2, step = 0.1, default = 1, unit = 'x',
     desc = 'How briskly the car drives itself in and out.' },
-  { key = 'driverAnimated', group = 'Garage', title = 'Driver moves', type = 'bool', default = true,
-    desc = 'With Wrench Works: Drivers & Pedestrians installed, the driver turns the wheel and reaches for the gear lever. Turn off and they sit still. Does nothing without that mod.' },
+  { key = 'driverMode', group = 'Garage', title = 'Driver', type = 'choice', default = 'full', needs = 'drivers',
+    options = { { id = 'hidden', label = 'Hidden' }, { id = 'hideFirstPerson', label = 'Hide in first person' }, { id = 'full', label = 'Full driver' }, { id = 'still', label = 'No animations' } },
+    desc = 'The driver from Wrench Works: Drivers & Pedestrians: not shown at all, shown but not in your own first-person view, fully animated, or sitting still.' },
   { key = 'driverDoor', group = 'Garage', title = 'Driver\'s door opens on arrival', type = 'bool', default = true,
     desc = 'When the car has parked, the driver\'s door swings open and shut as if someone got out.' },
   { key = 'liftHeight', group = 'Garage', title = 'Lift height', type = 'range', min = 0.6, max = 1.9, step = 0.05, default = 1.35, unit = ' m',
@@ -99,6 +100,10 @@ local values = {}
 local byKey = {}
 
 local function sanitize(def, value)
+  if def.type == 'choice' then
+    for _, o in ipairs(def.options or {}) do if o.id == value then return value end end
+    return def.default
+  end
   if def.type == 'bool' then
     if type(value) ~= 'boolean' then return def.default end
     return value

@@ -266,7 +266,12 @@ local function sendTuning(category)
 end
 
 local function sendSettings()
-  guihooks.trigger('slrrGarageSettings', { defs = settings.describe(), career = parts.inCareer() })
+  -- settings for another mod (the driver) only when that mod is there and new enough
+  local defs = {}
+  for _, d in ipairs(settings.describe()) do
+    if d.needs ~= 'drivers' or (slrrDrivers and slrrDrivers.setDisplayMode) then defs[#defs + 1] = d end
+  end
+  guihooks.trigger('slrrGarageSettings', { defs = defs, career = parts.inCareer() })
 end
 
 ----------------------------------------------------------------------------------------------
@@ -1562,15 +1567,16 @@ local function requestSettings()
   sendSettings()
 end
 
--- Wrench Works: Drivers & Pedestrians animates its drivers; the "Driver moves" setting can stop
--- that (only with a version of the mod that has setAnimated)
+-- Wrench Works: Drivers & Pedestrians: the "Driver" setting picks how its drivers are shown
+-- (hidden, not in first person, full, still); only with a version of the mod that has setDisplayMode
+local function driversCanDisplay() return slrrDrivers ~= nil and slrrDrivers.setDisplayMode ~= nil end
 local function applyDriverAnimation()
-  if slrrDrivers and slrrDrivers.setAnimated then slrrDrivers.setAnimated(settings.get('driverAnimated') ~= false) end
+  if driversCanDisplay() then slrrDrivers.setDisplayMode(settings.get('driverMode') or 'full') end
 end
 
 local function setSetting(key, value)
   if key == '__reset' then settings.reset() else settings.set(key, value) end
-  if key == 'driverAnimated' or key == '__reset' then applyDriverAnimation() end
+  if key == 'driverMode' or key == '__reset' then applyDriverAnimation() end
   if key == 'freeroamMoney' then parts.setWallet(settings.get('freeroamMoney')) end
   if key == 'saveBetweenSessions' then parts.saveNow() end
   if phase == 'catalog' or phase == 'shop' then sendCart() end

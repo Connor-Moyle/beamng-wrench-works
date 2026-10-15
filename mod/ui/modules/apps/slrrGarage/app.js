@@ -216,6 +216,10 @@ angular.module('beamng.apps')
     '.sg-set .sg-st b{display:block;font-size:14px;font-weight:600}',
     '.sg-set .sg-st span{display:block;font-size:11.5px;color:#a8a8a8;line-height:1.35;margin-top:1px}',
     '.sg-set .sg-sc{width:230px;flex:none;display:flex;align-items:center}',
+    '.sg-set .sg-choice{flex-wrap:wrap;gap:4px;justify-content:flex-end}',
+    '.sg-chopt{padding:4px 8px;font-size:11.5px;border-radius:4px;background:rgba(255,255,255,.1);cursor:pointer;white-space:nowrap}',
+    '.sg-chopt:hover{background:rgba(255,140,40,.3)}',
+    '.sg-chopt.sg-on{background:#ff7a1a;color:#111;font-weight:700}',
     '.sg-set .sg-sv{width:70px;text-align:right;color:#ffb380;font-weight:700;font-size:13px}',
     '.sg-set input[type=number]{width:130px;margin-left:auto;padding:5px 8px;font-size:14px;color:#fff;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);border-radius:4px;outline:none;text-align:right}',
     '.sg-tog{margin-left:auto;width:46px;height:24px;border-radius:12px;background:rgba(255,255,255,.2);position:relative;cursor:pointer}',
@@ -605,6 +609,7 @@ angular.module('beamng.apps')
     '          <div class="sg-st"><b>{{d.title}}</b><span>{{d.desc}}</span></div>',
     '          <div class="sg-sc" ng-if="d.type === \'bool\'"><div class="sg-tog" ng-class="{\'sg-on\': d.value}" ng-click="setSetting(d, !d.value)"></div></div>',
     '          <div class="sg-sc" ng-if="d.type === \'range\'"><input type="range" min="{{d.min}}" max="{{d.max}}" step="{{d.step}}" ng-model="d.value" ng-change="setSetting(d, d.value)"><div class="sg-sv">{{fix(d.value)}}{{d.unit}}</div></div>',
+    '          <div class="sg-sc sg-choice" ng-if="d.type === \'choice\'"><div class="sg-chopt" ng-repeat="o in d.options track by o.id" ng-class="{\'sg-on\': d.value === o.id}" ng-click="setSetting(d, o.id)">{{o.label}}</div></div>',
     '          <div class="sg-sc" ng-if="d.type === \'number\'"><input type="number" min="{{d.min}}" max="{{d.max}}" step="{{d.step}}" ng-model="d.value" ng-change="setSetting(d, d.value)" ng-model-options="{debounce: 350}"></div>',
     '        </div>',
     '      </div>',
@@ -1330,9 +1335,10 @@ angular.module('beamng.apps')
         });
       });
       $scope.setSetting = function (d, value) {
-        if (d.type !== 'bool') { value = parseFloat(value); if (isNaN(value)) return; }
+        if (d.type !== 'bool' && d.type !== 'choice') { value = parseFloat(value); if (isNaN(value)) return; }
         d.value = value;
-        bngApi.engineLua('slrr_garage.setSetting(' + JSON.stringify(d.key) + ',' + (d.type === 'bool' ? (value ? 'true' : 'false') : value) + ')');
+        var lua = d.type === 'bool' ? (value ? 'true' : 'false') : d.type === 'choice' ? JSON.stringify(String(value)) : value;
+        bngApi.engineLua('slrr_garage.setSetting(' + JSON.stringify(d.key) + ',' + lua + ')');
       };
 
       // ---- 3D view input: left click acts, right drag orbits, wheel zooms, middle click focuses
