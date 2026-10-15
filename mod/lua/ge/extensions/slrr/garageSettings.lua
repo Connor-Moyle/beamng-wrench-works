@@ -77,7 +77,7 @@ M.defs = {
     desc = 'A ceiling, whatever the amount above.' },
   { key = 'pedAuto', ped = 'autoReduce', group = 'World', title = 'Fewer when the frame rate drops', type = 'bool', default = true, needs = 'pedestrians',
     desc = 'Thins the crowd out when the game runs slower than the target below.' },
-  { key = 'pedFps', ped = 'targetFps', group = 'World', title = 'Target frame rate', type = 'range', min = 30, max = 144, step = 1, default = 60, unit = ' fps', needs = 'pedestrians',
+  { key = 'pedFps', ped = 'targetFps', group = 'World', title = 'Target frame rate', type = 'range', min = 30, max = 144, step = 1, default = 55, unit = ' fps', needs = 'pedestrians',
     desc = 'What "fewer when the frame rate drops" aims for.' },
   { key = 'pedIdle', ped = 'idling', group = 'World', title = 'People stop and stand about', type = 'bool', default = true, needs = 'pedestrians',
     desc = 'Now and then somebody stops, looks around, waits.' },
