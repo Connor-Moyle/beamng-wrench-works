@@ -656,6 +656,7 @@ end
 function M.installItem(itemId)
   local item, idx = findItem(itemId)
   if not item then return false, "That part is gone." end
+  if item.foreign and not foreign then return false, "That part belongs to the customer's car." end   -- (back onto a job car: fine)
   local slot = findTargetSlot(item)
   if not slot then return false, "Nothing on the car to bolt the " .. item.name .. " to. Fit the part it attaches to first." end
   if isChosen(slot) then
