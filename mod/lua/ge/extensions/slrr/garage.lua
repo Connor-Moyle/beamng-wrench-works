@@ -2007,6 +2007,7 @@ M.service = function(id)
     if driver == 'none' then driver = nil end
     slrrDrivers.setDriver(vehId, driver)
     extensions.hook('onWrenchWorksDriverChanged', vehId, driver)
+    core_jobsystem.create(function(job) job.sleep(0.2) sendState() end)   -- the driver changes a frame later: show it then
   else
     extensions.hook('onWrenchWorksService', id, vehId)
   end
