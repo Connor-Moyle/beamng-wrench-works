@@ -69,6 +69,9 @@ M.defs = {
   { key = 'driverMode', group = 'Garage', title = 'Driver', type = 'choice', default = 'full', needs = 'drivers',
     options = { { id = 'hidden', label = 'Hidden' }, { id = 'hideFirstPerson', label = 'Hide in first person' }, { id = 'full', label = 'Full driver' }, { id = 'still', label = 'No animations' } },
     desc = 'The driver from Wrench Works: Drivers & Pedestrians: not shown at all, shown but not in your own first-person view, fully animated, or sitting still.' },
+  { key = 'injuryMode', group = 'Garage', title = 'Injuries', type = 'choice', default = 'injuries', needs = 'injury',
+    options = { { id = 'off', label = 'Off' }, { id = 'injuries', label = 'Injuries' }, { id = 'full', label = 'Injuries and death' } },
+    desc = 'Wrench Works: Drivers & Pedestrians: whether a crash hurts your driver, and whether it can kill them.' },
   -- Wrench Works: Drivers & Pedestrians: how your driver looks (slrrDrivers.setAppearance; eight colours keep its
   -- outfit combinations within what it loads at once)
   { key = 'driverSkin', group = 'Driver look', title = 'Driver', type = 'choice', dynamic = true, default = '', needs = 'appearance',

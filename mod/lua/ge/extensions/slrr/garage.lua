@@ -276,6 +276,7 @@ local function sendSettings()
     local ok = (d.needs == nil) or (d.needs == 'drivers' and slrrDrivers and slrrDrivers.setDisplayMode)
       or (d.needs == 'pedestrians' and slrrPedestrians and slrrPedestrians.setOptions)
       or (d.needs == 'appearance' and slrrDrivers and slrrDrivers.setAppearance)
+      or (d.needs == 'injury' and slrrInjury and slrrInjury.setMode)
     if ok and d.dynamic and d.key == 'driverSkin' then                  -- the drivers the mod has
       d.options = { { id = '', label = 'Default' } }
       for _, dr in ipairs(slrrDrivers.getDrivers and slrrDrivers.getDrivers() or {}) do d.options[#d.options + 1] = { id = dr.id, label = dr.name or dr.id } end
@@ -1649,6 +1650,7 @@ local function setSetting(key, value)
   elseif not settings.set(key, value) then extensions.hook('onWrenchWorksSetting', key, value) end   -- (another mod's setting)
   if key == 'driverMode' or key == '__reset' or key:find('^ped') or key:find('^driver') then applyDriverAnimation() end
   if key == 'freeroamMoney' then parts.setWallet(settings.get('freeroamMoney')) end
+  if (key == 'injuryMode' or key == '__reset') and slrrInjury and slrrInjury.setMode then slrrInjury.setMode(settings.get('injuryMode')) end
   if key == 'saveBetweenSessions' then parts.saveNow() end
   if phase == 'catalog' or phase == 'shop' then sendCart() end
   if not settings.get('highlight') then parts.setHighlight(nil) end
