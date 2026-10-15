@@ -179,6 +179,16 @@ local function inventoryForUi()
   return list
 end
 
+-- Services other mods offer in the garage (an oil change, another of your cars, a race...). They
+-- add entries to the list: onWrenchWorksServices(list, vehicleId) with
+--   { id, label, desc, price (shown only), group, disabled }
+-- and get the click back: onWrenchWorksService(id, vehicleId). Wrench Works itself offers none.
+local function servicesList()
+  local list = {}
+  extensions.hook('onWrenchWorksServices', list, vehId)
+  return list
+end
+
 local function sendState()
   local inGarage = phase == 'garage' or phase == 'catalog' or phase == 'busy'
   guihooks.trigger('slrrGarageState', {
@@ -206,6 +216,7 @@ local function sendState()
     paintSmoke = settings.get('paintSmoke'),
     hints = settings.get('hints'),
     retro = settings.get('retroCatalog'),
+    services = (phase == 'garage') and servicesList() or {},
   })
 end
 
@@ -1972,6 +1983,12 @@ M.requestInfo = sendInfo
 M.toggleLift = toggleLift
 M.toggleEngine = toggleEngine
 M.advanceTime = advanceTime
+M.service = function(id)
+  if phase ~= 'garage' then return end
+  extensions.hook('onWrenchWorksService', tostring(id), vehId)
+  sendState()
+end
+M.refresh = function() sendState() end
 M.requestSettings = requestSettings
 M.setSetting = setSetting
 M.cameraDrag = cameraDrag

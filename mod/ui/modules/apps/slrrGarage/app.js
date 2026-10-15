@@ -166,6 +166,12 @@ angular.module('beamng.apps')
     '.sg-btn.sg-go:hover{background:#ff8533}',
     '.sg-btn.sg-nope{opacity:.35;pointer-events:none}',
     '.sg-note{font-size:12px;color:#c4c4c4;line-height:1.45}',
+    '.sg-svc{display:flex;align-items:center;gap:10px;padding:9px 10px;margin:4px 0;border-radius:6px;background:rgba(255,255,255,.06);cursor:pointer}',
+    '.sg-svc:hover{background:rgba(255,140,40,.22)}',
+    '.sg-svct{flex:1;display:flex;flex-direction:column}',
+    '.sg-svct b{font-size:14px;color:#fff}',
+    '.sg-svct span{font-size:12px;color:#c4c4c4}',
+    '.sg-svcp{font-size:14px;color:#ffb36b;font-weight:600}',
     '.sg-swatches{display:flex;flex-wrap:wrap;margin:-3px}',
     '.sg-sw{width:34px;height:34px;margin:3px;border-radius:4px;border:2px solid rgba(255,255,255,.25);cursor:pointer}',
     '.sg-sw:hover{border-color:#fff}',
@@ -385,7 +391,7 @@ angular.module('beamng.apps')
 
     /* SLRR icon bar */
     '  <div class="sg-bar sg-glass sg-panel" ng-mouseenter="overUi(true)" ng-mouseleave="tip = null">',
-    '    <div ng-repeat="b in bar track by $index" ng-class="b.sep ? \'sg-sep\' : {\'sg-ib\': true, \'sg-on\': b.on && b.on()}" ng-click="b.act && b.act()" ng-mouseenter="$parent.tip = b.sep ? null : b" ng-bind-html="b.sep ? \'\' : icon(b.icon)"></div>',
+    '    <div ng-repeat="b in bar | filter:barVisible track by $index" ng-class="b.sep ? \'sg-sep\' : {\'sg-ib\': true, \'sg-on\': b.on && b.on()}" ng-click="b.act && b.act()" ng-mouseenter="$parent.tip = b.sep ? null : b" ng-bind-html="b.sep ? \'\' : icon(b.icon)"></div>',
     '  </div>',
     '  <div class="sg-tip" ng-if="tip">{{tip.title}}<small>{{tip.desc}}</small></div>',
 
@@ -491,6 +497,20 @@ angular.module('beamng.apps')
     '      <div class="sg-paintrow" ng-repeat="ch in paintChannels"><label>{{ch.title}}</label><input type="range" min="0" max="1" step="0.01" ng-model="paint.cur[ch.key][ch.idx]" ng-if="ch.idx !== undefined"><input type="range" min="0" max="1" step="0.01" ng-model="paint.cur[ch.key]" ng-if="ch.idx === undefined"><span>{{pct(ch)}}</span></div>',
     '    </div>',
     '    <div class="sg-foot2"><div class="sg-note" style="flex:1;padding-right:10px">A respray costs {{money(paint.price)}} per colour.</div><div class="sg-btn sg-go" ng-click="spray()">Spray</div></div>',
+    '  </div>',
+
+    /* services other mods offer (an oil change, a car swap, a race...): their list, their buttons */
+    '  <div class="sg-drawer sg-glass sg-panel" ng-if="panel === \'services\'" ng-mouseenter="overUi(true)">',
+    '    <div class="sg-dhead"><div class="sg-h">Services</div><div class="sg-x" ng-click="closePanel()" ng-bind-html="icon(\'close\')"></div></div>',
+    '    <div class="sg-scrolly">',
+    '      <div ng-repeat="g in serviceGroups()">',
+    '        <div class="sg-cap" style="margin-top:8px">{{g.name}}</div>',
+    '        <div class="sg-svc" ng-repeat="sv in g.items" ng-class="{\'sg-dim\': sv.disabled}" ng-click="!sv.disabled && lua(\'service(\\\'\' + sv.id + \'\\\')\')">',
+    '          <div class="sg-svct"><b>{{sv.label}}</b><span>{{sv.desc}}</span></div><div class="sg-svcp" ng-if="sv.price">{{money(sv.price)}}</div>',
+    '        </div>',
+    '      </div>',
+    '      <div class="sg-note" ng-if="!(s.services || []).length">Nothing on offer here.</div>',
+    '    </div>',
     '  </div>',
 
     '</div>',
@@ -765,12 +785,24 @@ angular.module('beamng.apps')
         { icon: 'screwdriver', title: 'Tune', desc: 'click a part to adjust or open it', act: function () { $scope.closePanel(); $scope.lua('setMode(\'tune\')'); }, on: function () { return $scope.s.mode === 'tune'; } },
         { icon: 'lift', title: 'Lift', desc: 'raise or lower the car', act: function () { $scope.lua('toggleLift()'); }, on: function () { return $scope.s.lift; } },
         { icon: 'spray', title: 'Paint booth', desc: 'respray the car', act: function () { $scope.openPanel('paint'); }, on: function () { return $scope.panel === 'paint'; } },
+        { icon: 'engine', title: 'Services', desc: 'oil, fluids, other cars, races', act: function () { $scope.openPanel('services'); }, on: function () { return $scope.panel === 'services'; }, when: function () { return ($scope.s.services || []).length > 0; } },
         { sep: true },
         { icon: 'key', title: 'Test engine', desc: 'start or stop it where it stands', act: function () { $scope.lua('toggleEngine()'); }, on: function () { return $scope.s.engineOn; } },
         { icon: 'clock', title: 'Advance time', desc: 'move the clock on three hours', act: function () { $scope.lua('advanceTime()'); } },
         { icon: 'target', title: 'Whole car', desc: 'reset the camera', act: function () { $scope.lua('resetView()'); }, on: function () { return $scope.s.focused; } },
         { icon: 'gear', title: 'Settings', desc: 'money, prices, damage and more', act: function () { $scope.openPanel('settings'); }, on: function () { return $scope.panel === 'settings'; } }
       ];
+      $scope.barVisible = function (b) { return !b.when || b.when(); };
+      // the services, grouped as their mod said
+      $scope.serviceGroups = function () {
+        var groups = [], byName = {};
+        ($scope.s.services || []).forEach(function (sv) {
+          var n = sv.group || 'Services';
+          if (!byName[n]) { byName[n] = { name: n, items: [] }; groups.push(byName[n]); }
+          byName[n].items.push(sv);
+        });
+        return groups;
+      };
       $scope.tips = {
         repairPart: { title: 'Repair part', desc: 'then click the damaged part' },
         sell: { title: 'Sell part', desc: 'then click a part, on the car or on the shelf' }
