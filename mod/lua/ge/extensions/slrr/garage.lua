@@ -269,7 +269,9 @@ local function sendSettings()
   -- settings for another mod (the driver) only when that mod is there and new enough
   local defs = {}
   for _, d in ipairs(settings.describe()) do
-    if d.needs ~= 'drivers' or (slrrDrivers and slrrDrivers.setDisplayMode) then defs[#defs + 1] = d end
+    local ok = (d.needs == nil) or (d.needs == 'drivers' and slrrDrivers and slrrDrivers.setDisplayMode)
+      or (d.needs == 'pedestrians' and slrrPedestrians and slrrPedestrians.setOptions)
+    if ok then defs[#defs + 1] = d end
   end
   guihooks.trigger('slrrGarageSettings', { defs = defs, career = parts.inCareer() })
 end
@@ -1570,7 +1572,22 @@ end
 -- Wrench Works: Drivers & Pedestrians: the "Driver" setting picks how its drivers are shown
 -- (hidden, not in first person, full, still); only with a version of the mod that has setDisplayMode
 local function driversCanDisplay() return slrrDrivers ~= nil and slrrDrivers.setDisplayMode ~= nil end
+-- and its pedestrians: the World group's settings (each def's `ped` names the option), only when one differs
+local function applyPedestrians()
+  if not (slrrPedestrians and slrrPedestrians.setOptions) then return end
+  local now = slrrPedestrians.getOptions and slrrPedestrians.getOptions() or {}
+  local want, differs = {}, false
+  for _, d in ipairs(settings.defs) do
+    if d.ped then
+      want[d.ped] = settings.get(d.key)
+      if now[d.ped] ~= want[d.ped] then differs = true end
+    end
+  end
+  if differs then slrrPedestrians.setOptions(want) end
+end
+
 local function applyDriverAnimation()
+  applyPedestrians()
   if not driversCanDisplay() then return end
   local mode = settings.get('driverMode') or 'full'
   -- only when it differs: setting it restarts every driver's animation and saves their settings file
@@ -1579,7 +1596,7 @@ end
 
 local function setSetting(key, value)
   if key == '__reset' then settings.reset() else settings.set(key, value) end
-  if key == 'driverMode' or key == '__reset' then applyDriverAnimation() end
+  if key == 'driverMode' or key == '__reset' or (settings.defs and key:find('^ped')) then applyDriverAnimation() end
   if key == 'freeroamMoney' then parts.setWallet(settings.get('freeroamMoney')) end
   if key == 'saveBetweenSessions' then parts.saveNow() end
   if phase == 'catalog' or phase == 'shop' then sendCart() end
