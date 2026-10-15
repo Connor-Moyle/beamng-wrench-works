@@ -27,6 +27,8 @@ A hands-on garage for [B]West Coast USA[/B] and [B]Utah[/B]. Roll up to a garage
 [*][B]Start from a body shell.[/B] Walk into a garage on foot and the lift is empty: buy the bare shell of any car you have installed and build it up from the catalog.
 [*][B]A radio in every garage.[/B] It plays your own music, and the sound comes from where the radio stands. No music is included; a small script converts your files.
 [*][B]Add your own garages and shops.[/B] One console command where the point should be, or a small JSON file in your map mod. Works on any map.
+[*][B]Choose your driver.[/B] With Wrench Works: Drivers & Pedestrians installed, the Services drawer lists Street Legal Racing's drivers: pick one and they sit behind the wheel, and stay there when you drive out.
+[*][B]Services from other mods.[/B] Other mods can add their own jobs to the garage (an oil change, another of your cars, a race) in a Services drawer.
 [*][B]Money.[/B] Career money in career mode. In freeroam a wallet that goes up and down as you buy and sell, or unlimited money if you prefer.
 [/LIST]
 
