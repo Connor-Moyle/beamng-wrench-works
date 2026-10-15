@@ -274,6 +274,11 @@ local function sendSettings()
   for _, d in ipairs(settings.describe()) do
     local ok = (d.needs == nil) or (d.needs == 'drivers' and slrrDrivers and slrrDrivers.setDisplayMode)
       or (d.needs == 'pedestrians' and slrrPedestrians and slrrPedestrians.setOptions)
+      or (d.needs == 'appearance' and slrrDrivers and slrrDrivers.setAppearance)
+    if ok and d.dynamic and d.key == 'driverSkin' then                  -- the drivers the mod has
+      d.options = { { id = '', label = 'Default' } }
+      for _, dr in ipairs(slrrDrivers.getDrivers and slrrDrivers.getDrivers() or {}) do d.options[#d.options + 1] = { id = dr.id, label = dr.name or dr.id } end
+    end
     if ok then defs[#defs + 1] = d end
   end
   guihooks.trigger('slrrGarageSettings', { defs = defs, career = parts.inCareer() })
@@ -1602,8 +1607,32 @@ local function applyPedestrians()
   if differs then slrrPedestrians.setOptions(want) end
 end
 
+-- and how the driver looks: the Driver look group, sent only when something differs
+local COLOURS = { black = { 0.05, 0.05, 0.06 }, white = { 0.9, 0.9, 0.9 }, red = { 0.75, 0.08, 0.08 }, blue = { 0.1, 0.25, 0.7 },
+  green = { 0.12, 0.45, 0.18 }, orange = { 0.95, 0.45, 0.05 }, grey = { 0.45, 0.45, 0.47 } }
+local function applyAppearance()
+  if not (slrrDrivers and slrrDrivers.setAppearance) then return end
+  local colour = function(key) return COLOURS[settings.get(key)] or false end
+  local skin = settings.get('driverSkin')
+  local want = { shirt = colour('driverShirt'), trousers = colour('driverTrousers'), scale = settings.get('driverScale'),
+    helmet = settings.get('driverHelmet') == true, helmetColor = COLOURS[settings.get('driverHelmetColor')] or COLOURS.white }
+  if skin and skin ~= '' then want.skin = skin end
+  local now = slrrDrivers.getAppearance and slrrDrivers.getAppearance() or {}
+  local same = true
+  for k, v in pairs(want) do
+    if type(v) == 'table' then
+      local n = now[k]
+      if type(n) ~= 'table' or math.abs((n[1] or n.r or -1) - v[1]) > 1e-3 or math.abs((n[2] or n.g or -1) - v[2]) > 1e-3 or math.abs((n[3] or n.b or -1) - v[3]) > 1e-3 then same = false end
+    elseif v == false then
+      if now[k] then same = false end
+    elseif now[k] ~= v then same = false end
+  end
+  if not same then slrrDrivers.setAppearance(nil, want) end
+end
+
 local function applyDriverAnimation()
   applyPedestrians()
+  applyAppearance()
   if not driversCanDisplay() then return end
   local mode = settings.get('driverMode') or 'full'
   -- only when it differs: setting it restarts every driver's animation and saves their settings file
@@ -1612,7 +1641,7 @@ end
 
 local function setSetting(key, value)
   if key == '__reset' then settings.reset() else settings.set(key, value) end
-  if key == 'driverMode' or key == '__reset' or (settings.defs and key:find('^ped')) then applyDriverAnimation() end
+  if key == 'driverMode' or key == '__reset' or key:find('^ped') or key:find('^driver') then applyDriverAnimation() end
   if key == 'freeroamMoney' then parts.setWallet(settings.get('freeroamMoney')) end
   if key == 'saveBetweenSessions' then parts.saveNow() end
   if phase == 'catalog' or phase == 'shop' then sendCart() end

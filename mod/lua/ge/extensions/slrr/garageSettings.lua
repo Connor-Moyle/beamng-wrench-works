@@ -69,6 +69,20 @@ M.defs = {
   { key = 'driverMode', group = 'Garage', title = 'Driver', type = 'choice', default = 'full', needs = 'drivers',
     options = { { id = 'hidden', label = 'Hidden' }, { id = 'hideFirstPerson', label = 'Hide in first person' }, { id = 'full', label = 'Full driver' }, { id = 'still', label = 'No animations' } },
     desc = 'The driver from Wrench Works: Drivers & Pedestrians: not shown at all, shown but not in your own first-person view, fully animated, or sitting still.' },
+  -- Wrench Works: Drivers & Pedestrians: how your driver looks (slrrDrivers.setAppearance; eight colours keep its
+  -- outfit combinations within what it loads at once)
+  { key = 'driverSkin', group = 'Driver look', title = 'Driver', type = 'choice', dynamic = true, default = '', needs = 'appearance',
+    options = { { id = '', label = 'Default' } }, desc = 'Who sits behind the wheel of your cars.' },
+  { key = 'driverShirt', group = 'Driver look', title = 'Shirt', type = 'choice', default = 'skin', needs = 'appearance', options = { { id = 'skin', label = 'As drawn' }, { id = 'black', label = 'Black' }, { id = 'white', label = 'White' }, { id = 'red', label = 'Red' }, { id = 'blue', label = 'Blue' }, { id = 'green', label = 'Green' }, { id = 'orange', label = 'Orange' }, { id = 'grey', label = 'Grey' } },
+    desc = 'The colour of the shirt.' },
+  { key = 'driverTrousers', group = 'Driver look', title = 'Trousers', type = 'choice', default = 'skin', needs = 'appearance', options = { { id = 'skin', label = 'As drawn' }, { id = 'black', label = 'Black' }, { id = 'white', label = 'White' }, { id = 'red', label = 'Red' }, { id = 'blue', label = 'Blue' }, { id = 'green', label = 'Green' }, { id = 'orange', label = 'Orange' }, { id = 'grey', label = 'Grey' } },
+    desc = 'The colour of the trousers.' },
+  { key = 'driverScale', group = 'Driver look', title = 'Size', type = 'range', min = 0.9, max = 1.1, step = 0.02, default = 1, unit = 'x', needs = 'appearance',
+    desc = 'A little smaller or bigger.' },
+  { key = 'driverHelmet', group = 'Driver look', title = 'Helmet', type = 'bool', default = false, needs = 'appearance',
+    desc = 'A helmet, for the track.' },
+  { key = 'driverHelmetColor', group = 'Driver look', title = 'Helmet colour', type = 'choice', default = 'white', needs = 'appearance', options = { { id = 'skin', label = 'As drawn' }, { id = 'black', label = 'Black' }, { id = 'white', label = 'White' }, { id = 'red', label = 'Red' }, { id = 'blue', label = 'Blue' }, { id = 'green', label = 'Green' }, { id = 'orange', label = 'Orange' }, { id = 'grey', label = 'Grey' } },
+    desc = 'The colour of the helmet.' },
   -- Wrench Works: Drivers & Pedestrians' people on the pavements (each maps to slrrPedestrians.setOptions's key `ped`)
   { key = 'pedAmount', ped = 'amount', group = 'World', title = 'Pedestrians', type = 'choice', default = 'medium', needs = 'pedestrians',
     options = { { id = 'off', label = 'Off' }, { id = 'low', label = 'Low' }, { id = 'medium', label = 'Medium' }, { id = 'high', label = 'High' }, { id = 'veryhigh', label = 'Very high' } },
@@ -117,6 +131,7 @@ local byKey = {}
 
 local function sanitize(def, value)
   if def.type == 'choice' then
+    if def.dynamic then return type(value) == 'string' and value or def.default end      -- (its options come from another mod at runtime)
     for _, o in ipairs(def.options or {}) do if o.id == value then return value end end
     return def.default
   end
