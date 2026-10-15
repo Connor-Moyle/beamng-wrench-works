@@ -1119,6 +1119,7 @@ sell = function(itemId)
   if phase ~= 'garage' and phase ~= 'catalog' then return end
   local ok, item, value = parts.sellItem(tonumber(itemId))
   if ok then
+    extensions.hook('onWrenchWorksPartSold', vehId, item.slotPath, item.part, value)     -- (a career's salvage job counts them)
     playSound('money.wav')
     say(string.format('Sold the %s for $%d.', item.name, value), 2.5)
   end
@@ -1139,7 +1140,10 @@ local function sellAll()
     return
   end
   sellAllTimer = nil
+  local items = {}
+  for _, it in ipairs(parts.getInventory()) do items[#items + 1] = { it.slotPath, it.part, parts.sellValue(it) } end
   local sold, total = parts.sellAll()
+  for _, it in ipairs(items) do extensions.hook('onWrenchWorksPartSold', vehId, it[1], it[2], it[3]) end
   playSound('money.wav')
   say(string.format('Sold %d parts for $%d.', sold, total), 3)
 end
