@@ -128,6 +128,31 @@ local counterDiscount = 0    -- share taken off prices while buying over the cou
 
 function M.setCounterDiscount(fraction) counterDiscount = clamp(tonumber(fraction) or 0, 0, 0.9) end
 
+-- what this garage has (another mod's career sells these as upgrades; on their own everything is there):
+-- lift (engine, gearbox, suspension, driveline, headers), workbench (repairs at the normal price), dyno, paint,
+-- photo, shelfSize (parts per model), repairFactor
+local ALL = { lift = true, workbench = true, dyno = true, paint = true, photo = true, shelfSize = math.huge, repairFactor = 1 }
+local features = deepcopy(ALL)
+local atShop = false            -- a shop fits anything: it has its own lift
+function M.setFeatures(f)
+  features = deepcopy(ALL)
+  for k, v in pairs(type(f) == 'table' and f or {}) do if features[k] ~= nil then features[k] = v end end
+end
+function M.getFeatures() return features end
+function M.setAtShop(on) atShop = on == true end
+
+-- parts that need the car up: by the slot's own name (bolt-ons - intake, the exhaust from the cat back, ECU,
+-- wheels, tyres, filters - go on from the floor)
+local LIFT_WORDS = { 'internals', 'transmission', 'gearbox', 'clutch', 'flywheel', 'suspension', 'subframe', 'strut', 'swaybar',
+  'differential', 'driveshaft', 'halfshaft', 'manifold', 'header', 'oilpan' }
+function M.needsLift(slotPath)
+  local seg = tostring(slotPath or ''):gsub('/$', ''):match('([^/]+)$') or ''
+  seg = seg:lower()
+  if seg:match('engine$') then return true end
+  for _, w in ipairs(LIFT_WORDS) do if seg:find(w, 1, true) then return true end end
+  return false
+end
+
 local function priced(value)
   return math.floor((value or 0) * settings.get('priceMultiplier') * (1 - counterDiscount) + 0.5)
 end
@@ -659,6 +684,9 @@ function M.installItem(itemId)
   if item.foreign and not foreign then return false, "That part belongs to the customer's car." end   -- (back onto a job car: fine)
   local slot = findTargetSlot(item)
   if not slot then return false, "Nothing on the car to bolt the " .. item.name .. " to. Fit the part it attaches to first." end
+  if not features.lift and not atShop and M.needsLift(slot.path) then
+    return false, "The " .. item.name .. " needs the car up on a lift. Buy one for the garage, or have a shop fit it."
+  end
   if isChosen(slot) then
     local d = M.describe(slot.partPath)
     if slot.partPath == chassisPath then return false, "The chassis cannot be swapped here." end
@@ -1137,6 +1165,7 @@ end
 -- repairs
 
 local function repairPriceOf(value)
+  if features.repairFactor ~= 1 then return math.floor(priced(value) * settings.get('repairFactor') * features.repairFactor + 0.5) end
   return math.floor(priced(value) * settings.get('repairFactor') + 0.5)
 end
 
@@ -1648,6 +1677,7 @@ end
 -- pay for the shopping list and send it on its way. Returns ok, message.
 function M.checkout(shippingId, inShop)
   if #cart == 0 then return false, "The shopping list is empty." end
+  if #inventory() + #cart > features.shelfSize then return false, "No room on the shelves: fit or sell some parts first, or put more shelving in." end
   local option
   for _, o in ipairs(shippingOptions(inShop)) do
     if o.id == shippingId then option = o end

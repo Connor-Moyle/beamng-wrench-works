@@ -1383,6 +1383,7 @@ local function enterShop(_shop, id)
   extensions.hook('onWrenchWorksShopOpened', shop, more)
   parts.setCounterDiscount((shop.yard and 0 or settings.get('shopDiscount') / 100) + math.max(0, math.min(0.5, tonumber(more.extra) or 0)))
   parts.setYard(shop.yard == true)
+  parts.setAtShop(true)
   shapes.setup(parts.resolvePart, parts.getSkin())
   preview.setup(parts.getModel(), sendPreview, sendPreviewLive)
   preview.setPaintFrom(v)
@@ -1399,6 +1400,7 @@ leaveShop = function()
   parts.cartClear()
   parts.setCounterDiscount(0)
   parts.setYard(false)
+  parts.setAtShop(false)
   preview.clear()
   shapes.release()
   parts.detach()
@@ -1468,6 +1470,7 @@ end
 local function sendPaint()
   local v = veh()
   if not v then return end
+  if not parts.getFeatures().paint then say('No paint booth in this garage yet. A paint shop will do it, or put a booth in.') return end
   local swatches = {}
   local info = core_vehicles.getModel(v:getJBeamFilename())
   for name, paint in pairs(info and info.model and info.model.paints or {}) do
@@ -1480,7 +1483,7 @@ local function sendPaint()
 end
 
 local function setPaint(index, paint)
-  if phase ~= 'garage' then return end
+  if phase ~= 'garage' or not parts.getFeatures().paint then return end
   local v = veh()
   if not v or type(paint) ~= 'table' or type(paint.baseColor) ~= 'table' then return end
   index = tonumber(index)
@@ -2039,6 +2042,7 @@ local function modelOf(id) local v = getObjectByID(id) return v and v:getJBeamFi
 local function sendDyno()
   if not lastDyno then return end
   local out = shallowcopy(lastDyno.data)
+  if not parts.getFeatures().dyno then out.torque, out.power, out.noCurve = nil, nil, true end     -- (no dyno: the figures, no curve)
   local base = dynoBase and dynoBase[lastDyno.model]
   if base and base.maxPower and (base.maxPower ~= out.maxPower or base.maxTorque ~= out.maxTorque) then out.baseline = base end
   guihooks.trigger('slrrGarageDyno', out)
@@ -2246,6 +2250,9 @@ M.uiSound = function(name) if type(name) == 'string' and name:match('^[%w_]+%.wa
 M.getPhase = function() return phase end
 M.markJobCar = function(id, on) jobCars[id] = on ~= false or nil end
 M.addShelfPart = function(model, p) return parts.addShelfPart(model, p) end
+-- what this garage has: another mod's career decides (nil: everything, as on its own)
+M.setFeatures = function(f) parts.setFeatures(f) sendState() end
+M.getFeatures = function() return parts.getFeatures() end
 M.shelfItems = function(model) return parts.shelfItems(model) end
 M.takeShelfItem = function(model, id) if phase ~= 'idle' then return nil end return parts.takeShelfItem(model, tonumber(id)) end   -- (not while the garage shows that shelf)
 M.putShelfItem = function(model, item) return parts.putShelfItem(model, item) end
