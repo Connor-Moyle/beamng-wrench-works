@@ -22,6 +22,19 @@ local function latchStates()
   return states
 end
 
+-- A broken beam of a latch group (the doors', hood's and boot's "..._latch" and support beams) must never be
+-- broken again on a rebuild: breaking it detaches the latch for good, and the door can never shut again.
+-- A door torn off is still torn off: its hinge beams are kept.
+local function isLatchBeam(beam)
+  local g = beam and beam.breakGroup
+  if type(g) == 'string' then g = { g } end
+  for _, name in ipairs(type(g) == 'table' and g or {}) do
+    local n = tostring(name):lower()
+    if n:find('latch', 1, true) or n:find('support', 1, true) then return true end
+  end
+  return false
+end
+
 -- Some beams report a deformation on a car straight from the factory (they are built under
 -- tension). What an undamaged car reports is noted here, so that only real bends count.
 local baseline
@@ -58,7 +71,7 @@ local function capture()
         local key = lo * 65536 + hi
         local index = (pairCount[key] or 0) + 1
         pairCount[key] = index
-        local broken = obj:beamIsBroken(cid)
+        local broken = obj:beamIsBroken(cid) and not isLatchBeam(beam)
         local deform = obj:getBeamDeformation(cid) or 0
         local bent = math.abs(deform - (baseline and baseline[cid] or 0)) > 1e-5
         if broken or bent then
@@ -163,7 +176,7 @@ local function apply(data)
       local cid = list and list[rec.i]
       if cid then
         obj:setBeamLength(cid, rec.l)
-        if rec.k then obj:breakBeam(cid) end
+        if rec.k and not isLatchBeam(beams[cid]) then obj:breakBeam(cid) end   -- (older records may still hold a latch beam)
         if rec.d and rec.d ~= 0 and beamstate.onBeamDeformed then beamstate.onBeamDeformed(cid, rec.d) end
         applied = applied + 1
       end
@@ -171,9 +184,10 @@ local function apply(data)
   end
   if applied > 0 then obj:commitLoad() end
   carried = data
-  if type(data.latches) == 'table' and next(data.latches) then
-    relatch, relatchTimer = data.latches, 0.6
-  end
+  -- every door and lid is shut again, whatever it was when the damage was noted (one sprung in the crash
+  -- would otherwise hang open for ever); a door without its hinges just has nothing to latch to
+  relatch, relatchTimer = {}, 0.6
+  for name in pairs(latchStates()) do relatch[name] = 'attached' end
 end
 
 local function updateLatches(dt)
