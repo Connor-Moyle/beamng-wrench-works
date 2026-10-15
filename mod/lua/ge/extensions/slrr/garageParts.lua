@@ -563,6 +563,10 @@ end
 ----------------------------------------------------------------------------------------------
 -- inventory
 
+-- a car that isn't the player's (a customer's or a wreck lent by a career job): its parts aren't theirs to sell
+local foreign = false
+function M.setForeign(on) foreign = on == true end
+
 local function newItem(node, slotDescription)
   local info = partInfo(node.chosenPartName)
   local section, sub = catalogDef.classify(node.id or '', node.chosenPartName, slotDescription)
@@ -577,6 +581,7 @@ local function newItem(node, slotDescription)
     value = subtreeValue(node),
     count = countParts(node),
     tree = deepcopy(node),
+    foreign = foreign or nil,
   }
   save.nextId = save.nextId + 1
   return item
@@ -989,6 +994,7 @@ local function itemPrice(item)
 end
 
 function M.sellValue(item)
+  if item.foreign then return 0 end      -- (off someone else's car: nothing over the counter)
   local value = itemPrice(item) * settings.get('sellFactor')
   if damage.count(item.damage) > 0 then value = value * 0.5 end   -- bent parts fetch half
   return math.floor(value + 0.5)

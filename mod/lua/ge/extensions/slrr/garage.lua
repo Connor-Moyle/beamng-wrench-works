@@ -242,10 +242,13 @@ local function say(text, seconds)
   sendState()
 end
 
+-- cars other mods say aren't the player's (a career's job cars): parts off them sell for nothing
+local jobCars = {}
+
 local function sendHover()
   local d = hoverPath and parts.describe(hoverPath) or nil
   -- what the sell tool would pay for it, straight off the car (bent parts fetch half, as on the shelf)
-  if d then d.sellValue = math.floor(d.value * settings.get('sellFactor') * (d.damaged and 0.5 or 1) + 0.5) end
+  if d then d.sellValue = jobCars[vehId] and 0 or math.floor(d.value * settings.get('sellFactor') * (d.damaged and 0.5 or 1) + 0.5) end
   guihooks.trigger('slrrGarageHover', d or {})
 end
 
@@ -572,6 +575,7 @@ local function enterJob(job)
   local route = entryRoute(half)
 
   captureDamage(job)                      -- note the dents before anything rebuilds the car
+  parts.setForeign(jobCars[vehId] == true)
   parts.attach(vehId, false)
   shapes.setup(parts.resolvePart, parts.getSkin())
   preview.setup(parts.getModel(), sendPreview, sendPreviewLive)
@@ -1360,6 +1364,7 @@ local function enterShop(_shop, id)
   core_input_actionFilter.addAction(0, 'slrrGarageBlocked', true)
   -- engine off at the counter: an idling engine shakes the camera, and the part previews wait for it to be still
   v:queueLuaCommand('controller.setFreeze(1) input.event("throttle", 0, FILTER_DIRECT) if electrics.setIgnitionLevel then electrics.setIgnitionLevel(0) end')
+  parts.setForeign(jobCars[vehId] == true)
   parts.attach(vehId, false)
   parts.cartClear()
   parts.setCounterDiscount(shop.yard and 0 or settings.get('shopDiscount') / 100)
@@ -2199,5 +2204,6 @@ end
 
 M.uiSound = function(name) if type(name) == 'string' and name:match('^[%w_]+%.wav$') then playSound(name, 0.7) end end
 M.getPhase = function() return phase end
+M.markJobCar = function(id, on) jobCars[id] = on ~= false or nil end
 
 return M
