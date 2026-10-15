@@ -397,7 +397,7 @@ angular.module('beamng.apps')
 
     /* SLRR icon bar */
     '  <div class="sg-bar sg-glass sg-panel" ng-mouseenter="overUi(true)" ng-mouseleave="tip = null">',
-    '    <div ng-repeat="b in bar | filter:barVisible track by $index" ng-class="b.sep ? \'sg-sep\' : {\'sg-ib\': true, \'sg-on\': b.on && b.on()}" ng-click="b.act && b.act()" ng-mouseenter="$parent.tip = b.sep ? null : b" ng-bind-html="b.sep ? \'\' : icon(b.icon)"></div>',
+    '    <div ng-repeat="b in bar | filter:barVisible track by $index" ng-class="b.sep ? \'sg-sep\' : {\'sg-ib\': true, \'sg-on\': b.on && b.on()}" ng-click="b.act && b.act()" ng-mouseenter="$parent.tip = b.sep ? null : b" ng-focus="$parent.tip = b.sep ? null : b" ng-bind-html="b.sep ? \'\' : icon(b.icon)"></div>',
     '  </div>',
     '  <div class="sg-tip" ng-if="tip">{{tip.title}}<small>{{tip.desc}}</small></div>',
 
@@ -423,14 +423,14 @@ angular.module('beamng.apps')
     '    <div class="sg-mech">',
     '      <div class="sg-cap">Mechanic</div>',
     '      <div class="sg-row" ng-mouseleave="tip = null">',
-    '        <div class="sg-ib" ng-class="{\'sg-on\': s.tool === \'repair\'}" ng-click="lua(\'setTool(\\\'repair\\\')\')" ng-mouseenter="tip = tips.repairPart" ng-bind-html="icon(\'repairPart\')"></div>',
-    '        <div class="sg-ib" ng-class="{\'sg-dim\': !s.damaged}" ng-click="lua(\'repairAll()\')" ng-mouseenter="tip = repairAllTip()" ng-bind-html="icon(\'repairCar\')"></div>',
-    '        <div class="sg-ib" ng-class="{\'sg-on\': s.tool === \'sell\'}" ng-click="lua(\'setTool(\\\'sell\\\')\')" ng-mouseenter="tip = tips.sell" ng-bind-html="icon(\'sell\')"></div>',
-    '        <div class="sg-ib" ng-class="{\'sg-dim\': !s.inventory.length}" ng-click="lua(\'sellAll()\')" ng-mouseenter="tip = sellAllTip()" ng-bind-html="icon(\'sellAll\')"></div>',
+    '        <div class="sg-ib" ng-class="{\'sg-on\': s.tool === \'repair\'}" ng-click="lua(\'setTool(\\\'repair\\\')\')" ng-mouseenter="tip = tips.repairPart" ng-focus="tip = tips.repairPart" ng-bind-html="icon(\'repairPart\')"></div>',
+    '        <div class="sg-ib" ng-class="{\'sg-dim\': !s.damaged}" ng-click="lua(\'repairAll()\')" ng-mouseenter="tip = repairAllTip()" ng-focus="tip = repairAllTip()" ng-bind-html="icon(\'repairCar\')"></div>',
+    '        <div class="sg-ib" ng-class="{\'sg-on\': s.tool === \'sell\'}" ng-click="lua(\'setTool(\\\'sell\\\')\')" ng-mouseenter="tip = tips.sell" ng-focus="tip = tips.sell" ng-bind-html="icon(\'sell\')"></div>',
+    '        <div class="sg-ib" ng-class="{\'sg-dim\': !s.inventory.length}" ng-click="lua(\'sellAll()\')" ng-mouseenter="tip = sellAllTip()" ng-focus="tip = sellAllTip()" ng-bind-html="icon(\'sellAll\')"></div>',
     '      </div>',
     '      <div class="sg-cap">Show on car</div>',
     '      <div class="sg-row" ng-mouseleave="tip = null">',
-    '        <div class="sg-ib" ng-repeat="f in filterDefs" ng-class="{\'sg-off\': s.filters[f.id]}" ng-click="lua(\'toggleFilter(\\\'\' + f.id + \'\\\')\')" ng-mouseenter="$parent.tip = f.tip" ng-bind-html="icon(f.id)"></div>',
+    '        <div class="sg-ib" ng-repeat="f in filterDefs" ng-class="{\'sg-off\': s.filters[f.id]}" ng-click="lua(\'toggleFilter(\\\'\' + f.id + \'\\\')\')" ng-mouseenter="$parent.tip = f.tip" ng-focus="$parent.tip = f.tip" ng-bind-html="icon(f.id)"></div>',
     '      </div>',
     '    </div>',
     '    <div class="sg-slots">',
@@ -1424,6 +1424,31 @@ angular.module('beamng.apps')
       window.addEventListener('mousemove', onMove);
       window.addEventListener('mouseup', onUp);
       window.addEventListener('wheel', onWheel, { passive: false });
+
+      // ---- gamepad (X51): BeamNG's UI sends every pad action as a 'ui_nav' event; the buttons are ng-click, so the
+      // pad already moves between them and A clicks. Here: the right stick orbits the camera, the zoom buttons zoom,
+      // centre-camera resets the view, and B closes a panel (else it is left to the game, as before)
+      var pad = { h: 0, v: 0 }, PAD_DEAD = 0.15, PAD_SPEED = 14;
+      function onNav(ev) {
+        var d = ev.detail || {}, n = d.name, v = Number(d.value) || 0, phase = $scope.s.phase;
+        if (phase !== 'garage' && phase !== 'catalog' && phase !== 'shop') return;
+        if (n === 'rotate_h_cam') { pad.h = Math.abs(v) < PAD_DEAD ? 0 : v; return; }
+        if (n === 'rotate_v_cam') { pad.v = Math.abs(v) < PAD_DEAD ? 0 : v; return; }
+        if (v !== 1) return;
+        if ((n === 'zoom_in' || n === 'zoom_out') && phase === 'garage') bngApi.engineLua('slrr_garage.cameraZoom(' + (n === 'zoom_in' ? 1 : -1) + ')');
+        else if (n === 'center_cam' && phase === 'garage') $scope.lua('resetView()');
+        else if (n === 'back' && ($scope.panel || $scope.contents)) {
+          $scope.$evalAsync(function () { if ($scope.contents) $scope.contents = null; else $scope.closePanel(); });
+          if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+          if (ev.preventDefault) ev.preventDefault();
+        }
+      }
+      window.addEventListener('ui_nav', onNav, true);     // (window capture: before the game's own document handler)
+      var padTimer = setInterval(function () {      // ~30 Hz while the stick is held
+        if ((pad.h || pad.v) && $scope.s.phase === 'garage') bngApi.engineLua('slrr_garage.cameraDrag(' + (pad.h * PAD_SPEED).toFixed(1) + ',' + (pad.v * PAD_SPEED).toFixed(1) + ')');
+      }, 33);
+      if (padTimer && padTimer.unref) padTimer.unref();     // (node, in tools/ui_selfcheck.js: the timer must not keep it alive)
+      $scope.$on('$destroy', function () { window.removeEventListener('ui_nav', onNav, true); clearInterval(padTimer); });
 
       // ---- state from Lua
       $scope.$on('slrrGarageState', function (ev, data) {
