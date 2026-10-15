@@ -1571,7 +1571,10 @@ end
 -- (hidden, not in first person, full, still); only with a version of the mod that has setDisplayMode
 local function driversCanDisplay() return slrrDrivers ~= nil and slrrDrivers.setDisplayMode ~= nil end
 local function applyDriverAnimation()
-  if driversCanDisplay() then slrrDrivers.setDisplayMode(settings.get('driverMode') or 'full') end
+  if not driversCanDisplay() then return end
+  local mode = settings.get('driverMode') or 'full'
+  -- only when it differs: setting it restarts every driver's animation and saves their settings file
+  if not slrrDrivers.getDisplayMode or slrrDrivers.getDisplayMode() ~= mode then slrrDrivers.setDisplayMode(mode) end
 end
 
 local function setSetting(key, value)
