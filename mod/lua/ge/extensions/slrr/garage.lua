@@ -879,6 +879,10 @@ local function leaveJob(job)
     -- the new colours are already on the car; make them part of its config too
     core_vehicle_partmgmt.setConfigPaints(parts.getPaints(), false)
   end
+  -- the car as it leaves (its final parts tree and how many dents are left), for other mods: a career's
+  -- repair ticket is checked here
+  local vd = core_vehicle_manager.getVehicleData(vehId)
+  extensions.hook('onWrenchWorksDriveOut', vehId, { partsTree = vd and vd.config and vd.config.partsTree, dents = damage.countAll() })
   parts.detach()
   picker.clear()
   freezeCar(false)

@@ -132,6 +132,7 @@ Changing a part in BeamNG normally rebuilds the whole vehicle, which freezes the
   - `onWrenchWorksServices(list, vehicleId)`: add entries to the garage's **Services** drawer, `{ id, label, desc, price, group, disabled }` (the price is only shown). A click comes back as `onWrenchWorksService(id, vehicleId)`. The drawer's button only shows when something is offered; Wrench Works offers nothing itself.
   - `onWrenchWorksPartBought(vehicleId, slotPath, part, price)`: once per part, after the checkout has paid (catalog or shop).
   - `onWrenchWorksDyno(vehicleId, data)`: the dyno sheet's figures when the car info screen measures the engine (`maxPower`, `maxTorque`, their rpm, the curves).
+  - `onWrenchWorksDriveOut(vehicleId, data)`: when a car drives out of the garage, after it is rebuilt with what was done to it (`partsTree`: its final parts tree; `dents`: damage records left on it).
   - `onWrenchWorksDamage(vehicleId, data)`: the dents of a car the garage measured (beams, nodes, latch states), to keep a car's damage your own way. `slrrGarageVeh.apply(data)` in the vehicle's Lua puts it back.
   - `require('slrr/garageParts').setMoneyProvider({ get = fn, add = fn(amount, label) })` makes the garage spend and earn your mod's money; `changeMoney(amount, label)` pays in or out from outside a garage visit.
 - `docs/beamng_post.txt` is the forum post for the mod, in BBCode.
