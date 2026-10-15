@@ -1089,6 +1089,7 @@ local function click()
       return
     end
     playSound('repair.wav')
+    extensions.hook('onWrenchWorksRepaired', vehId, res)      -- (the car on the lift was repaired, for this much)
     tool = nil
     core_jobsystem.create(applyInGarage)
     return
@@ -1235,6 +1236,7 @@ local function repairAll()
     return
   end
   playSound('repair.wav')
+  extensions.hook('onWrenchWorksRepaired', vehId, res)
   core_jobsystem.create(applyInGarage)
 end
 
