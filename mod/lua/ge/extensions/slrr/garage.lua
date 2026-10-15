@@ -2236,5 +2236,8 @@ M.uiSound = function(name) if type(name) == 'string' and name:match('^[%w_]+%.wa
 M.getPhase = function() return phase end
 M.markJobCar = function(id, on) jobCars[id] = on ~= false or nil end
 M.addShelfPart = function(model, p) return parts.addShelfPart(model, p) end
+M.shelfItems = function(model) return parts.shelfItems(model) end
+M.takeShelfItem = function(model, id) if phase ~= 'idle' then return nil end return parts.takeShelfItem(model, tonumber(id)) end   -- (not while the garage shows that shelf)
+M.putShelfItem = function(model, item) return parts.putShelfItem(model, item) end
 
 return M

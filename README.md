@@ -136,6 +136,7 @@ Changing a part in BeamNG normally rebuilds the whole vehicle, which freezes the
   - `onWrenchWorksPartSold(vehicleId, slotPath, part, price)`: once per part sold over the counter (the sell tool, the shelf, or sell all).
   - `slrr_garage.markJobCar(vehicleId[, false])`: a car that isn't the player's (a career's customer car or a wreck): parts taken off it sell for nothing.
   - `slrr_garage.addShelfPart(model, { part, name, slotId, value, wear })`: puts a part bought elsewhere (a career's used-parts market) on that model's shelf, no car needed. It shows as USED with its wear and sells back for half of what was paid.
+  - `slrr_garage.shelfItems(model)`, `takeShelfItem(model, id)`, `putShelfItem(model, item)`: list a model's shelf, take an item off it (not while the garage is open) and put it back - for a career's market selling your parts.
   - `onWrenchWorksDamage(vehicleId, data)`: the dents of a car the garage measured (beams, nodes, latch states), to keep a car's damage your own way. `slrrGarageVeh.apply(data)` in the vehicle's Lua puts it back.
   - `require('slrr/garageParts').setMoneyProvider({ get = fn, add = fn(amount, label) })` makes the garage spend and earn your mod's money; `changeMoney(amount, label)` pays in or out from outside a garage visit.
 - `docs/beamng_post.txt` is the forum post for the mod, in BBCode.

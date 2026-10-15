@@ -1746,6 +1746,35 @@ function M.addShelfPart(modelName, p)
   return item.id
 end
 
+-- a model's shelf for other mods (a career's market selling your parts): plain copies, no trees
+function M.shelfItems(modelName)
+  local out = {}
+  for _, item in ipairs(save.inventory[modelName] or {}) do
+    out[#out + 1] = { id = item.id, part = item.part, name = item.name, slotId = item.slotId, value = item.value, wear = item.wear,
+      count = item.count or 1, foreign = item.foreign == true, damaged = damage.count(item.damage) > 0, market = item.market == true }
+  end
+  return out
+end
+
+-- take a shelf item off a model's shelf (listed for sale elsewhere) and put it back (the listing withdrawn)
+function M.takeShelfItem(modelName, itemId)
+  local inv = save.inventory[modelName] or {}
+  for i, item in ipairs(inv) do
+    if item.id == itemId then
+      table.remove(inv, i)
+      writeSave()
+      return item
+    end
+  end
+end
+function M.putShelfItem(modelName, item)
+  if type(modelName) ~= 'string' or type(item) ~= 'table' or not item.part then return false end
+  save.inventory[modelName] = save.inventory[modelName] or {}
+  table.insert(save.inventory[modelName], item)
+  writeSave()
+  return true
+end
+
 -- names of everything bolted to a shelf part (what "+3 parts" stands for)
 function M.itemContents(item)
   local names = {}
