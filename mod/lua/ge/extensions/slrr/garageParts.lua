@@ -1750,7 +1750,10 @@ end
 function M.shelfItems(modelName)
   local out = {}
   for _, item in ipairs(save.inventory[modelName] or {}) do
+    -- price: what the shop charges for it now (the price setting applied; a market part, what was paid), so another
+    -- mod's market never pays more for it than it cost here
     out[#out + 1] = { id = item.id, part = item.part, name = item.name, slotId = item.slotId, value = item.value, wear = item.wear,
+      price = item.market and item.value or itemPrice(item),
       count = item.count or 1, foreign = item.foreign == true, damaged = damage.count(item.damage) > 0, market = item.market == true }
   end
   return out
