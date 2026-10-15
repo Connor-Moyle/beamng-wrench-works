@@ -66,6 +66,8 @@ M.defs = {
     desc = 'How fast the work goes when it takes time.' },
   { key = 'driveSpeed', group = 'Garage', title = 'Drive-in and drive-out speed', type = 'range', min = 0.5, max = 2, step = 0.1, default = 1, unit = 'x',
     desc = 'How briskly the car drives itself in and out.' },
+  { key = 'driverAnimated', group = 'Garage', title = 'Driver moves', type = 'bool', default = true,
+    desc = 'With Wrench Works: Drivers & Pedestrians installed, the driver turns the wheel and reaches for the gear lever. Turn off and they sit still. Does nothing without that mod.' },
   { key = 'driverDoor', group = 'Garage', title = 'Driver\'s door opens on arrival', type = 'bool', default = true,
     desc = 'When the car has parked, the driver\'s door swings open and shut as if someone got out.' },
   { key = 'liftHeight', group = 'Garage', title = 'Lift height', type = 'range', min = 0.6, max = 1.9, step = 0.05, default = 1.35, unit = ' m',

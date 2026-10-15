@@ -1562,8 +1562,15 @@ local function requestSettings()
   sendSettings()
 end
 
+-- Wrench Works: Drivers & Pedestrians animates its drivers; the "Driver moves" setting can stop
+-- that (only with a version of the mod that has setAnimated)
+local function applyDriverAnimation()
+  if slrrDrivers and slrrDrivers.setAnimated then slrrDrivers.setAnimated(settings.get('driverAnimated') ~= false) end
+end
+
 local function setSetting(key, value)
   if key == '__reset' then settings.reset() else settings.set(key, value) end
+  if key == 'driverAnimated' or key == '__reset' then applyDriverAnimation() end
   if key == 'freeroamMoney' then parts.setWallet(settings.get('freeroamMoney')) end
   if key == 'saveBetweenSessions' then parts.saveNow() end
   if phase == 'catalog' or phase == 'shop' then sendCart() end
@@ -1824,6 +1831,7 @@ local function onVehicleSpawned(id)
   -- every car gets the damage keeper while it is still new, so it knows what "undamaged" looks like
   local spawned = getObjectByID(id)
   if spawned then spawned:queueLuaCommand('extensions.load("slrrGarageVeh")') end
+  applyDriverAnimation()                                   -- (cheap; the drivers mod may have loaded after us)
   if id ~= vehId then return end
   if respawnWaiter then
     settleFrames = 3
@@ -1906,6 +1914,7 @@ end
 local function onExtensionLoaded()
   local current = getPlayerVehicle(0)
   if current then current:queueLuaCommand('extensions.load("slrrGarageVeh")') end
+  applyDriverAnimation()
   log('I', logTag, 'Wrench Works loaded')
 end
 
