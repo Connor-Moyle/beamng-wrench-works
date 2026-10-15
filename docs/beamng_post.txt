@@ -1,6 +1,6 @@
 [CENTER][IMG]https://raw.githubusercontent.com/Connor-Moyle/beamng-wrench-works/main/docs/icon.jpg[/IMG]
 
-[SIZE=7][B]Wrench Works[/B][/SIZE]
+[SIZE=7][B]BeamNG Wrench Works[/B][/SIZE]
 [SIZE=4]Take the car apart and build it back, part by part[/SIZE][/CENTER]
 
 A hands-on garage for [B]West Coast USA[/B] and [B]Utah[/B]. Roll up to a garage door, the car drives itself in onto a lift, and from there you work on it by hand: click a part and it comes off, click it on the shelf and it goes back on. It is built in the spirit of the garage in Street Legal Racing: Redline, written from scratch for BeamNG. Nothing from that game is used.
