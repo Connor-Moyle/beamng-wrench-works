@@ -1958,7 +1958,10 @@ M.onClientEndMission = onClientEndMission
 M.onExtensionLoaded = onExtensionLoaded
 M.onExtensionUnloaded = onExtensionUnloaded
 M.onDamageCaptured = onDamageCaptured
-M.onDyno = function(id, data) if id == vehId then guihooks.trigger('slrrGarageDyno', data) end end
+M.onDyno = function(id, data)
+  extensions.hook('onWrenchWorksDyno', id, data)      -- other mods may want the figures (a career's tuning challenge)
+  if id == vehId then guihooks.trigger('slrrGarageDyno', data) end
+end
 
 M.enter = enterNearest
 M.leave = leave
