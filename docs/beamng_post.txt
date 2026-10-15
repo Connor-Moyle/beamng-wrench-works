@@ -78,6 +78,7 @@ Prices, delivery charges and times (standard and express), the shop discount, th
 [*]Made for BeamNG.drive 0.39. Garages on West Coast USA and Utah, and on any map you or a map mod add them to; the shops that come with the mod are on West Coast USA.
 [*]Sounds are the game's own; nothing extra to install. Music is yours to bring: see the readme on GitHub.
 [*]Map makers: [URL]https://github.com/Connor-Moyle/beamng-wrench-works/blob/main/docs/adding_garages.md[/URL] shows how to add garages and shops to your map.
+[*]Mod makers: other mods can add their own services to the garage (a Services drawer appears when they do), share the money and keep a car's dents. The hooks are in the readme on GitHub.
 [*]Career mode uses your career money; the garage does not touch career's own part inventory.
 [*]Shelf previews step aside while the camera is moving and come back when it rests.
 [*]Source and issue tracker: [URL]https://github.com/Connor-Moyle/beamng-wrench-works[/URL]
