@@ -1378,7 +1378,10 @@ local function enterShop(_shop, id)
   parts.setForeign(jobCars[vehId] == true)
   parts.attach(vehId, false)
   parts.cartClear()
-  parts.setCounterDiscount(shop.yard and 0 or settings.get('shopDiscount') / 100)
+  -- other mods may take a share more off at this shop (a career's perks): { extra = 0..0.5 }
+  local more = { extra = 0 }
+  extensions.hook('onWrenchWorksShopOpened', shop, more)
+  parts.setCounterDiscount((shop.yard and 0 or settings.get('shopDiscount') / 100) + math.max(0, math.min(0.5, tonumber(more.extra) or 0)))
   parts.setYard(shop.yard == true)
   shapes.setup(parts.resolvePart, parts.getSkin())
   preview.setup(parts.getModel(), sendPreview, sendPreviewLive)
