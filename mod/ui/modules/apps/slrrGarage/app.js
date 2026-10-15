@@ -661,6 +661,7 @@ angular.module('beamng.apps')
     '      <div class="sg-head"><div class="sg-h">{{searching() ? \'Search\' : (curSub() ? curSub().title : \'Choose a chapter\')}}</div><div class="sg-crumb" ng-if="curSec()">{{searching() ? \'All chapters\' : curSec().title}} &middot; {{shownItems().length}} parts</div>',
     '        <input class="sg-search" type="text" placeholder="Search all parts" ng-model="cur.search" ng-change="searchChanged()" ng-if="cat.sections.length">',
     '        <div class="sg-mini" ng-if="shownItems().length > 1" ng-click="cycleSort()">{{sortLabel()}}</div>',
+    '        <div class="sg-mini" ng-class="{\'sg-on\': cur.cheap}" ng-click="cur.cheap = !cur.cheap; cur.page = 0" title="Affordable upgrades: parts under $1,500">Under $1,500</div>',
     '        <div class="sg-btn sg-go" ng-click="lua(\'closeCatalog()\')">{{s.shop ? \'Leave shop\' : \'Back to garage\'}}</div></div>',
     '      <div class="sg-chips" ng-if="!searching() && slotChips().length > 1">',
     '        <div class="sg-tab" ng-class="{\'sg-on\': !cur.slot}" ng-click="pickSlot(null)">All</div>',
@@ -883,6 +884,7 @@ angular.module('beamng.apps')
       };
       // What the right-hand page shows: the open chapter, or - once something is typed in the
       // search box - every part in the book that matches, whatever chapter it is in.
+      var CHEAP_PART = 1500;
       var SORTS = [null, 'up', 'down'], SORT_LABELS = { 'null': 'By slot', up: 'Cheapest first', down: 'Dearest first' };
       $scope.cur.sort = null;
       $scope.sortLabel = function () { return SORT_LABELS[String($scope.cur.sort)]; };
@@ -893,7 +895,7 @@ angular.module('beamng.apps')
         var sub = $scope.curSub();
         var q = ($scope.cur.search || '').toLowerCase().trim();
         if (!q && !sub) return [];
-        var key = (q ? '*' : $scope.cur.section + '/' + $scope.cur.sub + '/' + ($scope.cur.slot || '')) + '/' + q + '/' + $scope.cur.sort + '/' + $scope.cat.stamp;
+        var key = (q ? '*' : $scope.cur.section + '/' + $scope.cur.sub + '/' + ($scope.cur.slot || '')) + '/' + q + '/' + $scope.cur.sort + '/' + !!$scope.cur.cheap + '/' + $scope.cat.stamp;
         if (key !== shownKey) {
           shownKey = key;
           var list = [];
@@ -910,6 +912,8 @@ angular.module('beamng.apps')
               });
             });
           }
+          // affordable upgrades: what a first part from a few jobs' pay buys
+          if ($scope.cur.cheap) list = list.filter(function (it) { return it.price > 0 && it.price <= CHEAP_PART; });
           if ($scope.cur.sort) {
             var dir = $scope.cur.sort === 'up' ? 1 : -1;
             list = list.slice().sort(function (a, b) { return dir * (a.price - b.price) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0); });
