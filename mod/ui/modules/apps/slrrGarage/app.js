@@ -785,7 +785,7 @@ angular.module('beamng.apps')
         { icon: 'screwdriver', title: 'Tune', desc: 'click a part to adjust or open it', act: function () { $scope.closePanel(); $scope.lua('setMode(\'tune\')'); }, on: function () { return $scope.s.mode === 'tune'; } },
         { icon: 'lift', title: 'Lift', desc: 'raise or lower the car', act: function () { $scope.lua('toggleLift()'); }, on: function () { return $scope.s.lift; } },
         { icon: 'spray', title: 'Paint booth', desc: 'respray the car', act: function () { $scope.openPanel('paint'); }, on: function () { return $scope.panel === 'paint'; } },
-        { icon: 'engine', title: 'Services', desc: 'oil, fluids, other cars, races', act: function () { $scope.openPanel('services'); }, on: function () { return $scope.panel === 'services'; }, when: function () { return ($scope.s.services || []).length > 0; } },
+        { icon: 'engine', title: 'Services', desc: 'the driver, and what other mods offer', act: function () { $scope.openPanel('services'); }, on: function () { return $scope.panel === 'services'; }, when: function () { return ($scope.s.services || []).length > 0; } },
         { sep: true },
         { icon: 'key', title: 'Test engine', desc: 'start or stop it where it stands', act: function () { $scope.lua('toggleEngine()'); }, on: function () { return $scope.s.engineOn; } },
         { icon: 'clock', title: 'Advance time', desc: 'move the clock on three hours', act: function () { $scope.lua('advanceTime()'); } },

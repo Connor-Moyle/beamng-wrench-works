@@ -127,6 +127,7 @@ Changing a part in BeamNG normally rebuilds the whole vehicle, which freezes the
 - "Work takes time" in Settings makes taking parts off and fitting them take a moment, longer for heavy parts. It is off by default.
 - **Adding garages and shops**, on any map, takes one console command where the point should be, or a small JSON file in a map mod. Existing points can be moved the same way. See [docs/adding_garages.md](docs/adding_garages.md).
 - "Paper catalog" in Settings prints the catalog and the shops as a spiral-bound parts catalogue, in the spirit of the street racing games of the early 2000s. It is drawn from scratch; nothing from another game is used.
+- **The driver**: with the SLRR Drivers mod installed, the garage's Services drawer lists its drivers; pick one to put them behind the wheel of the car on the lift. The change is announced as `onWrenchWorksDriverChanged(vehicleId, driverId)`.
 - **For mod makers**, other mods can work with the garage (all GE Lua):
   - `onWrenchWorksServices(list, vehicleId)`: add entries to the garage's **Services** drawer, `{ id, label, desc, price, group, disabled }` (the price is only shown). A click comes back as `onWrenchWorksService(id, vehicleId)`. The drawer's button only shows when something is offered; Wrench Works offers nothing itself.
   - `onWrenchWorksDamage(vehicleId, data)`: the dents of a car the garage measured (beams, nodes, latch states), to keep a car's damage your own way. `slrrGarageVeh.apply(data)` in the vehicle's Lua puts it back.

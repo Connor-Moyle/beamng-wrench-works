@@ -183,8 +183,24 @@ end
 -- add entries to the list: onWrenchWorksServices(list, vehicleId) with
 --   { id, label, desc, price (shown only), group, disabled }
 -- and get the click back: onWrenchWorksService(id, vehicleId). Wrench Works itself offers none.
+-- With the SLRR Drivers mod installed the garage offers its drivers, as SLRR's garage did.
+-- A change is announced as onWrenchWorksDriverChanged(vehicleId, driverId) for mods that keep cars.
+local function driverServices(list)
+  if not slrrDrivers or not slrrDrivers.getDrivers or not slrrDrivers.setDriver then return end
+  local current = slrrDrivers.getDriver and slrrDrivers.getDriver(vehId) or nil
+  if current == 'none' then current = nil end
+  list[#list + 1] = { id = 'driver:none', group = 'Driver', label = 'No driver', desc = current and 'an empty seat' or 'in the car now', disabled = current == nil }
+  for _, d in ipairs(slrrDrivers.getDrivers() or {}) do
+    if type(d) == 'table' and d.id then
+      list[#list + 1] = { id = 'driver:' .. tostring(d.id), group = 'Driver', label = d.name or tostring(d.id),
+        desc = d.id == current and 'in the car now' or 'put them behind the wheel', disabled = d.id == current }
+    end
+  end
+end
+
 local function servicesList()
   local list = {}
+  driverServices(list)
   extensions.hook('onWrenchWorksServices', list, vehId)
   return list
 end
@@ -1985,7 +2001,15 @@ M.toggleEngine = toggleEngine
 M.advanceTime = advanceTime
 M.service = function(id)
   if phase ~= 'garage' then return end
-  extensions.hook('onWrenchWorksService', tostring(id), vehId)
+  id = tostring(id)
+  local driver = id:match('^driver:(.+)$')
+  if driver and slrrDrivers and slrrDrivers.setDriver then
+    if driver == 'none' then driver = nil end
+    slrrDrivers.setDriver(vehId, driver)
+    extensions.hook('onWrenchWorksDriverChanged', vehId, driver)
+  else
+    extensions.hook('onWrenchWorksService', id, vehId)
+  end
   sendState()
 end
 M.refresh = function() sendState() end
