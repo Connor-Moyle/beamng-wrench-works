@@ -282,6 +282,8 @@ local function sendSettings()
     end
     if ok then defs[#defs + 1] = d end
   end
+  -- other mods add their own groups (definitions in the same shape, with their value)
+  extensions.hook('onWrenchWorksSettingsDefs', defs)
   guihooks.trigger('slrrGarageSettings', { defs = defs, career = parts.inCareer() })
 end
 
@@ -1643,7 +1645,8 @@ local function applyDriverAnimation()
 end
 
 local function setSetting(key, value)
-  if key == '__reset' then settings.reset() else settings.set(key, value) end
+  if key == '__reset' then settings.reset() extensions.hook('onWrenchWorksSetting', key)
+  elseif not settings.set(key, value) then extensions.hook('onWrenchWorksSetting', key, value) end   -- (another mod's setting)
   if key == 'driverMode' or key == '__reset' or key:find('^ped') or key:find('^driver') then applyDriverAnimation() end
   if key == 'freeroamMoney' then parts.setWallet(settings.get('freeroamMoney')) end
   if key == 'saveBetweenSessions' then parts.saveNow() end
