@@ -99,6 +99,16 @@ function M.providerCar()
   return provider.car(), true
 end
 
+-- may this garage be used? A career's garage ladder says no to the ones above your level: true, or false and why
+function M.providerGarage(siteId)
+  if not (provider and type(provider.garageAccess) == 'function') then return true end
+  return provider.garageAccess(siteId)
+end
+-- on foot with the car stored: the career brings it out front (true when it has started to)
+function M.providerFetch()
+  return provider ~= nil and type(provider.fetch) == 'function' and provider.fetch() == true
+end
+
 local function inCareer()
   return career_career ~= nil and career_career.isActive ~= nil and career_career.isActive() and career_modules_playerAttributes ~= nil
 end

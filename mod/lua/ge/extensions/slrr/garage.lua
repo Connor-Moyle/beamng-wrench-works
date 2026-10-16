@@ -707,6 +707,8 @@ end
 
 local function startEnter(_site, id, side, wantMode)
   if phase ~= 'idle' then return end
+  local open, why = parts.providerGarage(_site.id)
+  if not open then say(why or 'Not yet.', 5) return end
   entryMode = wantMode
   site = _site
   viaSide = side == true
@@ -745,6 +747,8 @@ end
 
 local function startLot(_site)
   if phase ~= 'idle' then return end
+  local open, why = parts.providerGarage(_site.id)
+  if not open then say(why or 'Not yet.', 5) return end
   armed = false
   if parts.inCareer() then
     if ui_message then ui_message('In career mode cars come from the dealership. Drive one in to work on it.', 6, 'slrrGarage') end
@@ -1835,6 +1839,9 @@ local function updateShops(v, dt)
   end
 end
 
+-- on foot at a doorway with the car stored: the career is bringing it out; when it stands there we go in with it
+local fetching
+
 local function updateIdle(dt)
   local v = getPlayerVehicle(0)
   if not v then return end
@@ -1857,12 +1864,35 @@ local function updateIdle(dt)
   local centre = v:getSpawnWorldOOBB():getCenter()
   local heading = v:getDirectionVector()
   local nose = centre + heading * (v:getInitialLength() * 0.5)
+  if fetching then
+    fetching.t = fetching.t + dt
+    local car = parts.providerCar()
+    if car then
+      local f = fetching
+      fetching = nil
+      if gameplay_walk and gameplay_walk.getInVehicle then gameplay_walk.getInVehicle(car) else be:enterVehicle(0, car) end
+      startEnter(f.site, car:getID(), f.second)
+    elseif fetching.t > 25 then
+      fetching = nil
+    end
+    return
+  end
   local nearDoor, onMarker = false, false
   for _, s in ipairs(list) do
     if (pos - s.spot):squaredLength() < 110 * 110 then
+      local open, why = parts.providerGarage(s.id)
       for _, door in ipairs(sites.doors(s)) do
         local distance = (pos - door.pos):length()
         local base = door.pos - door.inward * 1.2
+        if not open then
+          -- a garage above your level: no marker, no way in; at its door it says why, once
+          if armed and distance < 3.5 then
+            armed = false
+            say(why or 'Not yet.', 6)
+          end
+          if distance < 12 then nearDoor = true end
+          goto nextDoor
+        end
         if distance < 90 and settings.get('markers') then drawMarker(s, distance, base) end
         if (centre - door.pos):length() < 9 then nearDoor = true end
         -- stopping on the marker goes in too, whichever way the car faces (as a shop's marker does)
@@ -1899,7 +1929,11 @@ local function updateIdle(dt)
                 return
               elseif career then
                 armed = false      -- (said once; the doorway works again once you have left it)
-                if ui_message then ui_message('Your car is not out. Get it from My cars on the phone, then walk or drive in.', 6, 'slrrGarage') end
+                if parts.providerFetch() then
+                  -- your car is in the garage: the career brings it out front and we go in with it
+                  fetching = { site = s, second = door.id == 'second', t = 0 }
+                  if ui_message then ui_message('Bringing your car out...', 4, 'slrrGarage') end
+                elseif ui_message then ui_message('Your car is not out. Get it from My cars on the phone, then walk or drive in.', 6, 'slrrGarage') end
                 return
               end
             end
@@ -1909,6 +1943,7 @@ local function updateIdle(dt)
             return
           end
         end
+        ::nextDoor::
       end
     end
   end
