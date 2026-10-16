@@ -111,12 +111,22 @@ local function capture()
   obj:queueGameEngineLua(string.format("if slrr_garage then slrr_garage.onDamageCaptured(%d, %s) end", obj:getId(), serialize(data)))
 end
 
+-- The latches are let go cleanly before the nodes move: a coupler torn apart by the nodes moving under it
+-- reports a break, the controller marks that latch "broken" and never closes it again (tryAttachGroupImpulse
+-- only closes "detached" ones), so every door and lid the garage had touched hung open for good.
+local function releaseLatches()
+  for _, c in pairs(controller.getAllControllers and controller.getAllControllers() or {}) do
+    if type(c) == 'table' and c.detachGroup and c.getGroupState then c.detachGroup() end
+  end
+end
+
 -- bend the freshly built car the way the record says, wherever the same part is still fitted
 local function apply(data)
   if not baseline then takeBaseline() end     -- called on a freshly built car
   local o, x, y, z = frame()
   local nodes, beams = v.data.nodes, v.data.beams
   if not o or not nodes or not beams or type(data) ~= 'table' then return end
+  releaseLatches()
   local byName = {}
   for cid, node in pairs(nodes) do
     if node.name then byName[node.name] = cid end
@@ -202,7 +212,7 @@ local function updateLatches(dt)
     end
   end
   relatch.tries = (relatch.tries or 0) + 1
-  if pending and relatch.tries < 4 then relatchTimer = 0.5 else relatch = nil end
+  if pending and relatch.tries < 8 then relatchTimer = 0.5 else relatch = nil end   -- (the open force of the release has to die down first)
 end
 
 -- push every door and lid shut (the car is about to drive out through a doorway)
