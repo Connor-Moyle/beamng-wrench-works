@@ -1742,6 +1742,15 @@ end
 
 -- shops: a blue marker on their forecourt; stop on it to go in
 local shopColor = ColorF(0.1, 0.55, 1, 0.25)
+-- in a Street Legal career the shops keep its hours (sl/core/hours, absent without it)
+local function shopClosedText()
+  local _, career = parts.providerCar()
+  local ok, hours = pcall(require, 'sl/core/hours')
+  local tod = core_environment and core_environment.getTimeOfDay and core_environment.getTimeOfDay()
+  if not (career and ok and type(tod) == 'table' and tod.time) then return nil end
+  return hours.closedText('shop', tod.time)
+end
+
 local function updateShops(v, dt)
   if not settings.get('shops') then return end
   local pos = v:getPosition()
@@ -1765,7 +1774,13 @@ local function updateShops(v, dt)
     shopTimer = shopTimer + dt
     if shopTimer > 0.8 then
       shopTimer = 0
-      enterShop(on, v:getID())
+      local closed = shopClosedText()
+      if closed then
+        shopArmed = false      -- (said once; the counter works again once you have left it)
+        if ui_message then ui_message(closed, 5, 'slrrGarage') end
+      else
+        enterShop(on, v:getID())
+      end
     end
   else
     shopTimer = 0
