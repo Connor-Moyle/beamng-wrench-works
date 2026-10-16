@@ -1469,6 +1469,10 @@ angular.module('beamng.apps')
           wantPreviews();
         });
       });
+      // another mod's screen (the laptop) asked for a panel to be open on arrival
+      $scope.$on('slrrGaragePanel', function (ev, data) {
+        $scope.$evalAsync(function () { if (data && data.panel) { $scope.panel = null; $scope.openPanel(data.panel); } });
+      });
       $scope.$on('slrrGarageHover', function (ev, data) {
         $scope.$evalAsync(function () { $scope.hover = (data && !Array.isArray(data)) ? data : {}; });
       });

@@ -260,6 +260,25 @@ local function run(job)
     step('no damage from the visit', wwtest_damage ~= nil and wwtest_damage < 50, 'damage ' .. tostring(wwtest_damage))
   end)
   if phase() ~= 'idle' then slrr_garage.abort() job.sleep(3) end
+
+  -- visit 3: another mod's screen (Street Legal's laptop) sends the car in, in a mode
+  try('enterWith', function()
+    local car = getPlayerVehicle(0)
+    step('garageAt names the garage the car stands at', car ~= nil and slrr_garage.garageAt(car:getPosition()) ~= nil, car and tostring(slrr_garage.garageAt(car:getPosition())))
+    if not car then return end
+    local ok = slrr_garage.enterWith(car:getID(), 'tune')
+    local inGarage = ok and waitFor(job, function() return phase() == 'garage' end, 60)
+    step('enterWith(tune) opens the garage in tune mode', inGarage and slrr_garage.getMode() == 'tune', 'phase ' .. tostring(phase()) .. ', mode ' .. tostring(slrr_garage.getMode()))
+    if not inGarage then return end
+    slrr_garage.leave(true)
+    waitFor(job, function() return phase() == 'idle' end, 120)
+    job.sleep(2)
+    local ok2 = slrr_garage.enterWith(car:getID(), 'catalog')
+    local inCatalog = ok2 and waitFor(job, function() return phase() == 'catalog' end, 60)
+    step('enterWith(catalog) opens the catalog', inCatalog, 'phase ' .. tostring(phase()))
+    step('enterWith refuses while the garage is busy', slrr_garage.enterWith(car:getID(), 'tune') == false)
+  end)
+  if phase() ~= 'idle' then slrr_garage.abort() job.sleep(3) end
   job.sleep(3)
 
   ---------------------------------------------------------------- a shop

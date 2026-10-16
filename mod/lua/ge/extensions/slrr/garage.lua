@@ -566,6 +566,10 @@ local function driverDoorJob(job)
   end
 end
 
+-- a visit another mod's screen asked for (enterWith): what to open once the car is on the lift
+local entryMode
+local applyEntryMode
+
 local function enterJob(job)
   local v = veh()
   if not v then phase = 'idle' return end
@@ -697,10 +701,13 @@ local function enterJob(job)
   phase = 'garage'
   sendState()
   sendHover()
+  if entryMode and applyEntryMode then applyEntryMode() end
+  entryMode = nil
 end
 
-local function startEnter(_site, id, side)
+local function startEnter(_site, id, side, wantMode)
   if phase ~= 'idle' then return end
+  entryMode = wantMode
   site = _site
   viaSide = side == true
   vehId = id
@@ -1299,6 +1306,16 @@ local function openCatalog()
   sendCatalog()
 end
 
+-- the visit started with enterWith: open the catalog, the tune mode, the repair tool or the paint drawer on the car
+applyEntryMode = function()
+  local m = entryMode
+  entryMode = nil
+  if m == 'catalog' then openCatalog()
+  elseif m == 'tune' then setMode('tune')
+  elseif m == 'repair' then setTool('repair')
+  elseif m == 'paint' then guihooks.trigger('slrrGaragePanel', { panel = 'paint' }) end
+end
+
 local leaveShop
 
 local function closeCatalog()
@@ -1724,6 +1741,37 @@ local function enterNearest()
   end
 end
 
+-- the garage (site) whose doors are within 50 m of a point, for another mod's screen ("is this car at that garage?")
+local function garageAt(pos)
+  local best, bestDist
+  for _, s in ipairs(sites.getSites()) do
+    for _, door in ipairs(sites.doors(s)) do
+      local d = (pos - door.pos):length()
+      if d < 50 and (not bestDist or d < bestDist) then best, bestDist = s, d end
+    end
+  end
+  return best
+end
+
+-- another mod's screen (Street Legal's laptop) sends a car into the garage it stands at and opens it in a mode:
+-- 'catalog', 'tune', 'paint' or 'repair'. The same visit as driving in (the player is put in the car first, as the doorway does).
+-- false and a reason when it cannot (busy, no such car, not at a garage)
+local ENTRY_MODES = { catalog = true, tune = true, paint = true, repair = true }
+local function enterWith(id, wantMode)
+  if phase ~= 'idle' then return false, 'The garage is busy.' end
+  if not ENTRY_MODES[wantMode] then return false, 'Unknown mode.' end
+  local car = getObjectByID(tonumber(id) or -1)
+  if not car then return false, 'The car is not here.' end
+  local at = garageAt(car:getPosition())
+  if not at then return false, 'Bring the car into the garage first.' end
+  local player = getPlayerVehicle(0)
+  if not player or player:getID() ~= car:getID() then
+    if gameplay_walk and gameplay_walk.getInVehicle then gameplay_walk.getInVehicle(car) else be:enterVehicle(0, car) end
+  end
+  startEnter(at, car:getID(), false, wantMode)
+  return true
+end
+
 ----------------------------------------------------------------------------------------------
 -- frame update
 
@@ -2113,6 +2161,8 @@ M.pinDyno = function()
 end
 
 M.enter = enterNearest
+M.enterWith = enterWith
+M.garageAt = function(pos) local g = garageAt(pos) return g and g.id or nil end   -- (the site's id, for comparing)
 M.leave = leave
 M.abort = abort
 M.click = click
@@ -2292,6 +2342,7 @@ end
 
 M.uiSound = function(name) if type(name) == 'string' and name:match('^[%w_]+%.wav$') then playSound(name, 0.7) end end
 M.getPhase = function() return phase end
+M.getMode = function() return mode end
 M.markJobCar = function(id, on) jobCars[id] = on ~= false or nil end
 M.addShelfPart = function(model, p) return parts.addShelfPart(model, p) end
 -- what this garage has: another mod's career decides (nil: everything, as on its own)
