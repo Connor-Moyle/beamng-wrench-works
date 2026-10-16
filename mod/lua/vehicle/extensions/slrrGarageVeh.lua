@@ -120,13 +120,16 @@ local function releaseLatches()
   end
 end
 
--- bend the freshly built car the way the record says, wherever the same part is still fitted
-local function apply(data)
+-- bend the freshly built car the way the record says, wherever the same part is still fitted.
+-- options.keepLatches (a car on show, not the garage's own): the latches are not released and not pushed shut again
+-- afterwards; the doors and lids stay as the build left them (shut), and the panels bend only as far as they allow.
+local function apply(data, options)
+  local keepLatches = type(options) == 'table' and options.keepLatches == true
   if not baseline then takeBaseline() end     -- called on a freshly built car
   local o, x, y, z = frame()
   local nodes, beams = v.data.nodes, v.data.beams
   if not o or not nodes or not beams or type(data) ~= 'table' then return end
-  releaseLatches()
+  if not keepLatches then releaseLatches() end
   local byName = {}
   for cid, node in pairs(nodes) do
     if node.name then byName[node.name] = cid end
@@ -196,6 +199,7 @@ local function apply(data)
   carried = data
   -- every door and lid is shut again, whatever it was when the damage was noted (one sprung in the crash
   -- would otherwise hang open for ever); a door without its hinges just has nothing to latch to
+  if keepLatches then return end
   relatch, relatchTimer = {}, 0.6
   for name in pairs(latchStates()) do relatch[name] = 'attached' end
 end
