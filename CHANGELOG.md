@@ -1,6 +1,6 @@
 # Changelog: BeamNG Wrench Works (garage)
 
-## Unreleased (release 1 candidate; proposed version 1.7.0, now 1.6.0)
+## 1.7.0 (release 1 candidate, not yet released)
 
 What is new since 1.6.0, for players:
 
