@@ -54,6 +54,7 @@ local restZ               -- height of the car's position while it stands on the
 local sellAllTimer        -- running while "sell all" waits for its second click
 local vehId
 local armed = true        -- auto-enter is switched off until the car has left the doorway again
+local markerTimer = 0     -- how long the car has stood on a garage's marker
 local fade = 0            -- what the UI's black overlay should be (0..1 target)
 local message, messageTimer
 local hoverPath
@@ -1734,7 +1735,7 @@ local function drawMarker(s, distance, base)
   debugDrawer:drawCylinder(base, base + vec3(0, 0, 0.12), 2.2, markerColor)
   debugDrawer:drawCylinder(base, base + vec3(0, 0, 2.6 + 0.3 * pulse), 0.07, markerColor)
   if distance < 45 then
-    local label = settings.get('autoEnter') and (s.name .. ' - drive in') or s.name
+    local label = settings.get('autoEnter') and (s.name .. ' - stop here or drive in') or s.name
     debugDrawer:drawTextAdvanced(base + vec3(0, 0, 3.1), String(label), markerTextColor, true, false, markerTextBg)
   end
 end
@@ -1793,13 +1794,28 @@ local function updateIdle(dt)
   local centre = v:getSpawnWorldOOBB():getCenter()
   local heading = v:getDirectionVector()
   local nose = centre + heading * (v:getInitialLength() * 0.5)
-  local nearDoor = false
+  local nearDoor, onMarker = false, false
   for _, s in ipairs(list) do
     if (pos - s.spot):squaredLength() < 110 * 110 then
       for _, door in ipairs(sites.doors(s)) do
         local distance = (pos - door.pos):length()
-        if distance < 90 and settings.get('markers') then drawMarker(s, distance, door.pos - door.inward * 1.2) end
+        local base = door.pos - door.inward * 1.2
+        if distance < 90 and settings.get('markers') then drawMarker(s, distance, base) end
         if (centre - door.pos):length() < 9 then nearDoor = true end
+        -- stopping on the marker goes in too, whichever way the car faces (as a shop's marker does)
+        if armed and settings.get('autoEnter') and not onFoot and (pos - base):length() < 2.2 then
+          onMarker = true
+          if v:getVelocity():length() < 1 then
+            markerTimer = markerTimer + dt
+            if markerTimer > 1 then
+              markerTimer = 0
+              startEnter(s, v:getID(), door.id == 'second')
+              return
+            end
+          else
+            markerTimer = 0
+          end
+        end
         -- the way in is the doorway itself: the nose of the car reaching the door, heading in
         local rel = (onFoot and pos or nose) - door.pos
         local depth = rel:dot(door.inward)
@@ -1811,6 +1827,18 @@ local function updateIdle(dt)
             if settings.get('walkIn') and parts.providerAllows('walkIn') and vel:dot(door.inward) > 0.3 then
               startLot(s)
               return
+            elseif vel:dot(door.inward) > 0.3 then
+              -- in a career the doorway opens the garage with your car: you get in and it is driven in as usual
+              local car, career = parts.providerCar()
+              if car then
+                if gameplay_walk and gameplay_walk.getInVehicle then gameplay_walk.getInVehicle(car) else be:enterVehicle(0, car) end
+                startEnter(s, car:getID(), door.id == 'second')
+                return
+              elseif career then
+                armed = false      -- (said once; the doorway works again once you have left it)
+                if ui_message then ui_message('Your car is not out. Get it from My cars on the phone, then walk or drive in.', 6, 'slrrGarage') end
+                return
+              end
             end
           -- at walking pace only: anything faster is somebody driving (or drifting) through
           elseif vel:length() < settings.get('enterSpeed') / 3.6 and heading:dot(door.inward) > 0.55 and vel:dot(door.inward) > 0.3 then
@@ -1821,6 +1849,7 @@ local function updateIdle(dt)
       end
     end
   end
+  if not onMarker then markerTimer = 0 end
   -- after a visit the doors only work again once the car has left the doorway
   if not armed and not nearDoor then armed = true end
 end

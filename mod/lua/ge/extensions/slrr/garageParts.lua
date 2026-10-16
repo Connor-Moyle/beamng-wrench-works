@@ -92,6 +92,12 @@ local provider
 
 function M.setMoneyProvider(p) provider = type(p) == 'table' and type(p.get) == 'function' and type(p.add) == 'function' and p or nil end
 function M.providerAllows(what) return not provider or provider[what] ~= false end
+-- the car the provider's player walks into the garage with (car = function() -> vehicle or nil); second value: whether
+-- a provider says anything at all
+function M.providerCar()
+  if not (provider and type(provider.car) == 'function') then return nil, false end
+  return provider.car(), true
+end
 
 local function inCareer()
   return career_career ~= nil and career_career.isActive ~= nil and career_career.isActive() and career_modules_playerAttributes ~= nil
