@@ -182,4 +182,12 @@ luaCalls.length = 0;
 ['Photo', 'Showcase', 'Photo mode'].forEach((t) => { const b = $scope.bar.find((x) => x.title === t); assert.ok(b, t + ' on the bar'); b.act(); });
 assert.deepStrictEqual(luaCalls, ['slrr_garage.photo()', 'slrr_garage.toggleShowcase()', 'slrr_garage.photoMode()']);
 
+// #51 the bar's words come from the strings table; a missing key keeps its own words
+assert.strictEqual($scope.bar.find((b) => b.icon === 'drive').title, 'Drive out', 'before the table: its own words');
+handlers.slrrGarageStrings(null, { text: { 'bar.driveout.title': 'Losfahren' } });
+assert.strictEqual($scope.bar.find((b) => b.icon === 'drive').title, 'Losfahren', 'the table changes a title');
+assert.strictEqual($scope.bar.find((b) => b.icon === 'catalog').title, 'Catalog', 'and leaves the rest');
+assert.strictEqual($scope.svcTabs.races.title, 'Races');
+handlers.slrrGarageStrings(null, { text: {} });
+
 console.log('ui self-check passed');

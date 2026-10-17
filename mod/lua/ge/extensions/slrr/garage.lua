@@ -2350,6 +2350,8 @@ M.clearTunePart = function() tuneSelected = nil sendTunePart() end
 M.requestPaint = sendPaint
 M.setPaint = setPaint
 M.requestInfo = sendInfo
+-- the garage screen's player-facing text (slrr/garageStrings), once
+M.requestStrings = function() guihooks.trigger('slrrGarageStrings', { text = require('slrr/garageStrings').TEXT }) end
 -- the catalog's hover card: what the part does, read from its jbeam (slrr/garageStats)
 M.requestPartStats = function(partName)
   local part = parts.resolvePart(partName)

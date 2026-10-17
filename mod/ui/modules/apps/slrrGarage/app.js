@@ -783,6 +783,11 @@ angular.module('beamng.apps')
       $scope.icon = function (id) { return icons[id] || icons.body; };
 
       $scope.lua = function (call) { bngApi.engineLua('slrr_garage.' + call); };
+      // the player-facing text: slrr/garageStrings (slrr_garage.requestStrings, event slrrGarageStrings); the second argument shows until it has arrived
+      $scope.strings = {};
+      $scope.t = function (key, fallback) { var v = $scope.strings[key]; return v === undefined ? fallback : v; };
+      $scope.$on('slrrGarageStrings', function (ev, data) { $scope.$evalAsync(function () { $scope.strings = (data && data.text) || {}; }); });
+      $scope.lua('requestStrings()');
       $scope.money = function (v) {
         v = Math.round(v || 0);
         return '$' + String(v).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -803,34 +808,34 @@ angular.module('beamng.apps')
       // ---- SLRR's garage bar. Same order of ideas as the original: go places, look things up,
       //      work on the car, test it.
       $scope.bar = [
-        { icon: 'drive', title: 'Drive out', desc: 'fit everything and hit the street', act: function () { $scope.closePanel(); $scope.lua('leave()'); } },
-        { icon: 'catalog', title: 'Catalog', desc: 'order new parts', act: function () { $scope.closePanel(); $scope.lua('openCatalog()'); } },
-        { icon: 'info', title: 'Car info', desc: 'details of this car', act: function () { $scope.openPanel('info'); }, on: function () { return $scope.panel === 'info'; } },
+        { icon: 'drive', get title() { return $scope.t('bar.driveout.title', 'Drive out'); }, get desc() { return $scope.t('bar.driveout.desc', 'fit everything and hit the street'); }, act: function () { $scope.closePanel(); $scope.lua('leave()'); } },
+        { icon: 'catalog', get title() { return $scope.t('bar.catalog.title', 'Catalog'); }, get desc() { return $scope.t('bar.catalog.desc', 'order new parts'); }, act: function () { $scope.closePanel(); $scope.lua('openCatalog()'); } },
+        { icon: 'info', get title() { return $scope.t('bar.carinfo.title', 'Car info'); }, get desc() { return $scope.t('bar.carinfo.desc', 'details of this car'); }, act: function () { $scope.openPanel('info'); }, on: function () { return $scope.panel === 'info'; } },
         { sep: true },
-        { icon: 'wrench', title: 'Mechanic', desc: 'install and remove parts', act: function () { if ($scope.panel === 'tune') $scope.closePanel(); $scope.lua('setMode(\'mechanic\')'); }, on: function () { return $scope.s.mode === 'mechanic'; } },
-        { icon: 'screwdriver', title: 'Tune', desc: 'every tuning item of the car on the right; or click a part to adjust it', act: function () {
+        { icon: 'wrench', get title() { return $scope.t('bar.mechanic.title', 'Mechanic'); }, get desc() { return $scope.t('bar.mechanic.desc', 'install and remove parts'); }, act: function () { if ($scope.panel === 'tune') $scope.closePanel(); $scope.lua('setMode(\'mechanic\')'); }, on: function () { return $scope.s.mode === 'mechanic'; } },
+        { icon: 'screwdriver', get title() { return $scope.t('bar.tune.title', 'Tune'); }, get desc() { return $scope.t('bar.tune.desc', 'every tuning item of the car on the right; or click a part to adjust it'); }, act: function () {
           if ($scope.s.mode === 'tune' && $scope.panel === 'tune') { $scope.closePanel(); return; }       // (a second click puts the panel away; the mode stays)
           if ($scope.s.mode !== 'tune') $scope.lua('setMode(\'tune\')');
           $scope.panel = null;
           $scope.openPanel('tune');
         }, on: function () { return $scope.s.mode === 'tune'; } },
-        { icon: 'lift', title: 'Lift', desc: 'raise or lower the car', act: function () { $scope.lua('toggleLift()'); }, on: function () { return $scope.s.lift; } },
-        { icon: 'spray', title: 'Paint booth', desc: 'respray the car', act: function () { $scope.openPanel('paint'); }, on: function () { return $scope.panel === 'paint'; } },
-        { icon: 'engine', title: 'Services', desc: 'oil, coolant, battery, nitrous, engine rebuild and repairs', act: function () { $scope.openPanel('services'); }, on: function () { return $scope.panel === 'services'; }, when: function () { return $scope.serviceGroups('services').length > 0; } },
-        { icon: 'flag', title: 'Races', desc: 'pick a race or a track', act: function () { $scope.openPanel('races'); }, on: function () { return $scope.panel === 'races'; }, when: function () { return $scope.serviceGroups('races').length > 0; } },
-        { icon: 'driver', title: 'Drivers', desc: 'who sits behind the wheel', act: function () { $scope.openPanel('drivers'); }, on: function () { return $scope.panel === 'drivers'; }, when: function () { return $scope.serviceGroups('drivers').length > 0; } },
+        { icon: 'lift', get title() { return $scope.t('bar.lift.title', 'Lift'); }, get desc() { return $scope.t('bar.lift.desc', 'raise or lower the car'); }, act: function () { $scope.lua('toggleLift()'); }, on: function () { return $scope.s.lift; } },
+        { icon: 'spray', get title() { return $scope.t('bar.paintbooth.title', 'Paint booth'); }, get desc() { return $scope.t('bar.paintbooth.desc', 'respray the car'); }, act: function () { $scope.openPanel('paint'); }, on: function () { return $scope.panel === 'paint'; } },
+        { icon: 'engine', get title() { return $scope.t('bar.services.title', 'Services'); }, get desc() { return $scope.t('bar.services.desc', 'oil, coolant, battery, nitrous, engine rebuild and repairs'); }, act: function () { $scope.openPanel('services'); }, on: function () { return $scope.panel === 'services'; }, when: function () { return $scope.serviceGroups('services').length > 0; } },
+        { icon: 'flag', get title() { return $scope.t('bar.races.title', 'Races'); }, get desc() { return $scope.t('bar.races.desc', 'pick a race or a track'); }, act: function () { $scope.openPanel('races'); }, on: function () { return $scope.panel === 'races'; }, when: function () { return $scope.serviceGroups('races').length > 0; } },
+        { icon: 'driver', get title() { return $scope.t('bar.drivers.title', 'Drivers'); }, get desc() { return $scope.t('bar.drivers.desc', 'who sits behind the wheel'); }, act: function () { $scope.openPanel('drivers'); }, on: function () { return $scope.panel === 'drivers'; }, when: function () { return $scope.serviceGroups('drivers').length > 0; } },
         { sep: true },
-        { icon: 'camera', title: 'Photo', desc: 'hide the screen and save a picture of the car (screenshots/slrr_garage)', act: function () { $scope.lua('photo()'); } },
-        { icon: 'turntable', title: 'Showcase', desc: 'the camera turns slowly round the car', act: function () { $scope.lua('toggleShowcase()'); }, on: function () { return $scope.s.showcase; } },
-        { icon: 'camera', title: 'Photo mode', desc: 'the game\'s own photo mode (angles, lenses, effects)', act: function () { $scope.lua('photoMode()'); } },
-        { icon: 'key', title: 'Test engine', desc: 'start or stop it where it stands', act: function () { $scope.lua('toggleEngine()'); }, on: function () { return $scope.s.engineOn; } },
-        { icon: 'clock', title: 'Advance time', desc: 'move the clock on three hours', act: function () { $scope.lua('advanceTime()'); } },
-        { icon: 'target', title: 'Whole car', desc: 'reset the camera', act: function () { $scope.lua('resetView()'); }, on: function () { return $scope.s.focused; } },
-        { icon: 'gear', title: 'Settings', desc: 'money, prices, damage and more', act: function () { $scope.openPanel('settings'); }, on: function () { return $scope.panel === 'settings'; } }
+        { icon: 'camera', get title() { return $scope.t('bar.photo.title', 'Photo'); }, get desc() { return $scope.t('bar.photo.desc', 'hide the screen and save a picture of the car (screenshots/slrr_garage)'); }, act: function () { $scope.lua('photo()'); } },
+        { icon: 'turntable', get title() { return $scope.t('bar.showcase.title', 'Showcase'); }, get desc() { return $scope.t('bar.showcase.desc', 'the camera turns slowly round the car'); }, act: function () { $scope.lua('toggleShowcase()'); }, on: function () { return $scope.s.showcase; } },
+        { icon: 'camera', get title() { return $scope.t('bar.photomode.title', 'Photo mode'); }, get desc() { return $scope.t('bar.photomode.desc', 'the game\'s own photo mode (angles, lenses, effects)'); }, act: function () { $scope.lua('photoMode()'); } },
+        { icon: 'key', get title() { return $scope.t('bar.testengine.title', 'Test engine'); }, get desc() { return $scope.t('bar.testengine.desc', 'start or stop it where it stands'); }, act: function () { $scope.lua('toggleEngine()'); }, on: function () { return $scope.s.engineOn; } },
+        { icon: 'clock', get title() { return $scope.t('bar.advancetime.title', 'Advance time'); }, get desc() { return $scope.t('bar.advancetime.desc', 'move the clock on three hours'); }, act: function () { $scope.lua('advanceTime()'); } },
+        { icon: 'target', get title() { return $scope.t('bar.wholecar.title', 'Whole car'); }, get desc() { return $scope.t('bar.wholecar.desc', 'reset the camera'); }, act: function () { $scope.lua('resetView()'); }, on: function () { return $scope.s.focused; } },
+        { icon: 'gear', get title() { return $scope.t('bar.settings.title', 'Settings'); }, get desc() { return $scope.t('bar.settings.desc', 'money, prices, damage and more'); }, act: function () { $scope.openPanel('settings'); }, on: function () { return $scope.panel === 'settings'; } }
       ];
       $scope.barVisible = function (b) { return !b.when || b.when(); };
       // the entries other mods offer, one list per top tab (an entry says which with `tab`; none: car servicing), grouped as their mod said
-      $scope.svcTabs = { services: { title: 'Services' }, races: { title: 'Races' }, drivers: { title: 'Drivers' } };
+      $scope.svcTabs = { services: { get title() { return $scope.t('tab.services', 'Services'); } }, races: { get title() { return $scope.t('tab.races', 'Races'); } }, drivers: { get title() { return $scope.t('tab.drivers', 'Drivers'); } } };
       $scope.serviceGroups = function (tab) {
         var groups = [], byName = {};
         ($scope.s.services || []).forEach(function (sv) {
