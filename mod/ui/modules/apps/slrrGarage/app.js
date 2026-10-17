@@ -464,13 +464,16 @@ angular.module('beamng.apps')
     /* tune drawer */
     '  <div class="sg-drawer sg-glass sg-panel" ng-if="panel === \'tune\'" ng-mouseenter="overUi(true)">',
     '    <div class="sg-dhead"><div class="sg-h">Tuning</div><div class="sg-x" ng-click="closePanel()" ng-bind-html="icon(\'close\')"></div></div>',
-    '    <div class="sg-tabs"><div class="sg-tab" ng-repeat="c in tune.categories" ng-class="{\'sg-on\': c === tune.category}" ng-click="tune.category = c">{{c}}</div></div>',
+    '    <div class="sg-tabs"><div class="sg-tab" ng-class="{\'sg-on\': !tune.category}" ng-click="tune.category = null">All</div><div class="sg-tab" ng-repeat="c in tune.categories" ng-class="{\'sg-on\': c === tune.category}" ng-click="tune.category = c">{{c}}</div></div>',
     '    <div class="sg-scrolly">',
-    '      <div class="sg-var" ng-repeat="v in tune.vars | filter:{category: tune.category}:true track by v.name">',
-    '        <div class="sg-vt"><b>{{v.subCategory ? v.subCategory + \' \' : \'\'}}{{v.title}}</b><span>{{shown(v)}} {{v.unit}}</span></div>',
+    '     <div ng-repeat="grp in tuneGroups() track by grp.key">',
+    '      <div class="sg-cap" style="margin-top:8px" ng-if="grp.name">{{grp.name}}</div>',
+    '      <div class="sg-var" ng-repeat="v in grp.vars track by v.name">',
+    '        <div class="sg-vt"><b>{{v.title}}</b><span>{{shown(v)}} {{v.unit}}</span></div>',
     '        <div class="sg-vd" ng-if="v.description">{{v.description}}</div>',
     '        <div class="sg-vr"><input type="range" min="{{v.lo}}" max="{{v.hi}}" step="{{v.step}}" ng-model="v.value" ng-change="tuneChanged()"><div class="sg-mini" ng-click="v.value = v.default; tuneChanged()">Default</div></div>',
     '      </div>',
+    '     </div>',
     '      <div class="sg-note" ng-if="!tune.vars.length">This car has nothing to adjust with the parts that are on it. Springs, alignment, gearing and the like show up here when the fitted parts allow it.</div>',
     '    </div>',
     '    <div class="sg-foot2"><div class="sg-note" style="flex:1;padding-right:10px">Changes take hold when you apply them &mdash; the car is set up again behind a short fade.</div>',
@@ -795,7 +798,12 @@ angular.module('beamng.apps')
         { icon: 'info', title: 'Car info', desc: 'details of this car', act: function () { $scope.openPanel('info'); }, on: function () { return $scope.panel === 'info'; } },
         { sep: true },
         { icon: 'wrench', title: 'Mechanic', desc: 'install and remove parts', act: function () { if ($scope.panel === 'tune') $scope.closePanel(); $scope.lua('setMode(\'mechanic\')'); }, on: function () { return $scope.s.mode === 'mechanic'; } },
-        { icon: 'screwdriver', title: 'Tune', desc: 'click a part to adjust or open it', act: function () { $scope.closePanel(); $scope.lua('setMode(\'tune\')'); }, on: function () { return $scope.s.mode === 'tune'; } },
+        { icon: 'screwdriver', title: 'Tune', desc: 'every tuning item of the car on the right; or click a part to adjust it', act: function () {
+          if ($scope.s.mode === 'tune' && $scope.panel === 'tune') { $scope.closePanel(); return; }       // (a second click puts the panel away; the mode stays)
+          if ($scope.s.mode !== 'tune') $scope.lua('setMode(\'tune\')');
+          $scope.panel = null;
+          $scope.openPanel('tune');
+        }, on: function () { return $scope.s.mode === 'tune'; } },
         { icon: 'lift', title: 'Lift', desc: 'raise or lower the car', act: function () { $scope.lua('toggleLift()'); }, on: function () { return $scope.s.lift; } },
         { icon: 'spray', title: 'Paint booth', desc: 'respray the car', act: function () { $scope.openPanel('paint'); }, on: function () { return $scope.panel === 'paint'; } },
         { icon: 'engine', title: 'Services', desc: 'oil, coolant, battery, nitrous, engine rebuild and repairs', act: function () { $scope.openPanel('services'); }, on: function () { return $scope.panel === 'services'; }, when: function () { return $scope.serviceGroups('services').length > 0; } },
@@ -1211,6 +1219,28 @@ angular.module('beamng.apps')
           $scope.pt = data;
         });
       });
+      // the tuning items as the stock tuning menu groups them: by category, then sub-category. One category tab shows its own groups, All shows every
+      // item of the car under category / sub-category headings. Cached: a new list every digest would never settle.
+      var groupsFor = null, groupsList = [];
+      $scope.tuneGroups = function () {
+        var t = $scope.tune;
+        if (groupsFor && groupsFor.t === t && groupsFor.c === t.category) return groupsList;
+        groupsFor = { t: t, c: t.category };
+        var byKey = {};
+        groupsList = [];
+        t.vars.forEach(function (v) {
+          if (t.category && v.category !== t.category) return;
+          var key = (t.category ? '' : (v.category || '') + '|') + (v.subCategory || '');
+          var g = byKey[key];
+          if (!g) {
+            var name = t.category ? (v.subCategory || '') : ((v.category || '') + (v.subCategory ? ' / ' + v.subCategory : ''));
+            g = byKey[key] = { key: key, name: name, vars: [] };
+            groupsList.push(g);
+          }
+          g.vars.push(v);
+        });
+        return groupsList;
+      };
       $scope.$on('slrrGarageTuning', function (ev, data) {
         $scope.$evalAsync(function () {
           var vars = (data && Array.isArray(data.vars)) ? data.vars : [];
@@ -1220,7 +1250,7 @@ angular.module('beamng.apps')
             if (cats.indexOf(v.category) < 0) cats.push(v.category);
           });
           var keep = (data && data.category) || $scope.tune.category;
-          $scope.tune = { vars: vars, categories: cats, category: cats.indexOf(keep) >= 0 ? keep : (cats[0] || null), dirty: false };
+          $scope.tune = { vars: vars, categories: cats, category: cats.indexOf(keep) >= 0 ? keep : null, dirty: false };       // (null: every item, all categories)
         });
       });
 

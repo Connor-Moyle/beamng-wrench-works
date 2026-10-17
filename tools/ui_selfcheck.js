@@ -139,4 +139,22 @@ assert.ok(visible('Services') && visible('Races') && visible('Drivers'), 'one ba
 $scope.s.services = [{ id: 'oil', group: 'Your car', label: 'Oil' }];
 assert.ok(visible('Services') && !visible('Races') && !visible('Drivers'), 'a tab with nothing in it is not shown');
 
+// #27: the Tune icon opens the right-hand panel with every tuning item, grouped by category and sub-category
+const tv = (name, category, sub) => ({ name, title: name, category, subCategory: sub, min: 0, max: 10, step: 1, value: 1, default: 1 });
+handlers.slrrGarageTuning(null, { vars: [tv('a', 'Chassis', 'Front'), tv('b', 'Chassis', 'Rear'), tv('c', 'Chassis', 'Front'), tv('d', 'Engine', null)] });
+assert.deepStrictEqual($scope.tune.categories, ['Chassis', 'Engine']);
+assert.strictEqual($scope.tune.category, null, 'opens on All: every item');
+assert.deepStrictEqual($scope.tuneGroups().map((g) => g.name + ':' + g.vars.map((v) => v.name).join('')), ['Chassis / Front:ac', 'Chassis / Rear:b', 'Engine:d']);
+assert.strictEqual($scope.tuneGroups(), $scope.tuneGroups(), 'cached');
+$scope.tune.category = 'Chassis';
+assert.deepStrictEqual($scope.tuneGroups().map((g) => g.name + ':' + g.vars.length), ['Front:2', 'Rear:1']);
+$scope.tune.category = null;
+const tuneBar = $scope.bar.find((b) => b.title === 'Tune');
+$scope.panel = null; $scope.s.mode = 'mechanic'; luaCalls.length = 0;
+tuneBar.act();
+assert.ok($scope.panel === 'tune' && luaCalls.some((c) => c.includes("setMode('tune')")) && luaCalls.some((c) => c.includes('requestTuning')), 'the Tune icon sets the mode and opens the panel');
+$scope.s.mode = 'tune';
+tuneBar.act();
+assert.strictEqual($scope.panel, null, 'a second click puts the panel away');
+
 console.log('ui self-check passed');
