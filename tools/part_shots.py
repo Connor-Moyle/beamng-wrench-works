@@ -1,9 +1,9 @@
 """Part pictures (T41): the PC-side half of tools/part_shots.lua.
 
-  python tools/part_shots.py matte [--src DIR] [--size 256]
+  python tools/part_shots.py matte [--src DIR] [--size 128]
       every <part>_b.png / <part>_w.png pair in DIR/raw (the same part on a black and on a white card) becomes a transparent <part>.png in DIR:
       alpha and colour are recovered from the two shots (difference matting: no halo, glass stays see-through), the part is cropped to its
-      outline, fitted into a square with a little margin and scaled to SIZE (default 256).
+      outline, fitted into a square with a little margin and scaled to SIZE (default 128).
   python tools/part_shots.py ship --dest DIR [--src DIR]
       copies the finished PNGs into the mod (DIR = the Street Legal mod's art/street_legal/parts), shrinks each to a palette PNG and writes
       manifest.json (the list of parts that have a picture; sl/partinfo shows a picture only for those).
@@ -131,7 +131,7 @@ def main():
     p.add_argument('cmd', choices=['matte', 'ship', 'selftest'])
     p.add_argument('--src', default=DEFAULT)
     p.add_argument('--dest')
-    p.add_argument('--size', type=int, default=256)
+    p.add_argument('--size', type=int, default=128)
     a = p.parse_args()
     if a.cmd == 'selftest':
         return selftest()

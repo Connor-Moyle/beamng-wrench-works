@@ -3,7 +3,7 @@
 -- For each stock model it spawns the car (the car's materials must be loaded for the parts to wear their textures), builds each part's own 3D model
 -- with slrr/garageShapes (the garage's catalog method), hangs it in the air 40 m above the car in front of a flat card, and takes TWO screenshots
 -- of it from a fixed 3/4 view: once with a black card behind it, once with a white one. tools/part_shots.py turns each pair into a transparent
--- 256x256 PNG (difference matting, so there is no halo and glass keeps its see-through). Nothing here touches the player's career or save.
+-- 128x128 PNG (difference matting, so there is no halo and glass keeps its see-through). Nothing here touches the player's career or save.
 --
 --   PART_SHOTS = {
 --     models = { 'covet' },     which models (default: every stock car and truck found on this PC; mods are skipped)
@@ -29,6 +29,10 @@ local SHOT_WAIT = 4                                    -- seconds to wait for a 
 
 local jbeamIO = require('jbeam/io')
 local shapes = require('slrr/garageShapes')
+local catalog = require('slrr/garageCatalog')
+
+-- the markets list wheels, tyres and hubs too, but they keep their category icons (and generic parts shared by every model, from /vehicles/common)
+local SKIP_SUBS = { rims_f = true, rims_r = true, tyres_f = true, tyres_r = true, hubs = true }
 
 rawset(_G, 'PART_SHOTS_STOP', false)
 rawset(_G, 'PART_SHOTS_STATUS', 'starting')
@@ -60,10 +64,12 @@ local function partsOf(model, ctx)
   end, nil)
   for name, desc in pairs(jbeamIO.getAvailableParts(ctx) or {}) do
     if not desc.isAuxiliary then
-      local part = jbeamIO.getPart(ctx, name)
+      local part, file = jbeamIO.getPart(ctx, name)
       local info = part and part.information or {}
       local slot = part and (type(part.slotType) == 'table' and part.slotType[1] or part.slotType)
-      if (tonumber(info.value) or 0) >= 20 and type(slot) == 'string' and slot ~= 'main' then
+      local _, sub = catalog.classify(slot or '', name, nil)
+      local shared = type(file) == 'string' and file:find('^/vehicles/common/') ~= nil
+      if (tonumber(info.value) or 0) >= 20 and type(slot) == 'string' and slot ~= 'main' and not SKIP_SUBS[sub] and not shared then
         local rows = shapes.rowsOfPart(name)
         list[#list + 1] = { part = name, name = info.name or desc.description or name, slot = slot, rows = rows }
       end
