@@ -205,6 +205,9 @@ local function driverServices(list)
         desc = d.id == current and 'in the car now' or 'put them behind the wheel', disabled = d.id == current }
     end
   end
+  -- #37 the driver's outfit: shirt and trousers, and a helmet (only where this driver has a helmet mesh)
+  local look = slrrDrivers.getAppearance and slrrDrivers.getAppearance(vehId) or {}
+  for _, e in ipairs(require('slrr/garageOutfits').entries(current, look, current ~= nil and M.driverHasHelmet(current))) do list[#list + 1] = e end
 end
 
 local function servicesList()
@@ -2356,9 +2359,23 @@ end
 M.toggleLift = toggleLift
 M.toggleEngine = toggleEngine
 M.advanceTime = advanceTime
+-- does this driver have a helmet mesh? (the SLRR Drivers mod's model folder of the driver: models/<model>/helmet.dae)
+M.driverHasHelmet = function(id)
+  local d = id and jsonReadFile('/art/slrr_drivers/' .. tostring(id) .. '/driver.json')
+  local model = type(d) == 'table' and d.model
+  return model ~= nil and model ~= false and FS:fileExists('/art/slrr_drivers/models/' .. tostring(model) .. '/helmet.dae') or false
+end
+
 M.service = function(id)
   if phase ~= 'garage' then return end
   id = tostring(id)
+  local outfit = slrrDrivers and slrrDrivers.setAppearance and require('slrr/garageOutfits').look(id, slrrDrivers.getAppearance and slrrDrivers.getAppearance(vehId))
+  if outfit then
+    slrrDrivers.setAppearance(vehId, outfit)
+    core_jobsystem.create(function(job) job.sleep(0.2) sendState() end)
+    sendState()
+    return
+  end
   local driver = id:match('^driver:(.+)$')
   if driver and slrrDrivers and slrrDrivers.setDriver then
     if driver == 'none' then driver = nil end
