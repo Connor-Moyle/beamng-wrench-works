@@ -112,7 +112,7 @@ M.defs = {
   { key = 'driverDoor', group = 'Garage', title = 'Driver\'s door opens on arrival', type = 'bool', default = true,
     desc = 'When the car has parked, the driver\'s door swings open and shut as if someone got out.' },
   { key = 'arrivalScene', group = 'Garage', title = 'The driver gets out on arrival', type = 'bool', default = true,
-    desc = 'With the SLRR Drivers mod: when the car has parked the driver gets out, looks the car over and walks round it before the garage appears. The Skip button (or the Skip key) cuts it short.' },
+    desc = 'With Wrench Works: Drivers & Pedestrians: when the car has parked the driver gets out, looks the car over and walks round it before the garage appears. The Skip button (or the Skip key) cuts it short.' },
   { key = 'liftHeight', group = 'Garage', title = 'Lift height', type = 'range', min = 0.6, max = 1.9, step = 0.05, default = 1.35, unit = ' m',
     desc = 'How high the lift raises the car.' },
   { key = 'confirmSellAll', group = 'Garage', title = 'Ask before selling everything', type = 'bool', default = true,
