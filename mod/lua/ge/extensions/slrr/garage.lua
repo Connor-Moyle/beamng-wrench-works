@@ -2308,6 +2308,7 @@ end
 local function onExtensionUnloaded()
   abort()
   music.stop()
+  require('slrr/graphics').apply({})        -- the game's own anti-aliasing, shaders and effects again
 end
 
 -- the UI app asks for the current state when it (re)loads
@@ -2329,6 +2330,10 @@ end
 
 M.onUpdate = onUpdate
 M.onClientPostStartMission = function() M.applyGraphics() end
+M.onModDeactivated = function(modData)       -- (the game: a mod was switched off) ours: take our group out of the Options page again
+  local name = type(modData) == 'table' and tostring(modData.modname or modData.modID or '') or ''
+  if name:find('slrr_garage', 1, true) then require('slrr/graphics').uninstallOptions() end
+end
 M.onSettingsChanged = function() M.applyGraphics() end            -- (the game's: some setting changed, the Graphics group of Options is ours too)
 M.onPreRender = onPreRender
 M.onVehicleSpawned = onVehicleSpawned
