@@ -455,6 +455,15 @@ function M.probe(slot, name)
   return table.concat(out, ' ')
 end
 
+-- the same for any field of any of our effects, then off and on again so it builds afresh: M.probeSet('SLRR_TSM_PostEffect', 'stateBlock', 0, 'SLRR_CAS_StateBlock')
+function M.probeSet(effect, field, idx, value)
+  local e = find(effect)
+  if not e then return 'no ' .. tostring(effect) end
+  e:setField(field, idx, value)
+  pcall(function() e:disable() e:enable() end)
+  return tostring(e:getField(field, idx))
+end
+
 -- put the picture as the settings want it; safe to call at any time (a level that is not loaded yet changes nothing)
 function M.apply(opts)
   state.opts = opts or state.opts or {}
