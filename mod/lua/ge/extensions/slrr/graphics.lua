@@ -460,7 +460,9 @@ function M.probeSet(effect, field, idx, value)
   local e = find(effect)
   if not e then return 'no ' .. tostring(effect) end
   e:setField(field, idx, value)
-  pcall(function() e:disable() e:enable() end)
+  local on = isEnabled(effect)
+  rebuild(e)                                   -- a changed shader or texture only shows once the effect builds its pipeline again (as the SMAA swap does)
+  if on then pcall(function() e:enable() end) end
   return tostring(e:getField(field, idx))
 end
 
