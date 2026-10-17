@@ -18,24 +18,15 @@ check('each control activates', K.plan({ blur = 0.1 }).active and K.plan({ dof =
 check('off letterbox is no ratio', K.plan({ letterbox = 'off' }).ratio == 0)
 local p = K.plan({ blur = 9, dof = -3 })
 check('clamped', p.blur == 2 and p.dof == 0)
--- letterbox / pillarbox: every ratio on 16:9 and 21:9 (a wider ratio: bars top and bottom; a narrower one: left and right)
-local screens = { 16 / 9, 21 / 9 }
-for _, a in ipairs(screens) do
-  for _, r in ipairs({ 2.39, 2.0, 1.85 }) do
-    if r > a then
-      check('bars top/bottom ' .. r .. ' on ' .. a, near(K.barHeight(r, a), (1 - a / r) / 2) and K.barWidth(r, a) == 0)
-    elseif r < a then
-      check('bars left/right ' .. r .. ' on ' .. a, near(K.barWidth(r, a), (1 - r / a) / 2) and K.barHeight(r, a) == 0)
-    end
-  end
-end
-check('2.39 on 16:9: about 12.8% each', near(K.barHeight(2.39, 16 / 9), 0.1277) or math.abs(K.barHeight(2.39, 16 / 9) - 0.1277) < 1e-3)
-check('2.0 on 16:9: about 5.6%', math.abs(K.barHeight(2.0, 16 / 9) - 0.0556) < 1e-3)
-check('1.85 on 16:9: about 1.9%', math.abs(K.barHeight(1.85, 16 / 9) - 0.0193) < 1e-3)
-check('2.39 on 21:9 (2.333): about 1.2%', math.abs(K.barHeight(2.39, 21 / 9) - 0.0119) < 1e-3)
-check('1.85 on 21:9: pillarbox 10.4%', math.abs(K.barWidth(1.85, 21 / 9) - 0.1036) < 1e-3 and K.barHeight(1.85, 21 / 9) == 0)
-check('2.0 on 21:9: pillarbox 7.1%', math.abs(K.barWidth(2.0, 21 / 9) - 0.0714) < 1e-3)
-check('same ratio: none', K.barHeight(2, 2) == 0 and K.barWidth(2, 2) == 0 and K.barHeight(nil, 2) == 0)
+-- letterbox only: a ratio wider than the screen gets bars top and bottom, anything else none (16:9 and 21:9 x each ratio)
+local function bars(r, a, want) return math.abs(K.barHeight(r, a) - want) < 1e-3 end
+check('2.39 on 16:9: 12.8%', bars(2.39, 16 / 9, 0.1277))
+check('2.0 on 16:9: 5.6%', bars(2.0, 16 / 9, 0.0556))
+check('1.85 on 16:9: 1.9%', bars(1.85, 16 / 9, 0.0193))
+check('2.39 on 21:9: 1.2%', bars(2.39, 21 / 9, 0.0119))
+check('2.0 on 21:9: none', K.barHeight(2.0, 21 / 9) == 0)
+check('1.85 on 21:9: none', K.barHeight(1.85, 21 / 9) == 0)
+check('same ratio and bad input: none', K.barHeight(2, 2) == 0 and K.barHeight(nil, 2) == 0 and K.barHeight(2, 0) == 0)
 
 -- presets
 local ids = {}

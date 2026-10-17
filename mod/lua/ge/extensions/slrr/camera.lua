@@ -66,18 +66,12 @@ function M.matchPreset(o)
   return 'custom'
 end
 
--- the bars that show a picture of `ratio` on a screen of `aspect` (width / height): a wider ratio gets bars top and bottom (height of each as a fraction of the
--- screen height), a narrower one bars left and right (width of each as a fraction of the screen width); the other is 0
+-- the height of each bar (top and bottom) as a fraction of the screen height, to show a picture of `ratio` on a screen of `aspect` (width / height). Letterbox
+-- only: a ratio no wider than the screen gets no bars (pillarbox would just shrink the picture).
 function M.barHeight(ratio, aspect)
   ratio, aspect = tonumber(ratio), tonumber(aspect)
   if not (ratio and aspect and aspect > 0 and ratio > aspect) then return 0 end
   return (1 - aspect / ratio) / 2
-end
-
-function M.barWidth(ratio, aspect)
-  ratio, aspect = tonumber(ratio), tonumber(aspect)
-  if not (ratio and aspect and ratio > 0 and aspect > ratio) then return 0 end
-  return (1 - ratio / aspect) / 2
 end
 
 function M.plan(o)
@@ -147,8 +141,7 @@ local function consts()
   if not (e and p) then return end
   local size = e:getRenderTargetSize()
   if not (size and size.x > 0 and size.y > 0) then return end
-  local aspect = size.x / size.y
-  e:setShaderConst('$camA', string.format('%f %f %f %f', M.barHeight(p.ratio, aspect), 1 / size.y, M.barWidth(p.ratio, aspect), 1 / size.x))
+  e:setShaderConst('$camA', string.format('%f %f 0 0', M.barHeight(p.ratio, size.x / size.y), 1 / size.y))
 end
 rawset(_G, EFFECT .. 'Callbacks', { preProcess = consts, onEnabled = function() consts() return true end })
 
@@ -268,7 +261,7 @@ function M.optionsGroup(h)
       h.choiceItem('Cinematic camera', k.preset, M.PRESETS, 'Motion blur, depth of field and letterbox bars for replays and photos. Off leaves the game\'s own settings alone. Changing any control below afterwards makes it Custom. Not applied while photo mode is open (it has its own).'),
       h.sliderItem('Motion blur', k.blur, 'Strength of the game\'s motion blur. 0 leaves the game\'s own setting.', 0, 2, 0.1),
       h.sliderItem('Depth of field', k.dof, 'Blurs the background, focus follows the car (the camera\'s target). 0 leaves the game\'s own setting.', 0, 1, 0.05),
-      h.choiceItem('Letterbox', k.letterbox, M.LETTERBOX, 'Black bars for a wide cinema picture: top and bottom on a screen narrower than the ratio (a 16:9 screen at 2.39:1), left and right on a wider one (an ultrawide at 1.85:1). The menus and the HUD are not cut.'),
+      h.choiceItem('Letterbox', k.letterbox, M.LETTERBOX, 'Black bars top and bottom for a wide cinema picture (a 16:9 screen at 2.39:1). A screen already that wide or wider gets none. The menus and the HUD are not cut.'),
     },
   })
 end

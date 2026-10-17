@@ -160,7 +160,7 @@ Frame cost: SMAA Ultra runs the same three passes as the game's SMAA with a long
 
 **Look** (a second group in Options > Graphics, off by default): a light colour grade and vignette on the finished picture, one extra full-screen pass that only runs while something is set. Presets Natural, Cinematic and Vivid, or your own mix of Contrast, Saturation, Warmth, Colour split (cool shadows, warm highlights) and Vignette. It does not touch the game's own colour settings, the menus or the HUD; turning it off puts the game's picture back exactly.
 
-**Cinematic camera** (a third group in Options > Graphics, off by default): motion blur strength and depth of field (the game's own effects, set from the options and put back exactly when off; the focus follows the car) and letterbox bars (2.39:1, 2:1 or 1.85:1: top and bottom on a screen narrower than the ratio, e.g. 16:9, left and right on a wider one; one extra pass of ours). Presets Subtle, Film and Dramatic. It does nothing while photo mode is open, which keeps its own settings.
+**Cinematic camera** (a third group in Options > Graphics, off by default): motion blur strength and depth of field (the game's own effects, set from the options and put back exactly when off; the focus follows the car) and letterbox bars (2.39:1, 2:1 or 1.85:1, top and bottom; a screen already that wide gets none; one extra pass of ours). Presets Subtle, Film and Dramatic. It does nothing while photo mode is open, which keeps its own settings.
 
 ## Good to know
 

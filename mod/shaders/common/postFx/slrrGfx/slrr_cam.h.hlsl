@@ -8,7 +8,7 @@ uniform_sampler2D(colorTex, 0);
 
 cbuffer perDraw : register(b0)
 {
-    uniform float4 camA;      // x: height of each top / bottom bar as a fraction of the picture height; y: 1 / picture height in pixels; z: width of each left / right bar as a fraction of the width; w: 1 / picture width
+    uniform float4 camA;      // x: height of each top / bottom bar as a fraction of the picture height; y: 1 / picture height in pixels; z, w: unused
 
     POSTFX_UNIFORMS;
 };
