@@ -146,7 +146,7 @@ end
 -- bend the freshly built car the way the record says, wherever the same part is still fitted.
 -- options.keepLatches (a car on show, not the garage's own): the latches are not released and not pushed shut again
 -- afterwards; the doors and lids stay as the build left them (shut), and the panels bend only as far as they allow.
-local function apply(data, options)
+local function applyNow(data, options)
   local keepLatches = type(options) == 'table' and options.keepLatches == true
   -- options.done: a line of game-engine Lua run when the damage is on (or could not be put on), so the caller can wait for it
   local function finish() if type(options) == 'table' and type(options.done) == 'string' then obj:queueGameEngineLua(options.done) end end
@@ -160,6 +160,17 @@ local function apply(data, options)
     if node.name then byName[node.name] = cid end
   end
   local beamsOf = {}
+  -- A crash in the game's physics thread, 0.3 s after a car was built with damage (0x140386), came from this recorded branch moving or re-measuring
+  -- special beams and the nodes of special beams. Only plain beams (type 0) are re-measured or broken here, and a node moves only if none of the beams
+  -- on it is anisotropic (1), bounded (2), pressured (3), an L-beam (4) or a hydro (6); a record whose beam is gone or of another type is skipped.
+  local specialNode = {}
+  for cid = 0, tableSizeC(beams) - 1 do
+    local beam = beams[cid]
+    if beam and beam.id1 and beam.id2 then
+      local bt = beam.beamType or 0
+      if bt == 1 or bt == 2 or bt == 3 or bt == 4 or bt == 6 then specialNode[beam.id1], specialNode[beam.id2] = true, true end
+    end
+  end
   for cid = 0, tableSizeC(beams) - 1 do
     local beam = beams[cid]
     if beam and beam.id1 and beam.id2 then
@@ -176,7 +187,7 @@ local function apply(data, options)
 
   for _, rec in ipairs(data.nodes or {}) do
     local cid = nodeFor(rec.n, rec.p)
-    if cid then obj:setNodePosition(cid, o + x * rec.x + y * rec.y + z * rec.z) end
+    if cid and not nodes[cid].wheelID and not nodes[cid].fixed and not specialNode[cid] then obj:setNodePosition(cid, o + x * rec.x + y * rec.y + z * rec.z) end
   end
   local applied = 0
   -- A second-hand part arrives bent: its nodes are nudged out of place and the beams between
@@ -231,7 +242,8 @@ local function apply(data, options)
     if ca and cb then
       local list = beamsOf[math.min(ca, cb) * 65536 + math.max(ca, cb)]
       local cid = list and list[rec.i]
-      if cid then
+      local beam = cid and beams[cid]
+      if beam and (beam.beamType or 0) == 0 and (beam.breakGroup == nil or beam.breakGroup == '') and not isLatchBeam(beam) and type(rec.l) == 'number' and rec.l > 0.001 then
         obj:setBeamLength(cid, rec.l)
         if rec.k and not isLatchBeam(beams[cid]) then obj:breakBeam(cid) end   -- (older records may still hold a latch beam)
         if rec.d and rec.d ~= 0 and beamstate.onBeamDeformed then beamstate.onBeamDeformed(cid, rec.d) end
@@ -298,7 +310,16 @@ local function setLift(height)
   liftHeight = 0
 end
 
+local SETTLE_FRAMES, SETTLE_SECONDS = 30, 1.0
+local settleFrames, settleTime, pendingApply = 0, 0, nil
+
 local function updateGFX(dt)
+  settleFrames, settleTime = settleFrames + 1, settleTime + dt
+  if pendingApply and settleFrames >= SETTLE_FRAMES and settleTime >= SETTLE_SECONDS then
+    local p = pendingApply
+    pendingApply = nil
+    applyNow(p.data, p.options)
+  end
   if relatch then updateLatches(dt) end
   if not liftNodes then return end
   dt = math.min(dt, 0.05)
@@ -364,7 +385,17 @@ end
 
 M.dyno = dyno
 M.capture = capture
+-- A car just built is not ready for its beams to be changed: the physics thread is still starting it. The damage waits here for a settled car (a
+-- number of graphics frames and a second of time since this extension started; a car that never settles is not touched), unless options.settle == false.
+local function apply(data, options)
+  if type(options) == 'table' and options.settle == false or (settleFrames >= SETTLE_FRAMES and settleTime >= SETTLE_SECONDS) then
+    pendingApply = nil
+    return applyNow(data, options)
+  end
+  pendingApply = { data = data, options = options }
+end
 M.apply = apply
+M.applyNow = applyNow
 M.shutLatches = shutLatches
 M.setLift = setLift
 M.releaseLift = releaseLift
