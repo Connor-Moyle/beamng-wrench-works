@@ -214,6 +214,9 @@ local function servicesList()
   return list
 end
 
+-- the arrival scene's state (declared here: sendState reads it; one table, the chunk is near its limit of locals)
+local scene = { on = false, skip = false }
+
 local function sendState()
   local inGarage = phase == 'garage' or phase == 'catalog' or phase == 'busy'
   guihooks.trigger('slrrGarageState', {
@@ -241,7 +244,7 @@ local function sendState()
     paint = (parts.getPaints()[1] or {}).baseColor,
     paintSmoke = settings.get('paintSmoke'),
     hints = settings.get('hints'),
-    scene = sceneOn,
+    scene = scene.on,
     retro = settings.get('retroCatalog'),
     services = (phase == 'garage') and servicesList() or {},
   })
@@ -582,7 +585,6 @@ end
 
 -- The arrival scene (#36, with the SLRR Drivers mod): the car has parked, the driver's door opens, the driver (the driver chosen for the car) gets out
 -- and walks round the car looking it over, the door shuts, then the garage appears. Skippable (the Skip button, or the slrrGarageSkip action).
-local sceneOn, sceneSkip = false, false
 local SCENE_MAX = 22                -- s: the scene never runs longer than this
 
 -- where the driver walks: out of the door, round the nose and down the far side, across the back, home. Stops at the corners to look.
@@ -627,7 +629,7 @@ local function arrivalScene(job)
   local st = drv.getState and drv.getState(vehId)
   local pts = scenePath(v, not st or st.seatLeft ~= false)
   if not pts then return false end
-  sceneOn, sceneSkip = true, false
+  scene.on, scene.skip = true, false
   sendState()
   core_jobsystem.create(driverDoorJob)                 -- the door swings open now and is pushed shut after 1.9 s
   job.sleep(0.7)
@@ -635,13 +637,13 @@ local function arrivalScene(job)
   drv.setDisplayMode('hidden', vehId)                  -- he is out of the seat
   local actor = ped.playActor(dir, pts)
   local t = 0
-  while actor and not ped.actorDone(actor) and t < SCENE_MAX and not sceneSkip and phase == 'film' and veh() do
+  while actor and not ped.actorDone(actor) and t < SCENE_MAX and not scene.skip and phase == 'film' and veh() do
     job.sleep(0.05)
     t = t + 0.05
   end
   if actor then ped.stopActor(actor) end
   drv.setDisplayMode(override, vehId)                  -- back in the seat, as he was
-  sceneOn = false
+  scene.on = false
   sendState()
   return true
 end
@@ -2292,7 +2294,7 @@ M.enter = enterNearest
 M.enterWith = enterWith
 M.garageAt = function(pos) local g = garageAt(pos) return g and g.id or nil end   -- (the site's id, for comparing)
 M.leave = leave
-M.skipScene = function() sceneSkip = true end
+M.skipScene = function() scene.skip = true end
 M.abort = abort
 M.click = click
 M.install = install
