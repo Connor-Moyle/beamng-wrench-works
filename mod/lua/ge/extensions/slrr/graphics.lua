@@ -475,6 +475,41 @@ function M.probeShader(on)
   return M.probeSet(TSM, 'shader', 0, name)
 end
 
+-- diagnosis without swapping anything: a brand new effect painting everything magenta, built the way the sharpeners are (M.probeNew(1)) or the way the smoothing effect is (M.probeNew(2)); M.probeNew(0) removes it
+local probeCount = 0
+function M.probeNew(kind)
+  local old = find('SLRR_Probe_PostEffect' .. probeCount)
+  if old then pcall(function() old:disable() end) end
+  if not kind or kind == 0 then return 'removed' end
+  probeCount = probeCount + 1
+  local name = 'SLRR_Probe_PostEffect' .. probeCount
+  if kind == 1 then
+    ensureStateBlock()
+    makeShaderData('SLRR_TSMProbe2_ShaderData', 'slrr_sharpenV.hlsl', 'slrr_probe2P.hlsl', { '$colorTex' })
+  else
+    ensureTsm()
+    makeShaderData('SLRR_TSMProbe_ShaderData', 'slrr_tsmV.hlsl', 'slrr_tsmProbeP.hlsl', { '$curTex', '$histTex', '$velTex', '$depthTex', '$rt0Tex' })
+  end
+  local e = createObject('PostEffect')
+  e.isEnabled = false
+  e.allowReflectPass = false
+  e:setField('renderTime', 0, 'PFXAfterDiffuse')
+  e.renderPriority = 0.4
+  e:setField('shader', 0, kind == 1 and 'SLRR_TSMProbe2_ShaderData' or 'SLRR_TSMProbe_ShaderData')
+  e:setField('stateBlock', 0, kind == 1 and 'SLRR_CAS_StateBlock' or 'SLRR_TSM_StateBlock')
+  e:setField('texture', 0, '$backBuffer')
+  if kind ~= 1 then
+    e:setField('texture', 1, '$backBuffer')
+    e:setField('texture', 2, '#VelocityBuffer')
+    e:setField('texture', 3, '#prepass[Depth]')
+    e:setField('texture', 4, '#prepass[RT0]')
+  end
+  e:setField('target', 0, '$backBuffer')
+  e:registerObject(name)
+  e:enable()
+  return name .. ' enabled=' .. tostring(isEnabled(name))
+end
+
 -- put the picture as the settings want it; safe to call at any time (a level that is not loaded yet changes nothing)
 function M.apply(opts)
   state.opts = opts or state.opts or {}
