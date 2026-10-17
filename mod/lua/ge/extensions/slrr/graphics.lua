@@ -488,6 +488,7 @@ function M.probeNew(kind)
     makeShaderData('SLRR_TSMProbe2_ShaderData', 'slrr_sharpenV.hlsl', 'slrr_probe2P.hlsl', { '$colorTex' })
   else
     ensureTsm()
+    makeShaderData('SLRR_TSMForce_ShaderData', 'slrr_tsmV.hlsl', 'slrr_tsmForceP.hlsl', { '$curTex', '$histTex', '$velTex', '$depthTex', '$rt0Tex' })
     makeShaderData('SLRR_TSMProbe_ShaderData', 'slrr_tsmV.hlsl', 'slrr_tsmProbeP.hlsl', { '$curTex', '$histTex', '$velTex', '$depthTex', '$rt0Tex' })
   end
   local e = createObject('PostEffect')
@@ -495,7 +496,7 @@ function M.probeNew(kind)
   e.allowReflectPass = false
   e:setField('renderTime', 0, 'PFXAfterDiffuse')
   e.renderPriority = 0.4
-  e:setField('shader', 0, kind == 1 and 'SLRR_TSMProbe2_ShaderData' or (kind == 3 and 'SLRR_TSM_ShaderData' or 'SLRR_TSMProbe_ShaderData'))
+  e:setField('shader', 0, kind == 1 and 'SLRR_TSMProbe2_ShaderData' or (kind == 3 and 'SLRR_TSM_ShaderData' or (kind == 4 and 'SLRR_TSMForce_ShaderData' or 'SLRR_TSMProbe_ShaderData')))
   e:setField('stateBlock', 0, kind == 1 and 'SLRR_CAS_StateBlock' or 'SLRR_TSM_StateBlock')
   e:setField('texture', 0, '$backBuffer')
   if kind ~= 1 then
