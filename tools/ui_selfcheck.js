@@ -169,4 +169,12 @@ assert.strictEqual($scope.stats['covet_engine_2.0'][0].value, '158 hp at 6300 rp
 $scope.hoverStats(null);
 assert.strictEqual($scope.statsFor, null, 'the card goes when the pointer leaves');
 
+// #29: finishes keep the colour, change the look; All three sprays the editor's paint on every colour
+$scope.paint.cur = { baseColor: [0.2, 0.4, 0.6, 1], metallic: 0.5, roughness: 0.5, clearcoat: 1, clearcoatRoughness: 0.05 };
+$scope.useFinish($scope.finishes.find((f) => f.name === 'Matte'));
+assert.deepStrictEqual($scope.paint.cur.baseColor, [0.2, 0.4, 0.6, 1]);
+assert.ok($scope.paint.cur.roughness > 0.8 && $scope.paint.cur.clearcoat === 0, 'matte: rough, no clearcoat, the colour stays');
+luaCalls.length = 0;
+$scope.sprayAll();
+assert.deepStrictEqual(luaCalls.map((c) => c.slice(0, 26)), ['slrr_garage.setPaint(1,{"b', 'slrr_garage.setPaint(2,{"b', 'slrr_garage.setPaint(3,{"b'], 'all three colours are sprayed');
 console.log('ui self-check passed');

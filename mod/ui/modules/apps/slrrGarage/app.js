@@ -507,11 +507,14 @@ angular.module('beamng.apps')
     '    <div class="sg-scrolly">',
     '      <div class="sg-cap">Factory colours</div>',
     '      <div class="sg-swatches"><div class="sg-sw" ng-repeat="sw in paint.swatches track by sw.name" ng-style="{background: css(sw.paint)}" ng-click="useSwatch(sw)" title="{{sw.name}}"></div></div>',
+    '      <div class="sg-cap" style="margin-top:12px">Finish</div>',
+    '      <div class="sg-chips"><div class="sg-tab" ng-repeat="f in finishes" ng-click="useFinish(f)" title="{{f.desc}}">{{f.name}}</div></div>',
     '      <div class="sg-cap" style="margin-top:12px">Mix your own</div>',
     '      <div class="sg-chip" ng-style="{background: css(paint.cur)}"></div>',
     '      <div class="sg-paintrow" ng-repeat="ch in paintChannels"><label>{{ch.title}}</label><input type="range" min="0" max="1" step="0.01" ng-model="paint.cur[ch.key][ch.idx]" ng-if="ch.idx !== undefined"><input type="range" min="0" max="1" step="0.01" ng-model="paint.cur[ch.key]" ng-if="ch.idx === undefined"><span>{{pct(ch)}}</span></div>',
     '    </div>',
-    '    <div class="sg-foot2"><div class="sg-note" style="flex:1;padding-right:10px">A respray costs {{money(paint.price)}} per colour.</div><div class="sg-btn sg-go" ng-click="spray()">Spray</div></div>',
+    '    <div class="sg-note" style="padding:6px 2px 0 2px">The main colour is the body. The second and third colours show where the car uses them: trim, bumpers, mirrors and, on many cars, the rims (BeamNG has no separate rim or window-tint paint). Every colour is saved with the car.</div>',
+    '    <div class="sg-foot2"><div class="sg-btn" ng-click="sprayAll()" title="the colour in the editor on all three">All three</div><div class="sg-note" style="flex:1;padding:0 10px">{{money(paint.price)}} a colour.</div><div class="sg-btn sg-go" ng-click="spray()">Spray</div></div>',
     '  </div>',
 
     /* services other mods offer (an oil change, a car swap, a race...): their list, their buttons */
@@ -1288,6 +1291,21 @@ angular.module('beamng.apps')
           roughness: p.roughness === undefined ? 0.5 : +p.roughness, clearcoat: p.clearcoat === undefined ? 1 : +p.clearcoat,
           clearcoatRoughness: p.clearcoatRoughness === undefined ? 0.05 : +p.clearcoatRoughness };
       }
+      // finishes: how the paint looks, keeping the colour that is being mixed (metallic, roughness, clearcoat, clearcoat roughness)
+      $scope.finishes = [
+        { name: 'Gloss', desc: 'deep and shiny', v: { metallic: 0.15, roughness: 0.2, clearcoat: 1, clearcoatRoughness: 0.03 } },
+        { name: 'Satin', desc: 'a soft sheen', v: { metallic: 0.2, roughness: 0.45, clearcoat: 0.6, clearcoatRoughness: 0.2 } },
+        { name: 'Matte', desc: 'no shine at all', v: { metallic: 0, roughness: 0.9, clearcoat: 0, clearcoatRoughness: 0.5 } },
+        { name: 'Metallic', desc: 'flakes in the paint', v: { metallic: 0.85, roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.05 } },
+        { name: 'Pearl', desc: 'a pale glow', v: { metallic: 0.5, roughness: 0.15, clearcoat: 1, clearcoatRoughness: 0.02 } },
+        { name: 'Chrome', desc: 'like a mirror', v: { metallic: 1, roughness: 0.05, clearcoat: 0, clearcoatRoughness: 0.05 } }
+      ];
+      $scope.useFinish = function (f) { for (var k in f.v) $scope.paint.cur[k] = f.v[k]; };
+      // the same paint on all three colours at once
+      $scope.sprayAll = function () {
+        var p = copyPaint($scope.paint.cur);
+        [1, 2, 3].forEach(function (n) { bngApi.engineLua('slrr_garage.setPaint(' + n + ',' + bngApi.serializeToLua(p) + ')'); });
+      };
       $scope.pickPaintSlot = function (n) { $scope.paint.slot = n; $scope.paint.cur = copyPaint($scope.paint.slots[n - 1] || $scope.paint.slots[0]); };
       $scope.useSwatch = function (sw) { $scope.paint.cur = copyPaint(sw.paint); };
       $scope.spray = function () {
