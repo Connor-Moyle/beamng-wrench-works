@@ -2269,6 +2269,12 @@ M.clearTunePart = function() tuneSelected = nil sendTunePart() end
 M.requestPaint = sendPaint
 M.setPaint = setPaint
 M.requestInfo = sendInfo
+-- the catalog's hover card: what the part does, read from its jbeam (slrr/garageStats)
+M.requestPartStats = function(partName)
+  local part = parts.resolvePart(partName)
+  local ok, rows = pcall(function() return require('slrr/garageStats').of(part, parts.partWeight(partName)) end)
+  guihooks.trigger('slrrGaragePartStats', { part = partName, rows = ok and rows or {} })
+end
 M.toggleLift = toggleLift
 M.toggleEngine = toggleEngine
 M.advanceTime = advanceTime

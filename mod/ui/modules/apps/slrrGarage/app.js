@@ -111,6 +111,8 @@ angular.module('beamng.apps')
     '  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:5px;padding:6px 8px 7px 8px;text-align:center;overflow:hidden}',
     '.sg-slot.sg-empty{background:rgba(255,255,255,.02);border:1px dashed rgba(255,255,255,.12)}',
     '.sg-slot.sg-item{cursor:pointer}',
+    '.sg-stats{position:absolute;left:6px;right:6px;bottom:6px;padding:6px 8px;border-radius:4px;background:rgba(10,10,14,.88);font-size:11px;z-index:3;pointer-events:none}',
+    '.sg-stats .sg-kv{padding:1px 0;border:0}',
     '.sg-open>.sg-glyph{display:none}',
     '.sg-slot.sg-item:hover{background:rgba(255,102,0,.22);border-color:#ff6600}',
     '.sg-slot.sg-fresh{animation:sgdrop .45s ease-out}',
@@ -674,7 +676,8 @@ angular.module('beamng.apps')
     '      </div>',
     '      <div class="sg-grid" ng-if="pageItems().length">',
     '        <div class="sg-card" ng-repeat="it in pageItems() track by it.slotPath + it.part">',
-    '          <div class="sg-stage"><span class="sg-glyph" ng-bind-html="icon(curSec().id)"></span>',
+    '          <div class="sg-stage" ng-mouseenter="hoverStats(it)" ng-mouseleave="hoverStats(null)"><span class="sg-glyph" ng-bind-html="icon(curSec().id)"></span>',
+    '            <div class="sg-stats" ng-if="statsFor === it.part && stats[it.part].length"><div class="sg-kv" ng-repeat="r in stats[it.part]"><span>{{r.label}}</span><b>{{r.value}}</b></div></div>',
     '            <div class="sg-prev" ng-if="hasModel(it.part)" data-part="{{it.part}}" data-id="c{{it.part}}" data-spin="always"></div>',
     '            <div class="sg-badges"><span class="sg-badge" ng-if="it.fitted">On the car</span><span class="sg-badge sg-new" ng-if="it.owned > 0">On the shelf &times;{{it.owned}}</span><span class="sg-badge sg-used" ng-if="it.used">Used &minus;{{it.used}}%</span></div>',
     '          </div>',
@@ -1102,6 +1105,17 @@ angular.module('beamng.apps')
       var rafId = null, sentSlots = '', mouseX = -1, mouseY = -1, holes = [];
       var live = {};                 // preview id -> true while its model is in place behind the UI
       var heldDrag = null;           // camera drag waiting for the previews to be put away
+      // hovering a part in the catalog: what it does (power, rpm, strength for an engine; spring rate, grip, weight...), asked from its jbeam once per part
+      $scope.stats = {};
+      $scope.statsFor = null;
+      var statsAsked = {};
+      $scope.hoverStats = function (it) {
+        $scope.statsFor = it ? it.part : null;
+        if (it && !statsAsked[it.part]) { statsAsked[it.part] = true; $scope.lua('requestPartStats(' + $scope.quote(it.part) + ')'); }
+      };
+      $scope.$on('slrrGaragePartStats', function (ev, data) {
+        $scope.$evalAsync(function () { if (data && data.part) $scope.stats[data.part] = Array.isArray(data.rows) ? data.rows : []; });
+      });
       $scope.$on('slrrGaragePreviewLive', function (ev, data) {
         live = {};
         var ids = (data && data.ids) || [];

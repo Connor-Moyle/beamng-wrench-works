@@ -157,4 +157,16 @@ $scope.s.mode = 'tune';
 tuneBar.act();
 assert.strictEqual($scope.panel, null, 'a second click puts the panel away');
 
+// #28: hovering a catalog part asks its jbeam once, and shows the rows that come back
+luaCalls.length = 0;
+$scope.hoverStats({ part: 'covet_engine_2.0' });
+$scope.hoverStats(null);
+$scope.hoverStats({ part: 'covet_engine_2.0' });
+assert.deepStrictEqual(luaCalls.filter((c) => c.includes('requestPartStats')), ['slrr_garage.requestPartStats("covet_engine_2.0")'], 'asked once per part');
+handlers.slrrGaragePartStats(null, { part: 'covet_engine_2.0', rows: [{ label: 'Peak power', value: '158 hp at 6300 rpm' }] });
+assert.strictEqual($scope.statsFor, 'covet_engine_2.0');
+assert.strictEqual($scope.stats['covet_engine_2.0'][0].value, '158 hp at 6300 rpm');
+$scope.hoverStats(null);
+assert.strictEqual($scope.statsFor, null, 'the card goes when the pointer leaves');
+
 console.log('ui self-check passed');
