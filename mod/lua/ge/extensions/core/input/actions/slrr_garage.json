@@ -2,5 +2,6 @@
 "slrrGarageEnter" :{"cat":"gameplay", "order": 90, "ctx": "tlua", "onDown": "if slrr_garage then slrr_garage.enter() end", "title": "Wrench Works: enter nearest garage", "desc": "Sends the car into the nearest garage on this map without driving up to the door." },
 "slrrRadioToggle" :{"cat":"gameplay", "order": 92, "ctx": "tlua", "onDown": "if slrr_carRadio then slrr_carRadio.toggle() end", "title": "Wrench Works: radio on/off", "desc": "Switches the car radio on or off." },
 "slrrRadioNext" :{"cat":"gameplay", "order": 93, "ctx": "tlua", "onDown": "if slrr_carRadio then slrr_carRadio.nextStation() end", "title": "Wrench Works: next radio station", "desc": "Tunes the car radio to the next station (one per music folder)." },
+"slrrGarageSkip" :{"cat":"gameplay", "order": 94, "ctx": "tlua", "onDown": "if slrr_garage then slrr_garage.skipScene() end", "title": "Wrench Works: skip the arrival scene", "desc": "Cuts the driver getting out of the car in the garage short." },
 "slrrGarageLeave" :{"cat":"gameplay", "order": 91, "ctx": "tlua", "onDown": "if slrr_garage then slrr_garage.leave() end", "title": "Wrench Works: drive out", "desc": "Fits everything and drives out of the garage." }
 }

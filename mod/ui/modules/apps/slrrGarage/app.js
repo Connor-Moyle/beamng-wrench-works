@@ -385,6 +385,7 @@ angular.module('beamng.apps')
     '.sg-fade.sg-in{opacity:1}',
     '</style>',
 
+    '<div class="sg-fitnew sg-btn sg-tonal sg-panel" ng-if="s.phase === \'film\' && s.scene" ng-mouseenter="overUi(true)" ng-click="lua(\'skipScene()\')">Skip</div>',
     '<div class="sg-view" ng-if="s.phase === \'garage\'" ng-class="{\'sg-can\': canAct(), \'sg-dragging\': drag.active}"',
     '     ng-mousedown="viewDown($event)" ng-mouseenter="overUi(false)" oncontextmenu="return false"></div>',
 
