@@ -126,6 +126,7 @@ end
 -- put the picture as the options want it; safe to call at any time
 function M.apply(opts)
   state.opts = opts or state.opts or {}
+  local before = state.error
   state.error = nil
   local ok, err = pcall(function()
     if not (scenetree and createObject) then return end
@@ -142,7 +143,7 @@ function M.apply(opts)
   end)
   if not ok then
     state.error = tostring(err)
-    log('E', 'slrr_look', 'could not apply: ' .. tostring(err))
+    if state.error ~= before then log('E', 'slrr_look', 'could not apply: ' .. state.error) end      -- (once, not at every tick)
   end
   return M.status()
 end
