@@ -250,6 +250,8 @@ local function sendState()
     scene = scene.on,
     retro = settings.get('retroCatalog'),
     services = (phase == 'garage') and servicesList() or {},
+    upgrades = (sl_upgrades ~= nil and parts.inCareer()) or nil,
+    lifted = parts.getFeatures().lift, crane = parts.getFeatures().crane,
   })
 end
 
@@ -689,7 +691,7 @@ local function enterJob(job)
   centreZOffset = nil
   camera.setup(site, carCenter, length, viaSide)
   camera.onPose = onCameraPose
-  lift.setup(site.spot, site.dir)           -- the car drives in between its posts
+  lift.setup(site.spot, site.dir) lift.setLiftOwned(parts.getFeatures().lift) lift.setCraneOwned(parts.getFeatures().crane)           -- the car drives in between its posts
   sillHeight = measureSill()
   mode, tool = 'mechanic', nil
 
@@ -862,7 +864,7 @@ local function startLot(_site)
   -- the camera looks at the empty lift the way it would look at a car standing on it
   camera.setup(site, function() return carCenter() or sites.point(site, 0, 0, 0.7) end, 4.5, false)
   camera.onPose = onCameraPose
-  lift.setup(site.spot, site.dir)
+  lift.setup(site.spot, site.dir) lift.setLiftOwned(parts.getFeatures().lift) lift.setCraneOwned(parts.getFeatures().crane)
   camera.startOrbit(false)
   core_camera.setByName(0, 'slrrGarage', false)
   playSound('entergarage.wav')
@@ -1233,6 +1235,7 @@ local function click()
       return
     end
     playSound('wrench.wav')
+    if parts.needsCrane(path) then lift.craneRun('out') end
     hoverPath = nil
     pickRay = nil
     sendHover()
@@ -1310,6 +1313,7 @@ local function install(itemId)
       return
     end
     playSound('screw.wav')
+    if parts.needsCrane(wanted.slotId or wanted.slotPath) then lift.craneRun('in') end
     if needsLoad then
       core_jobsystem.create(applyInGarage)
     else
@@ -1711,6 +1715,11 @@ end
 
 local function toggleLift()
   if phase ~= 'garage' then return end
+  if not camera.isLift() and not parts.getFeatures().lift then
+    playSound('warn.wav', 0.6)
+    say(gs('say.no_lift'), 4)
+    return
+  end
   camera.setLift(not camera.isLift())
   playSound('mnuselect.wav', 0.7)
   sendState()
@@ -2571,7 +2580,25 @@ M.getMode = function() return mode end
 M.markJobCar = function(id, on) jobCars[id] = on ~= false or nil end
 M.addShelfPart = function(model, p) return parts.addShelfPart(model, p) end
 -- what this garage has: another mod's career decides (nil: everything, as on its own)
-M.setFeatures = function(f) parts.setFeatures(f) sendState() end
+M.setFeatures = function(f)
+  parts.setFeatures(f)
+  if phase ~= 'idle' then lift.setLiftOwned(parts.getFeatures().lift) lift.setCraneOwned(parts.getFeatures().crane) end
+  sendState()
+end
+
+-- B8: the garage's upgrades (a career sells them: Street Legal's sl_upgrades). The panel lists them; Buy asks the career.
+M.requestUpgrades = function()
+  local list = (sl_upgrades and sl_upgrades.summary and sl_upgrades.summary()) or {}
+  guihooks.trigger('slrrGarageUpgrades', { list = list, money = parts.getMoney() })
+end
+M.buyUpgrade = function(id)
+  if not (sl_upgrades and sl_upgrades.buy) then return end
+  local ok, text = sl_upgrades.buy(tostring(id))
+  playSound(ok and 'money.wav' or 'warn.wav', 0.6)
+  say(text or '', 4)
+  M.requestUpgrades()
+  sendState()
+end
 M.getFeatures = function() return parts.getFeatures() end
 M.shelfItems = function(model) return parts.shelfItems(model) end
 M.takeShelfItem = function(model, id) if phase ~= 'idle' then return nil end return parts.takeShelfItem(model, tonumber(id)) end   -- (not while the garage shows that shelf)

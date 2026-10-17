@@ -149,9 +149,9 @@ local counterDiscount = 0    -- share taken off prices while buying over the cou
 function M.setCounterDiscount(fraction) counterDiscount = clamp(tonumber(fraction) or 0, 0, 0.9) end
 
 -- what this garage has (another mod's career sells these as upgrades; on their own everything is there):
--- lift (engine, gearbox, suspension, driveline, headers), workbench (repairs at the normal price), dyno, paint,
+-- lift (gearbox, suspension, driveline, headers), crane (the engine comes out and goes in on it), workbench (repairs at the normal price), dyno, paint,
 -- photo, shelfSize (parts per model), repairFactor
-local ALL = { lift = true, workbench = true, dyno = true, paint = true, photo = true, shelfSize = math.huge, repairFactor = 1 }
+local ALL = { lift = true, crane = true, workbench = true, dyno = true, paint = true, photo = true, shelfSize = math.huge, repairFactor = 1 }
 local features = deepcopy(ALL)
 local atShop = false            -- a shop fits anything: it has its own lift
 function M.setFeatures(f)
@@ -161,14 +161,27 @@ end
 function M.getFeatures() return features end
 function M.setAtShop(on) atShop = on == true end
 
+-- the engine (and its internals) comes out and goes in on the engine crane, not on the lift
+function M.needsCrane(slotPath)
+  local seg = (tostring(slotPath or ''):gsub('/$', ''):match('([^/]+)$') or ''):lower()
+  return seg:match('engine$') ~= nil or seg:find('internals', 1, true) ~= nil
+end
+
+-- why a part cannot be worked on here: the tool this garage lacks (a shop has its own), or nil
+function M.missingTool(slotPath)
+  if atShop then return nil end
+  if M.needsCrane(slotPath) and not features.crane then return 'The engine needs an engine crane. Buy one under Upgrades, or have a shop do it.' end
+  if M.needsLift(slotPath) and not features.lift then return 'That is underside work: it needs the lift. Buy one under Upgrades, or have a shop do it.' end
+  return nil
+end
+
 -- parts that need the car up: by the slot's own name (bolt-ons - intake, the exhaust from the cat back, ECU,
 -- wheels, tyres, filters - go on from the floor)
-local LIFT_WORDS = { 'internals', 'transmission', 'gearbox', 'clutch', 'flywheel', 'suspension', 'subframe', 'strut', 'swaybar',
+local LIFT_WORDS = { 'transmission', 'gearbox', 'clutch', 'flywheel', 'suspension', 'subframe', 'strut', 'swaybar',
   'differential', 'driveshaft', 'halfshaft', 'manifold', 'header', 'oilpan' }
 function M.needsLift(slotPath)
   local seg = tostring(slotPath or ''):gsub('/$', ''):match('([^/]+)$') or ''
   seg = seg:lower()
-  if seg:match('engine$') then return true end
   for _, w in ipairs(LIFT_WORDS) do if seg:find(w, 1, true) then return true end end
   return false
 end
@@ -650,6 +663,8 @@ function M.removePart(partPath)
     return nil, "Not now."
   end
   local node = partIndex[partPath]
+  local missing = M.missingTool(node.path)
+  if missing then return nil, missing end
   local item = newItem(node, d.slot)
   item.damage = damage.takePart(node.path)
   local shelf = inventory()
@@ -739,9 +754,8 @@ function M.installItem(itemId)
   if item.foreign and not foreign then return false, "That part belongs to the customer's car." end   -- (back onto a job car: fine)
   local slot = findTargetSlot(item)
   if not slot then return false, "Nothing on the car to bolt the " .. item.name .. " to. Fit the part it attaches to first." end
-  if not features.lift and not atShop and M.needsLift(slot.path) then
-    return false, "The " .. item.name .. " needs the car up on a lift. Buy one for the garage, or have a shop fit it."
-  end
+  local missing = M.missingTool(slot.path)
+  if missing then return false, missing end
   if isChosen(slot) then
     local d = M.describe(slot.partPath)
     if slot.partPath == chassisPath then return false, "The chassis cannot be swapped here." end

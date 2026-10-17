@@ -9,7 +9,7 @@ local M = {}
 
 local SHAPE_DIR = '/temp/slrr_garage/shapes/'
 local MATERIALS = '/art/slrr_garage/main.materials.json'
-local VERSION = 2
+local VERSION = 3
 
 local POST_X = 1.74             -- posts stand this far either side of the car's centre line
 local ARM_X = 1.50              -- arm pivots
@@ -20,7 +20,17 @@ local REST_HEIGHT = 0.125       -- top of the pads with the lift all the way dow
 local SPEED = 0.55              -- m/s, the same as the car is raised at
 local SWING_TIME = 0.9
 
+-- the engine crane (B8): a mast ahead of the car with a boom over the engine bay. An engine comes out and goes in on its sling: a crude block that rises out
+-- of the bay (or sinks into it). Not owned = not there; not owned lift = the posts are not there either.
+local ENGINE_Y = 1.15           -- the bay's centre, ahead of the car's centre
+local ENGINE_IN, ENGINE_OUT = 0.62, 1.45
+local CRANE_TIME, CRANE_HOLD = 2.2, 1.4
+
 local objects = {}              -- everything created, for clearing
+local postsObj
+local shown = true              -- the lift stands in this garage
+local craneObj, engineObj
+local crane = { t = 0, target = 0, hold = 0, active = false }
 local carriages, arms = {}, {}
 local origin, forward, right, up
 local padHeight, padTarget = REST_HEIGHT, REST_HEIGHT
@@ -91,6 +101,27 @@ end
 
 local PAINT, STEEL, RUBBER, WARN = 'slrr_lift_paint', 'slrr_lift_steel', 'slrr_lift_rubber', 'slrr_lift_warn'
 
+-- the crane: origin at the foot of the mast; the boom reaches back (-Y) over the bay
+local function craneShape()
+  return shape('crane', {
+    { -0.65, -0.45, 0, 0.65, 0.45, 0.05, STEEL },
+    { -0.07, -0.07, 0.05, 0.07, 0.07, 2.55, WARN },
+    { -0.06, -1.9, 2.45, 0.06, 0.07, 2.55, WARN },
+    { -0.10, -1.95, 2.3, 0.10, -1.8, 2.5, STEEL },
+    { -0.55, -0.9, 0, -0.45, 0, 0.05, STEEL },
+    { 0.45, -0.9, 0, 0.55, 0, 0.05, STEEL },
+  })
+end
+
+-- the engine on its sling: the block's centre is the origin, the chain runs up from it
+local function engineShape()
+  return shape('engine', {
+    { -0.28, -0.32, -0.28, 0.28, 0.32, 0.28, WARN },
+    { -0.34, -0.2, -0.05, -0.28, 0.2, 0.2, STEEL },
+    { -0.015, -0.015, 0.28, 0.015, 0.015, 1.1, STEEL },
+  })
+end
+
 -- both posts with their feet and the plate across the floor between them
 local function postsShape()
   local boxes = { { -POST_X, -0.17, 0, POST_X, 0.17, 0.022, STEEL } }
@@ -148,17 +179,29 @@ local function at(x, y, z)
   return origin + right * x + forward * y + up * z
 end
 
+local function craneZ() return ENGINE_IN + (ENGINE_OUT - ENGINE_IN) * (crane.t * crane.t * (3 - 2 * crane.t)) end
+
+local function layoutCrane()
+  if not origin then return end
+  if engineObj then
+    if crane.active then place(engineObj, origin + forward * ENGINE_Y + up * craneZ(), forward)
+    else place(engineObj, origin + up * -100, forward) end
+  end
+end
+
 local function layout()
+  local drop = shown and 0 or -100
+  if postsObj and origin then place(postsObj, origin + up * drop, forward) end
   for _, c in ipairs(carriages) do
     -- the model has its body on the -x side of its origin; turned round for the left post
-    place(c.obj, at(c.side * (POST_X - 0.13), 0, padHeight), forward * c.side)
+    place(c.obj, at(c.side * (POST_X - 0.13), 0, padHeight + drop), forward * c.side)
   end
   for _, a in ipairs(arms) do
     -- stowed, an arm points along the car (ahead for the front pair, back for the rear pair);
     -- swung in, it has turned towards the car's centre line
     local angle = ARM_SWING * swing
     local dir = forward * (a.fore * math.cos(angle)) - right * (a.side * math.sin(angle))
-    place(a.obj, at(a.side * ARM_X, a.fore * ARM_Y, padHeight), dir)
+    place(a.obj, at(a.side * ARM_X, a.fore * ARM_Y, padHeight + drop), dir)
   end
 end
 
@@ -172,15 +215,47 @@ function M.setup(spot, dir)
   origin, forward, up = vec3(spot), vec3(dir):normalized(), vec3(0, 0, 1)
   right = forward:cross(up):normalized()
   padHeight, padTarget, swing, swingTarget = REST_HEIGHT, REST_HEIGHT, 0, 0
-  place(newObject(postsShape()), origin, forward)
+  postsObj = newObject(postsShape())
+  place(postsObj, origin, forward)
   for _, side in ipairs({ -1, 1 }) do
     carriages[#carriages + 1] = { obj = newObject(carriageShape()), side = side }
     for _, fore in ipairs({ -1, 1 }) do
       arms[#arms + 1] = { obj = newObject(armShape()), side = side, fore = fore }
     end
   end
+  craneObj, engineObj, crane = nil, nil, { t = 0, target = 0, hold = 0, active = false }
   layout()
 end
+
+-- B8: does this garage have a lift / a crane? (the models are only there when it does)
+function M.setLiftOwned(on)
+  shown = on ~= false
+  dirty = true
+end
+
+function M.setCraneOwned(on)
+  if not origin then return end
+  if on and not craneObj then
+    craneObj = newObject(craneShape())
+    place(craneObj, origin + forward * (ENGINE_Y + 1.9), forward)
+    engineObj = newObject(engineShape())
+    layoutCrane()
+  elseif not on and craneObj then
+    pcall(function() craneObj:delete() engineObj:delete() end)
+    craneObj, engineObj = nil, nil
+    crane.active = false
+  end
+end
+
+-- an engine comes out ('out': it rises out of the bay and hangs there a moment) or goes in ('in': it comes down into the bay). Nothing without a crane.
+function M.craneRun(direction)
+  if not craneObj then return false end
+  crane.active, crane.hold = true, 0
+  if direction == 'out' then crane.t, crane.target = 0, 1 else crane.t, crane.target = 1, 0 end
+  layoutCrane()
+  return true
+end
+function M.craneBusy() return crane.active end
 
 -- swing the arms in under the car, or back out of its way
 function M.setArms(under, instantly)
@@ -201,6 +276,16 @@ function M.restHeight() return REST_HEIGHT end
 function M.isMoving() return padHeight ~= padTarget or swing ~= swingTarget end
 
 function M.update(dt)
+  if origin and crane.active then
+    local step = math.min(dt or 0.016, 0.05) / CRANE_TIME
+    if crane.t < crane.target then crane.t = math.min(crane.target, crane.t + step)
+    elseif crane.t > crane.target then crane.t = math.max(crane.target, crane.t - step)
+    elseif crane.target == 1 then
+      crane.hold = crane.hold + (dt or 0.016)
+      if crane.hold >= CRANE_HOLD then crane.active = false end
+    else crane.active = false end
+    layoutCrane()
+  end
   if not origin or not (dirty or M.isMoving()) then return end
   dirty = false
   dt = math.min(dt or 0.016, 0.05)
@@ -214,6 +299,8 @@ end
 function M.clear()
   for _, o in ipairs(objects) do pcall(function() o:delete() end) end
   objects, carriages, arms = {}, {}, {}
+  postsObj, craneObj, engineObj = nil, nil, nil
+  crane = { t = 0, target = 0, hold = 0, active = false }
   origin = nil
 end
 

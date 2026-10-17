@@ -5,6 +5,8 @@
 local M = {}
 
 M.TEXT = {
+  ['bar.upgrades.desc'] = 'lift, engine crane, paint booth, dyno and more for this garage',
+  ['bar.upgrades.title'] = 'Upgrades',
   ['bar.advancetime.desc'] = 'move the clock on three hours',
   ['bar.advancetime.title'] = 'Advance time',
   ['bar.carinfo.desc'] = 'details of this car',
@@ -55,6 +57,9 @@ M.TEXT = {
   ['p.add_to_list'] = 'Add to list',
   ['p.adjustments_changed'] = 'Adjustments changed',
   ['p.all'] = 'All',
+  ['p.upgrades'] = 'Upgrades',
+  ['p.upgrade_owned'] = 'Owned',
+  ['p.upgrade_buy'] = 'Buy',
   ['p.all_chapters'] = 'All chapters',
   ['p.search_all_parts'] = 'Search all parts',
   ['p.search_chapter'] = 'Search {1}',
@@ -180,6 +185,7 @@ M.TEXT = {
   ['say.delivery_many'] = '{1} parts have been delivered. They are on the shelf.',
   ['say.delivery_one'] = 'A delivery has arrived. The part is on the shelf.',
   ['say.no_booth'] = 'No paint booth in this garage yet. A paint shop will do it, or put a booth in.',
+  ['say.no_lift'] = 'This garage has no lift yet. Buy one under Upgrades.',
   ['say.not_yet'] = 'Not yet.',
   ['say.nothing_to_bolt'] = 'Nothing on the car to bolt the new parts to. Fit what they attach to first.',
   ['say.parts_fitted'] = '{1} parts fitted.',

@@ -50,6 +50,9 @@ angular.module('beamng.apps')
 
     // the template's texts until slrr/garageStrings has arrived (tools/strings_test.js checks they equal the table)
   var TEMPLATE_TEXT = {
+    "p.upgrades": "Upgrades",
+    "p.upgrade_owned": "Owned",
+    "p.upgrade_buy": "Buy",
     "p.on_the_shelf": "On the shelf",
     "p.a_damaged_part_to_repair": "a damaged part to repair it",
     "p.a_part_on_the_car": "a part, on the car or the shelf, to sell it",
@@ -627,6 +630,16 @@ var TEMPLATE = [
     '</div>',
 
     /* car info */
+    '<div class="sg-veil" ng-if="panel === \'upgrades\' && s.phase === \'garage\'" ng-mouseenter="overUi(true)">',
+    '  <div class="sg-modal">',
+    ('    <div class="sg-dhead"><div class="sg-h">{{t(\'p.upgrades\')}}</div><div class="sg-x" ng-click="closePanel()" ng-bind-html="icon(\'close\')"></div></div>'),
+    '    <div class="sg-scrolly">',
+    '      <div class="sg-kv" ng-repeat="u in upgrades.list track by u.id"><span><b>{{u.name}}</b><br><small>{{u.desc}}</small></span>',
+    ('        <b ng-if="u.has">{{t(\'p.upgrade_owned\')}}</b>'),
+    ('        <div class="sg-btn sg-go sg-small" ng-if="!u.has" ng-class="{\'sg-nope\': u.price > upgrades.money}" ng-click="lua(\'buyUpgrade(\' + JSON.stringify(u.id) + \')\')">{{t(\'p.upgrade_buy\')}} {{money(u.price)}}</div></div>'),
+    '    </div>',
+    '  </div>',
+    '</div>',
     '<div class="sg-veil" ng-if="panel === \'info\' && s.phase === \'garage\'" ng-mouseenter="overUi(true)">',
     '  <div class="sg-modal">',
     '    <div class="sg-dhead"><div class="sg-h">{{info.name}}</div><div class="sg-x" ng-click="closePanel()" ng-bind-html="icon(\'close\')"></div></div>',
@@ -886,6 +899,8 @@ var TEMPLATE = [
       // the player-facing text: slrr/garageStrings (slrr_garage.requestStrings, event slrrGarageStrings); the second argument shows until it has arrived
       $scope.strings = {};
       $scope.t = function (key, fallback) { var v = $scope.strings[key], a = arguments; if (v === undefined) v = fallback === undefined ? TEMPLATE_TEXT[key] : fallback; return v === undefined ? '' : String(v).replace(/\{(\d+)\}/g, function (m, i) { var x = a[Number(i) + 1]; return x === undefined ? '' : x; }); };
+      $scope.upgrades = { list: [], money: 0 };
+      $scope.$on('slrrGarageUpgrades', function (ev, data) { $scope.$evalAsync(function () { $scope.upgrades = { list: (data && data.list) || [], money: (data && data.money) || 0 }; }); });
       $scope.$on('slrrGarageStrings', function (ev, data) { $scope.$evalAsync(function () { $scope.strings = (data && data.text) || {}; }); });
       $scope.lua('requestStrings()');
       $scope.money = function (v) {
@@ -902,6 +917,7 @@ var TEMPLATE = [
         if (name === 'paint') $scope.lua('requestPaint()');
         if (name === 'info') $scope.lua('requestInfo()');
         if (name === 'settings') $scope.lua('requestSettings()');
+        if (name === 'upgrades') $scope.lua('requestUpgrades()');
       };
       $scope.closePanel = function () { $scope.panel = null; };
 
@@ -911,6 +927,7 @@ var TEMPLATE = [
         { icon: 'drive', get title() { return $scope.t('bar.driveout.title', 'Drive out'); }, get desc() { return $scope.t('bar.driveout.desc', 'fit everything and hit the street'); }, act: function () { $scope.closePanel(); $scope.lua('leave()'); } },
         { icon: 'catalog', get title() { return $scope.t('bar.catalog.title', 'Catalog'); }, get desc() { return $scope.t('bar.catalog.desc', 'order new parts'); }, act: function () { $scope.closePanel(); $scope.lua('openCatalog()'); } },
         { icon: 'info', get title() { return $scope.t('bar.carinfo.title', 'Car info'); }, get desc() { return $scope.t('bar.carinfo.desc', 'details of this car'); }, act: function () { $scope.openPanel('info'); }, on: function () { return $scope.panel === 'info'; } },
+        { icon: 'gear', get title() { return $scope.t('bar.upgrades.title', 'Upgrades'); }, get desc() { return $scope.t('bar.upgrades.desc', 'lift, engine crane, paint booth, dyno and more for this garage'); }, act: function () { $scope.openPanel('upgrades'); }, on: function () { return $scope.panel === 'upgrades'; }, when: function () { return !!$scope.s.upgrades; } },
         { sep: true },
         { icon: 'wrench', get title() { return $scope.t('bar.mechanic.title', 'Mechanic'); }, get desc() { return $scope.t('bar.mechanic.desc', 'install and remove parts'); }, act: function () { if ($scope.panel === 'tune') $scope.closePanel(); $scope.lua('setMode(\'mechanic\')'); }, on: function () { return $scope.s.mode === 'mechanic'; } },
         { icon: 'screwdriver', get title() { return $scope.t('bar.tune.title', 'Tune'); }, get desc() { return $scope.t('bar.tune.desc', 'every tuning item of the car on the right; or click a part to adjust it'); }, act: function () {
