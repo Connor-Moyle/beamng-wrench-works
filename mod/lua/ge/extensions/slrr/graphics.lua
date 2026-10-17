@@ -445,6 +445,16 @@ function M.tune(t)
   return tune
 end
 
+-- for finding out which input stops the smoothing pass from drawing: M.probe(slot, '#prepass[Depth]') rebinds one of its textures (0 picture, 1 history, 2 velocity, 3 depth, 4 normals); M.probe() lists what is bound
+function M.probe(slot, name)
+  local e = find(TSM)
+  if not e then return 'no pass' end
+  if slot then e:setField('texture', slot, name) end
+  local out = {}
+  for i = 0, 4 do out[#out + 1] = i .. '=' .. tostring(e:getField('texture', i)) end
+  return table.concat(out, ' ')
+end
+
 -- put the picture as the settings want it; safe to call at any time (a level that is not loaded yet changes nothing)
 function M.apply(opts)
   state.opts = opts or state.opts or {}
