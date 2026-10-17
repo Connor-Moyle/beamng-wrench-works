@@ -88,6 +88,25 @@ def do_matte(src, size):
     return 0 if not bad else 1
 
 
+def safe(name):
+    return ''.join(c if c.isalnum() or c in '_-' else '_' for c in name)
+
+
+def aliases(src, have):
+    """parts drawn with the same meshes as one that has a picture: { part: the picture's name }, from the index the game wrote"""
+    out = {}
+    try:
+        with open(os.path.join(src, 'index.json'), encoding='utf-8') as f:
+            index = json.load(f)
+    except (OSError, ValueError):
+        return out
+    for part, entry in index.items():
+        canon = entry.get('alias') if isinstance(entry, dict) else None
+        if canon and safe(canon) in have and safe(part) not in have:
+            out[safe(part)] = safe(canon)
+    return out
+
+
 def do_ship(src, dest):
     os.makedirs(dest, exist_ok=True)
     parts, total = [], 0
@@ -100,9 +119,10 @@ def do_ship(src, dest):
         img.quantize(colors=128, method=Image.FASTOCTREE, dither=Image.NONE).save(out, optimize=True)
         parts.append(name[:-4])
         total += os.path.getsize(out)
+    alias = aliases(src, set(parts))
     with open(os.path.join(dest, 'manifest.json'), 'w', encoding='utf-8') as f:
-        json.dump({'parts': parts}, f, separators=(',', ':'))
-    print('%d pictures, %.1f KB in all (%.1f KB each) -> %s' % (len(parts), total / 1024, total / 1024 / max(1, len(parts)), dest))
+        json.dump({'parts': parts, 'alias': alias}, f, separators=(',', ':'))
+    print('%d pictures, %.1f KB in all (%.1f KB each), %d more parts share one -> %s' % (len(parts), total / 1024, total / 1024 / max(1, len(parts)), len(alias), dest))
     return 0
 
 

@@ -79,6 +79,15 @@ local function partsOf(model, ctx)
   return list
 end
 
+-- two parts that are drawn with the same meshes look the same (colour and engine variants, left and right copies of one mesh...): one picture
+-- serves them all. A part's signature is its sorted mesh names.
+local function signature(rows)
+  local names = {}
+  for _, row in ipairs(rows) do names[#names + 1] = row.mesh end
+  table.sort(names)
+  return table.concat(names, '|')
+end
+
 local function ctxFor(model) return jbeamIO.startLoading({ '/vehicles/' .. model .. '/', '/vehicles/common/' }) end
 
 ----------------------------------------------------------------------------------------------
@@ -167,7 +176,8 @@ if cfg.count then
       for _, p in ipairs(list) do
         if #p.rows > 0 then
           m = m + 1
-          if not seen[p.part] then seen[p.part] = true f = f + 1 end
+          local sig = signature(p.rows)
+          if not seen[sig] then seen[sig] = true f = f + 1 end
         end
       end
       total, withMesh, fresh = total + n, withMesh + m, fresh + f
@@ -176,7 +186,7 @@ if cfg.count then
       lines[#lines + 1] = model .. ' failed: ' .. tostring(list)
     end
   end
-  lines[#lines + 1] = string.format('TOTAL %d models, %d parts, %d with a 3D model, %d to shoot (shared parts once)', #models, total, withMesh, fresh)
+  lines[#lines + 1] = string.format('TOTAL %d models, %d parts, %d with a 3D model, %d to shoot (one picture for every set of parts drawn with the same meshes)', #models, total, withMesh, fresh)
   for _, l in ipairs(lines) do log('I', TAG, l) end
   rawset(_G, 'PART_SHOTS_STATUS', 'counted')
   return table.concat(lines, '\n')
@@ -193,6 +203,8 @@ core_jobsystem.create(function(job)
   local started = os.time()
   local index = readIndex()
   local shot, skipped, failed, seen = 0, 0, 0, {}
+  local canon = {}            -- signature -> the part whose picture serves every part drawn the same
+  for name, entry in pairs(index) do if type(entry) == 'table' and entry.sig and not entry.alias then canon[entry.sig] = name end end
   local only
   if type(cfg.only) == 'table' then only = {} for _, p in ipairs(cfg.only) do only[p] = true end end
   local black = newObject(cardShape('black', '0 0 0 1'))
@@ -212,10 +224,20 @@ core_jobsystem.create(function(job)
     local todo = {}
     for _, p in ipairs(list) do
       local done = exists(OUT .. safe(p.part) .. '.png') or (exists(RAW .. safe(p.part) .. '_b.png') and exists(RAW .. safe(p.part) .. '_w.png'))
-      if #p.rows > 0 and not seen[p.part] and (not only or only[p.part]) and (cfg.force or not done) then
+      local sig = #p.rows > 0 and signature(p.rows) or nil
+      p.sig = sig
+      if sig and canon[sig] and canon[sig] ~= p.part and not cfg.force then
+        index[p.part] = { model = model, name = p.name, slot = p.slot, alias = canon[sig] }      -- drawn like a part that has (or gets) a picture
+        skipped = skipped + 1
+      elseif sig and done and not canon[sig] then
+        canon[sig] = p.part
+        index[p.part] = { model = model, name = p.name, slot = p.slot, sig = sig }
+        skipped = skipped + 1
+      elseif sig and not seen[p.part] and (not only or only[p.part]) and (cfg.force or not done) then
         seen[p.part] = true
+        canon[sig] = canon[sig] or p.part
         todo[#todo + 1] = p
-      elseif #p.rows > 0 then skipped = skipped + 1 end
+      elseif sig then skipped = skipped + 1 end
     end
     if cfg.limit then while #todo > cfg.limit - shot do todo[#todo] = nil end end
     if #todo > 0 then
@@ -266,7 +288,7 @@ core_jobsystem.create(function(job)
           drop(obj)
           if okBoth then
             shot = shot + 1
-            index[p.part] = { model = model, name = p.name, slot = p.slot }
+            index[p.part] = { model = model, name = p.name, slot = p.slot, sig = p.sig }
           else
             failed = failed + 1
             log('W', TAG, 'no screenshot for ' .. p.part)
