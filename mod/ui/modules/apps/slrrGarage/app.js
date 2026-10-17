@@ -387,7 +387,7 @@ angular.module('beamng.apps')
     '.sg-fade.sg-in{opacity:1}',
     '</style>',
 
-    '<div class="sg-fitnew sg-btn sg-tonal sg-panel" ng-if="s.phase === \'film\' && s.scene" ng-mouseenter="overUi(true)" ng-click="lua(\'skipScene()\')">Skip</div>',
+    ('<div class="sg-fitnew sg-btn sg-tonal sg-panel" ng-if="s.phase === \'film\' && s.scene" ng-mouseenter="overUi(true)" ng-click="lua(\'skipScene()\')">{{t(\'p.skip\')}}</div>'),
     '<div class="sg-view" ng-if="s.phase === \'garage\'" ng-class="{\'sg-can\': canAct(), \'sg-dragging\': drag.active}"',
     '     ng-mousedown="viewDown($event)" ng-mouseenter="overUi(false)" oncontextmenu="return false"></div>',
 
@@ -397,7 +397,7 @@ angular.module('beamng.apps')
 
     /* top bar */
     '  <div class="sg-top sg-panel" ng-mouseenter="overUi(true)">',
-    '    <div class="sg-tag sg-h">Garage</div>',
+    ('    ' + '<div class="sg-tag sg-h">{{t(\'p.garage\')}}</div>'),
     '    <div class="sg-where"><b>{{s.garage}}</b><span>{{s.car}}</span></div>',
     '    <div class="sg-money sg-glass"><b>{{s.unlimited ? \'Unlimited\' : money(s.money)}}</b><span>{{s.career ? \'Career money\' : \'Money\'}}</span></div>',
     '  </div>',
@@ -409,18 +409,18 @@ angular.module('beamng.apps')
     '  <div class="sg-tip" ng-if="tip">{{tip.title}}<small>{{tip.desc}}</small></div>',
 
     '  <div class="sg-help sg-glass" ng-if="!panel && s.hints !== false">',
-    '    <div ng-if="s.mode === \'mechanic\' && !s.tool"><i>Click</i>a part to take it off</div>',
-    '    <div ng-if="s.mode === \'mechanic\' && !s.tool"><i>Click</i>a shelf part to fit it</div>',
-    '    <div ng-if="s.mode === \'tune\' && !s.tool"><i>Click</i>a part to pick it and tune it</div>',
-    '    <div ng-if="s.tool === \'repair\'"><i>Click</i>a damaged part to repair it</div>',
-    '    <div ng-if="s.tool === \'sell\'"><i>Click</i>a part, on the car or the shelf, to sell it</div>',
-    '    <div><i>Right-drag</i>look around</div><div><i>Wheel</i>zoom</div><div><i>Middle-click</i>look at a part</div>',
+    ('    ' + '<div ng-if="s.mode === \'mechanic\' && !s.tool"><i>{{t(\'p.click\')}}</i>{{t(\'p.a_part_to_take_it\')}}</div>'),
+    ('    ' + '<div ng-if="s.mode === \'mechanic\' && !s.tool"><i>{{t(\'p.click\')}}</i>{{t(\'p.a_shelf_part_to_fit\')}}</div>'),
+    ('    ' + '<div ng-if="s.mode === \'tune\' && !s.tool"><i>{{t(\'p.click\')}}</i>{{t(\'p.a_part_to_pick_it\')}}</div>'),
+    ('    ' + '<div ng-if="s.tool === \'repair\'"><i>{{t(\'p.click\')}}</i>{{t(\'p.a_damaged_part_to_repair\')}}</div>'),
+    ('    ' + '<div ng-if="s.tool === \'sell\'"><i>{{t(\'p.click\')}}</i>{{t(\'p.a_part_on_the_car\')}}</div>'),
+    ('    ' + '<div><i>' + 'Right-drag' + '</i>{{t(\'p.look_around\')}}</div><div><i>{{t(\'p.wheel\')}}</i>' + 'zoom' + '</div><div><i>' + 'Middle-click' + '</i>{{t(\'p.look_at_a_part\')}}</div>'),
     '  </div>',
 
     /* hover line */
     '  <div class="sg-info" ng-if="hover.name">',
     '    <div class="sg-glass">',
-    '      <div><span class="sg-part sg-h">{{hover.name}}</span><span class="sg-flag" ng-if="hover.complex">+{{hover.count - 1}} parts</span><span class="sg-bad" ng-if="hover.damaged">DAMAGED</span></div>',
+    ('      ' + '<div><span class="sg-part sg-h">' + '{{hover.name}}' + '</span><span class="sg-flag" ng-if="hover.complex">' + '+{{hover.count - 1}} parts' + '</span><span class="sg-bad" ng-if="hover.damaged">{{t(\'p.damaged\')}}</span></div>'),
     '      <div class="sg-sub" ng-class="{\'sg-no\': hoverBlocked()}">{{hover.slot}} &middot; {{money(hover.value)}} &middot; {{hoverHint()}}</div>',
     '    </div>',
     '  </div>',
@@ -428,14 +428,14 @@ angular.module('beamng.apps')
     /* the shelf */
     '  <div class="sg-shelf sg-glass sg-panel" ng-mouseenter="overUi(true)">',
     '    <div class="sg-mech">',
-    '      <div class="sg-cap">Mechanic</div>',
+    ('      ' + '<div class="sg-cap">{{t(\'p.mechanic\')}}</div>'),
     '      <div class="sg-row" ng-mouseleave="tip = null">',
     '        <div class="sg-ib" ng-class="{\'sg-on\': s.tool === \'repair\'}" ng-click="lua(\'setTool(\\\'repair\\\')\')" ng-mouseenter="tip = tips.repairPart" ng-focus="tip = tips.repairPart" ng-bind-html="icon(\'repairPart\')"></div>',
     '        <div class="sg-ib" ng-class="{\'sg-dim\': !s.damaged}" ng-click="lua(\'repairAll()\')" ng-mouseenter="tip = repairAllTip()" ng-focus="tip = repairAllTip()" ng-bind-html="icon(\'repairCar\')"></div>',
     '        <div class="sg-ib" ng-class="{\'sg-on\': s.tool === \'sell\'}" ng-click="lua(\'setTool(\\\'sell\\\')\')" ng-mouseenter="tip = tips.sell" ng-focus="tip = tips.sell" ng-bind-html="icon(\'sell\')"></div>',
     '        <div class="sg-ib" ng-class="{\'sg-dim\': !s.inventory.length}" ng-click="lua(\'sellAll()\')" ng-mouseenter="tip = sellAllTip()" ng-focus="tip = sellAllTip()" ng-bind-html="icon(\'sellAll\')"></div>',
     '      </div>',
-    '      <div class="sg-cap">Show on car</div>',
+    ('      ' + '<div class="sg-cap">{{t(\'p.show_on_car\')}}</div>'),
     '      <div class="sg-row" ng-mouseleave="tip = null">',
     '        <div class="sg-ib" ng-repeat="f in filterDefs" ng-class="{\'sg-off\': s.filters[f.id]}" ng-click="lua(\'toggleFilter(\\\'\' + f.id + \'\\\')\')" ng-mouseenter="$parent.tip = f.tip" ng-focus="$parent.tip = f.tip" ng-bind-html="icon(f.id)"></div>',
     '      </div>',
@@ -445,10 +445,10 @@ angular.module('beamng.apps')
     '        <span class="sg-glyph" ng-if="slot" ng-bind-html="icon(slot.section)"></span>',
     '        <div class="sg-prev" ng-if="slot && hasModel(slot.part)" data-part="{{slot.part}}" data-id="s{{slot.id}}" data-spin="hover"></div>',
     '        <div class="sg-badges" ng-if="slot">',
-    '          <span class="sg-badge sg-new" ng-if="slot.new">NEW</span>',
-    '          <span class="sg-badge sg-used" ng-if="slot.used">USED<span ng-if="slot.wear != null"> &middot; {{slot.wear}}% WORN</span></span>',
-    '          <span class="sg-badge" ng-if="slot.swap" title="{{slot.swapText}}">SWAP &middot; {{slot.swap}} LABOUR</span>',
-    '          <span class="sg-badge sg-dmg" ng-if="slot.damaged">DAMAGED</span>',
+    ('          ' + '<span class="sg-badge sg-new" ng-if="slot.new">{{t(\'p.new\')}}</span>'),
+    ('          ' + '<span class="sg-badge sg-used" ng-if="slot.used">{{t(\'p.used\')}}<span ng-if="slot.wear != null">' + ' ' + '&middot;' + ' {{slot.wear}}% WORN' + '</span></span>'),
+    ('          ' + '<span class="sg-badge" ng-if="slot.swap" title="{{slot.swapText}}">{{t(\'p.swap\')}}&middot;' + ' {{slot.swap}} LABOUR' + '</span>'),
+    ('          ' + '<span class="sg-badge sg-dmg" ng-if="slot.damaged">{{t(\'p.damaged\')}}</span>'),
     '          <span class="sg-badge sg-more" ng-if="slot.count > 1" ng-click="showContents(slot, $event)">+{{slot.count - 1}} parts &#9662;</span>',
     '        </div>',
     '        <div class="sg-val" ng-if="slot && !s.tool">{{money(slot.value)}}</div>',
@@ -456,7 +456,7 @@ angular.module('beamng.apps')
     '        <div class="sg-val sg-cost" ng-if="slot && s.tool === \'repair\' && slot.damaged">-{{money(slot.repairCost)}}</div>',
     '        <div class="sg-txt" ng-if="slot"><div class="sg-name">{{slot.name}}</div><div class="sg-wherep">{{slot.slot}}</div></div>',
     '      </div>',
-    '      <div class="sg-hint" ng-if="!s.inventory.length">The shelf is empty &mdash; click a part on the car to take it off.</div>',
+    ('      ' + '<div class="sg-hint" ng-if="!s.inventory.length">{{t(\'p.the_shelf_is_empty\')}}&mdash;{{t(\'p.click_a_part_on_the\')}}</div>'),
     '    </div>',
     '    <div class="sg-scroll">',
     '      <div class="sg-ib" ng-class="{\'sg-dim\': line <= 0}" ng-click="scroll(-1)" ng-bind-html="icon(\'up\')"></div>',
@@ -469,21 +469,21 @@ angular.module('beamng.apps')
 
     /* tune drawer */
     '  <div class="sg-drawer sg-glass sg-panel" ng-if="panel === \'tune\'" ng-mouseenter="overUi(true)">',
-    '    <div class="sg-dhead"><div class="sg-h">Tuning</div><div class="sg-x" ng-click="closePanel()" ng-bind-html="icon(\'close\')"></div></div>',
-    '    <div class="sg-tabs"><div class="sg-tab" ng-class="{\'sg-on\': !tune.category}" ng-click="tune.category = null">All</div><div class="sg-tab" ng-repeat="c in tune.categories" ng-class="{\'sg-on\': c === tune.category}" ng-click="tune.category = c">{{c}}</div></div>',
+    ('    ' + '<div class="sg-dhead"><div class="sg-h">{{t(\'p.tuning\')}}</div><div class="sg-x" ng-click="closePanel()" ng-bind-html="icon(\'close\')"></div></div>'),
+    ('    ' + '<div class="sg-tabs"><div class="sg-tab" ng-class="{\'sg-on\': !tune.category}" ng-click="tune.category = null">{{t(\'p.all\')}}</div><div class="sg-tab" ng-repeat="c in tune.categories" ng-class="{\'sg-on\': c === tune.category}" ng-click="tune.category = c">' + '{{c}}' + '</div></div>'),
     '    <div class="sg-scrolly">',
     '     <div ng-repeat="grp in tuneGroups() track by grp.key">',
     '      <div class="sg-cap" style="margin-top:8px" ng-if="grp.name">{{grp.name}}</div>',
     '      <div class="sg-var" ng-repeat="v in grp.vars track by v.name">',
     '        <div class="sg-vt"><b>{{v.title}}</b><span>{{shown(v)}} {{v.unit}}</span></div>',
     '        <div class="sg-vd" ng-if="v.description">{{v.description}}</div>',
-    '        <div class="sg-vr"><input type="range" min="{{v.lo}}" max="{{v.hi}}" step="{{v.step}}" ng-model="v.value" ng-change="tuneChanged()"><div class="sg-mini" ng-click="v.value = v.default; tuneChanged()">Default</div></div>',
+    ('        ' + '<div class="sg-vr"><input type="range" min="{{v.lo}}" max="{{v.hi}}" step="{{v.step}}" ng-model="v.value" ng-change="tuneChanged()"><div class="sg-mini" ng-click="v.value = v.default; tuneChanged()">{{t(\'p.default\')}}</div></div>'),
     '      </div>',
     '     </div>',
-    '      <div class="sg-note" ng-if="!tune.vars.length">This car has nothing to adjust with the parts that are on it. Springs, alignment, gearing and the like show up here when the fitted parts allow it.</div>',
+    ('      ' + '<div class="sg-note" ng-if="!tune.vars.length">{{t(\'p.this_car_has_nothing_to\')}}</div>'),
     '    </div>',
-    '    <div class="sg-foot2"><div class="sg-note" style="flex:1;padding-right:10px">Changes take hold when you apply them &mdash; the car is set up again behind a short fade.</div>',
-    '      <div class="sg-btn sg-go" ng-class="{\'sg-nope\': !tune.dirty}" ng-click="applyTune()">Apply</div></div>',
+    ('    ' + '<div class="sg-foot2"><div class="sg-note" style="flex:1;padding-right:10px">{{t(\'p.changes_take_hold_when_you\')}}&mdash;{{t(\'p.the_car_is_set_up\')}}</div>'),
+    ('      ' + '<div class="sg-btn sg-go" ng-class="{\'sg-nope\': !tune.dirty}" ng-click="applyTune()">{{t(\'p.apply\')}}</div></div>'),
     '  </div>',
 
     /* one part's tuning menu */
@@ -493,30 +493,30 @@ angular.module('beamng.apps')
     '    <div class="sg-scrolly">',
     '      <div class="sg-var" ng-repeat="v in pt.vars track by v.name">',
     '        <div class="sg-vt"><b>{{v.subCategory ? v.subCategory + \' \' : \'\'}}{{v.title}}</b><span>{{shown(v)}} {{v.unit}}</span></div>',
-    '        <div class="sg-vr"><input type="range" min="{{v.lo}}" max="{{v.hi}}" step="{{v.step}}" ng-model="v.value" ng-change="pt.dirty = true"><div class="sg-mini" ng-click="v.value = v.default; pt.dirty = true">Default</div></div>',
+    ('        ' + '<div class="sg-vr"><input type="range" min="{{v.lo}}" max="{{v.hi}}" step="{{v.step}}" ng-model="v.value" ng-change="pt.dirty = true"><div class="sg-mini" ng-click="v.value = v.default; pt.dirty = true">{{t(\'p.default\')}}</div></div>'),
     '      </div>',
     '      <div class="sg-note" ng-if="!pt.vars.length">Nothing to adjust on this part{{pt.canOpen ? \', but it opens.\' : \'.\'}}</div>',
     '    </div>',
-    '    <div class="sg-foot2"><div class="sg-btn" ng-click="panel = \'tune\'; lua(\'requestTuning()\')">All</div><div style="flex:1"></div>',
-    '      <div class="sg-btn" ng-if="pt.canOpen" ng-click="lua(\'toggleOpen()\')">Open / close</div>',
-    '      <div class="sg-btn sg-go" ng-if="pt.vars.length" ng-class="{\'sg-nope\': !pt.dirty}" ng-click="applyPartTune()">Apply</div></div>',
+    ('    ' + '<div class="sg-foot2"><div class="sg-btn" ng-click="panel = \'tune\'; lua(\'requestTuning()\')">{{t(\'p.all\')}}</div><div style="flex:1"></div>'),
+    ('      ' + '<div class="sg-btn" ng-if="pt.canOpen" ng-click="lua(\'toggleOpen()\')">{{t(\'p.open_close\')}}</div>'),
+    ('      ' + '<div class="sg-btn sg-go" ng-if="pt.vars.length" ng-class="{\'sg-nope\': !pt.dirty}" ng-click="applyPartTune()">{{t(\'p.apply\')}}</div></div>'),
     '  </div>',
 
     /* paint drawer */
     '  <div class="sg-drawer sg-glass sg-panel" ng-if="panel === \'paint\'" ng-mouseenter="overUi(true)">',
-    '    <div class="sg-dhead"><div class="sg-h">Paint booth</div><div class="sg-x" ng-click="closePanel()" ng-bind-html="icon(\'close\')"></div></div>',
+    ('    ' + '<div class="sg-dhead"><div class="sg-h">{{t(\'p.paint_booth\')}}</div><div class="sg-x" ng-click="closePanel()" ng-bind-html="icon(\'close\')"></div></div>'),
     '    <div class="sg-tabs"><div class="sg-tab" ng-repeat="n in [1,2,3]" ng-class="{\'sg-on\': paint.slot === n}" ng-click="pickPaintSlot(n)">{{[\'Main colour\',\'Second colour\',\'Third colour\'][n-1]}}</div></div>',
     '    <div class="sg-scrolly">',
-    '      <div class="sg-cap">Factory colours</div>',
+    ('      ' + '<div class="sg-cap">{{t(\'p.factory_colours\')}}</div>'),
     '      <div class="sg-swatches"><div class="sg-sw" ng-repeat="sw in paint.swatches track by sw.name" ng-style="{background: css(sw.paint)}" ng-click="useSwatch(sw)" title="{{sw.name}}"></div></div>',
-    '      <div class="sg-cap" style="margin-top:12px">Finish</div>',
+    ('      ' + '<div class="sg-cap" style="margin-top:12px">{{t(\'p.finish\')}}</div>'),
     '      <div class="sg-chips"><div class="sg-tab" ng-repeat="f in finishes" ng-click="useFinish(f)" title="{{f.desc}}">{{f.name}}</div></div>',
-    '      <div class="sg-cap" style="margin-top:12px">Mix your own</div>',
+    ('      ' + '<div class="sg-cap" style="margin-top:12px">{{t(\'p.mix_your_own\')}}</div>'),
     '      <div class="sg-chip" ng-style="{background: css(paint.cur)}"></div>',
     '      <div class="sg-paintrow" ng-repeat="ch in paintChannels"><label>{{ch.title}}</label><input type="range" min="0" max="1" step="0.01" ng-model="paint.cur[ch.key][ch.idx]" ng-if="ch.idx !== undefined"><input type="range" min="0" max="1" step="0.01" ng-model="paint.cur[ch.key]" ng-if="ch.idx === undefined"><span>{{pct(ch)}}</span></div>',
     '    </div>',
-    '    <div class="sg-note" style="padding:6px 2px 0 2px">The main colour is the body. The second and third colours show where the car uses them: trim, bumpers, mirrors and, on many cars, the rims (BeamNG has no separate rim or window-tint paint). Every colour is saved with the car.</div>',
-    '    <div class="sg-foot2"><div class="sg-btn" ng-click="sprayAll()" title="the colour in the editor on all three">All three</div><div class="sg-note" style="flex:1;padding:0 10px">{{money(paint.price)}} a colour.</div><div class="sg-btn sg-go" ng-click="spray()">Spray</div></div>',
+    ('    ' + '<div class="sg-note" style="padding:6px 2px 0 2px">{{t(\'p.the_main_colour_is_the\')}}</div>'),
+    ('    ' + '<div class="sg-foot2"><div class="sg-btn" ng-click="sprayAll()" title="the colour in the editor on all three">{{t(\'p.all_three\')}}</div><div class="sg-note" style="flex:1;padding:0 10px">' + '{{money(paint.price)}} a colour.' + '</div><div class="sg-btn sg-go" ng-click="spray()">{{t(\'p.spray\')}}</div></div>'),
     '  </div>',
 
     /* services other mods offer (an oil change, a car swap, a race...): their list, their buttons */
@@ -529,7 +529,7 @@ angular.module('beamng.apps')
     '          <div class="sg-svct"><b>{{sv.label}}</b><span>{{sv.desc}}</span></div><div class="sg-svcp" ng-if="sv.price">{{money(sv.price)}}</div>',
     '        </div>',
     '      </div>',
-    '      <div class="sg-note" ng-if="!serviceGroups(panel).length">Nothing on offer here.</div>',
+    ('      ' + '<div class="sg-note" ng-if="!serviceGroups(panel).length">{{t(\'p.nothing_on_offer_here\')}}</div>'),
     '    </div>',
     '  </div>',
 
@@ -541,18 +541,18 @@ angular.module('beamng.apps')
     '    <div class="sg-dhead"><div class="sg-h">{{info.name}}</div><div class="sg-x" ng-click="closePanel()" ng-bind-html="icon(\'close\')"></div></div>',
     '    <div class="sg-scrolly">',
     '      <div class="sg-kv" ng-repeat="r in info.rows"><span>{{r.label}}</span><b>{{r.value}}</b></div>',
-    '      <div class="sg-grp">In the garage</div>',
-    '      <div class="sg-kv"><span>Parts fitted</span><b>{{info.parts}}</b></div>',
-    '      <div class="sg-kv"><span>Value of fitted parts</span><b>{{money(info.value)}}</b></div>',
-    '      <div class="sg-kv"><span>Parts on the shelf</span><b>{{info.shelfParts}} ({{money(info.shelfValue)}})</b></div>',
-    '      <div class="sg-kv"><span>Damaged parts</span><b>{{info.damagedParts}}</b></div>',
-    '      <div class="sg-kv" ng-if="info.repairCost > 0"><span>Cost to repair everything</span><b>{{money(info.repairCost)}}</b></div>',
-    '      <div class="sg-kv" ng-if="info.missing"><span>Missing</span><b>{{info.missing}}</b></div>',
+    ('      ' + '<div class="sg-grp">{{t(\'p.in_the_garage\')}}</div>'),
+    ('      ' + '<div class="sg-kv"><span>{{t(\'p.parts_fitted\')}}</span><b>' + '{{info.parts}}' + '</b></div>'),
+    ('      ' + '<div class="sg-kv"><span>{{t(\'p.value_of_fitted_parts\')}}</span><b>' + '{{money(info.value)}}' + '</b></div>'),
+    ('      ' + '<div class="sg-kv"><span>{{t(\'p.parts_on_the_shelf\')}}</span><b>' + '{{info.shelfParts}} ({{money(info.shelfValue)}})' + '</b></div>'),
+    ('      ' + '<div class="sg-kv"><span>{{t(\'p.damaged_parts\')}}</span><b>' + '{{info.damagedParts}}' + '</b></div>'),
+    ('      ' + '<div class="sg-kv" ng-if="info.repairCost >' + ' 0">' + '<span>{{t(\'p.cost_to_repair_everything\')}}</span><b>' + '{{money(info.repairCost)}}' + '</b></div>'),
+    ('      ' + '<div class="sg-kv" ng-if="info.missing"><span>{{t(\'p.missing\')}}</span><b>' + '{{info.missing}}' + '</b></div>'),
     '      <div class="sg-note" style="margin-top:10px" ng-if="info.note">{{info.note}}</div>',
     '      <div ng-if="dyno.path">',
-    '        <div class="sg-grp">Engine</div>',
-    '        <div class="sg-kv"><span>Peak power</span><b>{{dyno.maxPower}} hp at {{dyno.maxPowerRPM}} rpm <span class="sg-delta" ng-if="dyno.base" ng-class="{\'sg-up\': dyno.dPower > 0}">{{dyno.dPower > 0 ? \'+\' : \'\'}}{{dyno.dPower}} hp</span></b></div>',
-    '        <div class="sg-kv"><span>Peak torque</span><b>{{dyno.maxTorque}} Nm at {{dyno.maxTorqueRPM}} rpm <span class="sg-delta" ng-if="dyno.base" ng-class="{\'sg-up\': dyno.dTorque > 0}">{{dyno.dTorque > 0 ? \'+\' : \'\'}}{{dyno.dTorque}} Nm</span></b></div>',
+    ('        ' + '<div class="sg-grp">{{t(\'p.engine\')}}</div>'),
+    ('        ' + '<div class="sg-kv"><span>{{t(\'p.peak_power\')}}</span><b>' + '{{dyno.maxPower}} hp at {{dyno.maxPowerRPM}} rpm ' + '<span class="sg-delta" ng-if="dyno.base" ng-class="{\'sg-up\': dyno.dPower >' + ' 0}">{{dyno.dPower > 0 ? \'+\' : \'\'}}{{dyno.dPower}} hp' + '</span></b></div>'),
+    ('        ' + '<div class="sg-kv"><span>{{t(\'p.peak_torque\')}}</span><b>' + '{{dyno.maxTorque}} Nm at {{dyno.maxTorqueRPM}} rpm ' + '<span class="sg-delta" ng-if="dyno.base" ng-class="{\'sg-up\': dyno.dTorque >' + ' 0}">{{dyno.dTorque > 0 ? \'+\' : \'\'}}{{dyno.dTorque}} Nm' + '</span></b></div>'),
     '        <svg class="sg-dyno" viewBox="0 0 560 190" preserveAspectRatio="none">',
     '          <path ng-attr-d="{{dyno.grid}}" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="1"/>',
     '          <path ng-attr-d="{{dyno.torquePath}}" fill="none" stroke="#6fb7ff" stroke-width="2.5"/>',
@@ -560,17 +560,17 @@ angular.module('beamng.apps')
     '          <path ng-if="dyno.base" ng-attr-d="{{dyno.baseTorquePath}}" fill="none" stroke="#6fb7ff" stroke-opacity=".45" stroke-width="2" stroke-dasharray="6 5"/>',
     '          <path ng-attr-d="{{dyno.path}}" fill="none" stroke="#ff6600" stroke-width="2.5"/>',
     '        </svg>',
-    '        <div class="sg-dkey"><i style="background:#ff6600"></i>power<i style="background:#6fb7ff"></i>torque<span ng-if="dyno.base">dashed: before</span><span>0 &ndash; {{dyno.maxRPM}} rpm</span></div>',
-    '        <div class="sg-btn sg-small" style="display:inline-block;margin:8px 0 0 0" ng-click="lua(\'pinDyno()\')">Pin this run as the "before"</div>',
+    ('        ' + '<div class="sg-dkey"><i style="background:#ff6600"></i>' + 'power' + '<i style="background:#6fb7ff"></i>' + 'torque' + '<span ng-if="dyno.base">{{t(\'p.dashed_before\')}}</span><span>' + '0 ' + '&ndash;' + ' {{dyno.maxRPM}} rpm' + '</span></div>'),
+    ('        ' + '<div class="sg-btn sg-small" style="display:inline-block;margin:8px 0 0 0" ng-click="lua(\'pinDyno()\')">{{t(\'p.pin_this_run_as_the\')}}</div>'),
     '      </div>',
-    '      <div class="sg-grp">Saved builds</div>',
+    ('      ' + '<div class="sg-grp">{{t(\'p.saved_builds\')}}</div>'),
     '      <div class="sg-kv" ng-repeat="b in info.builds track by $index"><span class="sg-bname">{{b.name}}</span>',
     '        <b class="sg-bcost">{{b.toBuy ? b.toBuy + \' parts to buy, \' + money(b.cost) : \'all parts in hand\'}}</b>',
-    '        <div class="sg-btn sg-small" ng-click="lua(\'loadBuild(\' + ($index + 1) + \')\')">Fit</div>',
+    ('        ' + '<div class="sg-btn sg-small" ng-click="lua(\'loadBuild(\' + ($index + 1) + \')\')">{{t(\'p.fit\')}}</div>'),
     '        <div class="sg-btn sg-small" ng-click="lua(\'deleteBuild(\' + ($index + 1) + \')\')">&times;</div></div>',
-    '      <div class="sg-note" ng-if="!info.builds.length">None yet. A build is the car as it stands now: its parts and its tuning. Fitting one later puts those parts back on, from the shelf where you still have them and bought where you do not.</div>',
+    ('      ' + '<div class="sg-note" ng-if="!info.builds.length">{{t(\'p.none_yet_a_build_is\')}}</div>'),
     '      <div class="sg-buildrow"><input class="sg-search" type="text" maxlength="40" placeholder="Name this build" ng-model="build.name">',
-    '        <div class="sg-btn sg-go" ng-click="saveBuild()">Save the car as it stands</div></div>',
+    ('        ' + '<div class="sg-btn sg-go" ng-click="saveBuild()">{{t(\'p.save_the_car_as_it\')}}</div></div>'),
     '    </div>',
     '  </div>',
     '</div>',
@@ -578,30 +578,30 @@ angular.module('beamng.apps')
     /* job sheet */
     '<div class="sg-veil" ng-if="sheet && s.phase === \'garage\'" ng-mouseenter="overUi(true)">',
     '  <div class="sg-modal">',
-    '    <div class="sg-dhead"><div class="sg-h">Job sheet</div><div class="sg-x" ng-click="closeSheet()" ng-bind-html="icon(\'close\')"></div></div>',
+    ('    ' + '<div class="sg-dhead"><div class="sg-h">{{t(\'p.job_sheet\')}}</div><div class="sg-x" ng-click="closeSheet()" ng-bind-html="icon(\'close\')"></div></div>'),
     '    <div class="sg-scrolly">',
     '      <div class="sg-grp" ng-if="sheet.fitted.length">Fitted ({{sheet.fitted.length}})</div>',
     '      <div class="sg-jline" ng-repeat="n in sheet.fitted track by $index">{{n}}</div>',
     '      <div class="sg-grp" ng-if="sheet.removed.length">Taken off ({{sheet.removed.length}})</div>',
     '      <div class="sg-jline" ng-repeat="n in sheet.removed track by $index">{{n}}</div>',
-    '      <div class="sg-grp" ng-if="sheet.tuned || sheet.painted">Also</div>',
-    '      <div class="sg-jline" ng-if="sheet.tuned">Adjustments changed</div>',
-    '      <div class="sg-jline" ng-if="sheet.painted">Resprayed</div>',
-    '      <div class="sg-grp">Money</div>',
+    ('      ' + '<div class="sg-grp" ng-if="sheet.tuned || sheet.painted">{{t(\'p.also\')}}</div>'),
+    ('      ' + '<div class="sg-jline" ng-if="sheet.tuned">{{t(\'p.adjustments_changed\')}}</div>'),
+    ('      ' + '<div class="sg-jline" ng-if="sheet.painted">{{t(\'p.resprayed\')}}</div>'),
+    ('      ' + '<div class="sg-grp">{{t(\'p.money\')}}</div>'),
     '      <div class="sg-kv"><span>{{sheet.net >= 0 ? \'Spent this visit\' : \'Made this visit\'}}</span><b>{{money(sheet.net >= 0 ? sheet.net : -sheet.net)}}</b></div>',
-    '      <div class="sg-kv" ng-if="!sheet.unlimited"><span>In hand</span><b>{{money(sheet.money)}}</b></div>',
+    ('      ' + '<div class="sg-kv" ng-if="!sheet.unlimited"><span>{{t(\'p.in_hand\')}}</span><b>' + '{{money(sheet.money)}}' + '</b></div>'),
     '      <div class="sg-note" style="margin-top:10px" ng-if="sheet.missing">The car leaves without {{sheet.missing}}.</div>',
     '    </div>',
-    '    <div class="sg-sheetbtns"><div class="sg-btn" ng-click="closeSheet()">Keep working</div><div class="sg-btn sg-go" ng-click="driveOut()">Drive out</div></div>',
+    ('    ' + '<div class="sg-sheetbtns"><div class="sg-btn" ng-click="closeSheet()">{{t(\'p.keep_working\')}}</div><div class="sg-btn sg-go" ng-click="driveOut()">{{t(\'p.drive_out\')}}</div></div>'),
     '  </div>',
     '</div>',
 
     /* body shells */
     '<div class="sg-veil" ng-if="s.phase === \'lot\'">',
     '  <div class="sg-modal sg-wide">',
-    '    <div class="sg-lothead"><div class="sg-h">Body shells</div><input class="sg-search" type="text" placeholder="Search" ng-model="lot.search">',
-    '      <div class="sg-cash">{{s.unlimited ? \'Unlimited\' : money(s.money)}}</div><div class="sg-btn" ng-click="lua(\'leaveLot()\')">Leave</div></div>',
-    '    <div class="sg-note" style="margin-bottom:6px">You came on foot, so the lift is empty. Pick the bare body shell of any car and it is put on the lift for you to build up: everything else comes from the catalog.</div>',
+    ('    ' + '<div class="sg-lothead"><div class="sg-h">{{t(\'p.body_shells\')}}</div><input class="sg-search" type="text" placeholder="Search" ng-model="lot.search">'),
+    ('      ' + '<div class="sg-cash">' + '{{s.unlimited ? \'Unlimited\' : money(s.money)}}' + '</div><div class="sg-btn" ng-click="lua(\'leaveLot()\')">{{t(\'p.leave\')}}</div></div>'),
+    ('    ' + '<div class="sg-note" style="margin-bottom:6px">{{t(\'p.you_came_on_foot_so\')}}</div>'),
     '    <div class="sg-scrolly">',
     '      <div class="sg-lotrow" ng-repeat="m in lotShown() track by m.key">',
     '        <img ng-if="m.preview" ng-src="{{m.preview}}" onerror="this.style.visibility=\'hidden\'">',
@@ -620,7 +620,7 @@ angular.module('beamng.apps')
     /* settings */
     '<div class="sg-veil" ng-if="panel === \'settings\' && s.phase === \'garage\'" ng-mouseenter="overUi(true)">',
     '  <div class="sg-modal sg-wide">',
-    '    <div class="sg-dhead"><div class="sg-h">Garage settings</div><div class="sg-x" ng-click="closePanel()" ng-bind-html="icon(\'close\')"></div></div>',
+    ('    ' + '<div class="sg-dhead"><div class="sg-h">{{t(\'p.garage_settings\')}}</div><div class="sg-x" ng-click="closePanel()" ng-bind-html="icon(\'close\')"></div></div>'),
     '    <div class="sg-scrolly">',
     '      <div ng-repeat="g in settingGroups">',
     '        <div class="sg-grp">{{g.name}}</div>',
@@ -633,7 +633,7 @@ angular.module('beamng.apps')
     '        </div>',
     '      </div>',
     '    </div>',
-    '    <div class="sg-foot2"><div class="sg-note" style="flex:1" ng-if="setCareer">You are in career mode: money comes from your career account, not the freeroam budget.</div><div class="sg-note" style="flex:1" ng-if="!setCareer"></div><div class="sg-btn" ng-click="lua(\'setSetting(\\\'__reset\\\')\')">Reset to defaults</div></div>',
+    ('    ' + '<div class="sg-foot2"><div class="sg-note" style="flex:1" ng-if="setCareer">{{t(\'p.you_are_in_career_mode\')}}</div><div class="sg-note" style="flex:1" ng-if="!setCareer"></div><div class="sg-btn" ng-click="lua(\'setSetting(\\\'__reset\\\')\')">{{t(\'p.reset_to_defaults\')}}</div></div>'),
     '  </div>',
     '</div>',
 
@@ -643,7 +643,7 @@ angular.module('beamng.apps')
     '    <div class="sg-page-l">',
     '      <h1 class="sg-h">{{s.shop ? s.shop.name : \'Catalog\'}}</h1>',
     '      <div class="sg-for" ng-if="!s.shop">Parts for your {{s.car}}, delivered to the garage</div>',
-    '      <div class="sg-for" ng-if="s.shop">{{s.shop.trade}} for your {{s.car}}. <span ng-if="!s.shop.yard">Over the counter: no delivery charge, no waiting<span ng-if="s.shop.discount > 0">, and {{s.shop.discount}}% off</span>.</span><span ng-if="s.shop.yard">Second-hand, sold as seen: far below list price and none of it straight. What is here changes from day to day.</span></div>',
+    ('      ' + '<div class="sg-for" ng-if="s.shop">' + '{{s.shop.trade}} for your {{s.car}}. ' + '<span ng-if="!s.shop.yard">{{t(\'p.over_the_counter_no_delivery\')}}<span ng-if="s.shop.discount >' + ' 0">, and {{s.shop.discount}}% off' + '</span>' + '.' + '</span><span ng-if="s.shop.yard">{{t(\'p.second_hand_sold_as_seen\')}}</span></div>'),
     '      <div class="sg-scrolly">',
     '        <div ng-repeat="sec in cat.sections">',
     '          <div class="sg-sec sg-h" ng-class="{\'sg-act\': sec.id === cur.section}" ng-click="openSection(sec)"><span ng-bind-html="icon(sec.id)"></span>{{sec.title}}</div>',
@@ -653,20 +653,20 @@ angular.module('beamng.apps')
     '        </div>',
     '      </div>',
     '      <div class="sg-cart">',
-    '        <div class="sg-carth">Shopping list<i ng-if="cart.items.length">{{cart.items.length}}</i></div>',
+    ('        ' + '<div class="sg-carth">{{t(\'p.shopping_list\')}}<i ng-if="cart.items.length">' + '{{cart.items.length}}' + '</i></div>'),
     '        <div class="sg-cartlist">',
     '          <div class="sg-cartrow" ng-repeat="c in cart.items track by $index" title="{{c.weight}} kg, {{c.size}} m: {{money(c.fee)}} to deliver">',
     '            <span class="sg-cartn">{{c.name}}</span><span class="sg-cartp">{{money(c.price)}}</span><span class="sg-cartx" ng-click="cartRemove($index)">&times;</span></div>',
-    '          <div class="sg-carthint" ng-if="!cart.items.length">Nothing yet. &ldquo;Add&rdquo; puts a part on the list; you pay when you confirm.</div>',
+    ('          ' + '<div class="sg-carthint" ng-if="!cart.items.length">{{t(\'p.nothing_yet\')}}&ldquo;{{t(\'p.add\')}}&rdquo;' + ' puts a part on the list; you pay when you confirm.' + '</div>'),
     '        </div>',
     '        <div ng-if="cart.items.length">',
     '          <div class="sg-ship" ng-repeat="o in cart.shipping" ng-class="{\'sg-act\': o.id === ship.id}" ng-click="ship.id = o.id">',
     '            <span class="sg-dot"></span><span class="sg-shipt">{{o.title}}<small ng-if="o.seconds > 0">arrives in {{eta(o.seconds)}}</small></span><span class="sg-cartp">{{o.fee > 0 ? money(o.fee) : \'free\'}}</span></div>',
-    '          <div class="sg-total">Total<b>{{money(shipOption().total)}}</b></div>',
-    '          <div class="sg-cartbtns"><div class="sg-btn" ng-click="lua(\'cartClear()\')">Clear</div>',
+    ('          ' + '<div class="sg-total">{{t(\'p.total\')}}<b>' + '{{money(shipOption().total)}}' + '</b></div>'),
+    ('          ' + '<div class="sg-cartbtns"><div class="sg-btn" ng-click="lua(\'cartClear()\')">{{t(\'p.clear\')}}</div>'),
     '            <div class="sg-btn sg-go" ng-class="{\'sg-nope\': shipOption().total > s.money}" ng-click="checkout()">Confirm purchase</div></div>',
     '        </div>',
-    '        <div class="sg-onway" ng-if="cart.orders.length">On its way to the garage',
+    ('        ' + '<div class="sg-onway" ng-if="cart.orders.length">{{t(\'p.on_its_way_to_the\')}}'),
     '          <div class="sg-cartrow" ng-repeat="o in cart.orders track by $index"><span class="sg-cartn">{{o.name}}</span><span class="sg-cartp">{{eta(o.seconds)}}</span></div></div>',
     '      </div>',
     '      <div class="sg-wallet">{{s.career ? \'Career money\' : \'Money\'}}<b>{{s.unlimited ? \'Unlimited\' : money(s.money)}}</b></div>',
@@ -675,10 +675,10 @@ angular.module('beamng.apps')
     '      <div class="sg-head"><div class="sg-h">{{searching() ? \'Search\' : (curSub() ? curSub().title : \'Choose a chapter\')}}</div><div class="sg-crumb" ng-if="curSec()">{{searching() ? \'All chapters\' : curSec().title}} &middot; {{shownItems().length}} parts</div>',
     '        <input class="sg-search" type="text" placeholder="Search all parts" ng-model="cur.search" ng-change="searchChanged()" ng-if="cat.sections.length">',
     '        <div class="sg-mini" ng-if="shownItems().length > 1" ng-click="cycleSort()">{{sortLabel()}}</div>',
-    '        <div class="sg-mini" ng-class="{\'sg-on\': cur.cheap}" ng-click="cur.cheap = !cur.cheap; cur.page = 0" title="Affordable upgrades: parts under $1,500">Under $1,500</div>',
+    ('        ' + '<div class="sg-mini" ng-class="{\'sg-on\': cur.cheap}" ng-click="cur.cheap = !cur.cheap; cur.page = 0" title="Affordable upgrades: parts under $1,500">{{t(\'p.under_1_500\')}}</div>'),
     '        <div class="sg-btn sg-go" ng-click="lua(\'closeCatalog()\')">{{s.shop ? \'Leave shop\' : \'Back to garage\'}}</div></div>',
     '      <div class="sg-chips" ng-if="!searching() && slotChips().length > 1">',
-    '        <div class="sg-tab" ng-class="{\'sg-on\': !cur.slot}" ng-click="pickSlot(null)">All</div>',
+    ('        ' + '<div class="sg-tab" ng-class="{\'sg-on\': !cur.slot}" ng-click="pickSlot(null)">{{t(\'p.all\')}}</div>'),
     '        <div class="sg-tab" ng-repeat="c in slotChips() track by $index" ng-class="{\'sg-on\': cur.slot === c}" ng-click="pickSlot(c)">{{c}}</div>',
     '      </div>',
     '      <div class="sg-grid" ng-if="pageItems().length">',
@@ -686,16 +686,16 @@ angular.module('beamng.apps')
     '          <div class="sg-stage" ng-mouseenter="hoverStats(it)" ng-mouseleave="hoverStats(null)"><span class="sg-glyph" ng-bind-html="icon(curSec().id)"></span>',
     '            <div class="sg-stats" ng-if="statsFor === it.part && stats[it.part].length"><div class="sg-kv" ng-repeat="r in stats[it.part]"><span>{{r.label}}</span><b>{{r.value}}</b></div></div>',
     '            <div class="sg-prev" ng-if="hasModel(it.part)" data-part="{{it.part}}" data-id="c{{it.part}}" data-spin="always"></div>',
-    '            <div class="sg-badges"><span class="sg-badge" ng-if="it.fitted">On the car</span><span class="sg-badge sg-new" ng-if="it.owned > 0">On the shelf &times;{{it.owned}}</span><span class="sg-badge sg-used" ng-if="it.used">Used &minus;{{it.used}}%</span></div>',
+    ('            ' + '<div class="sg-badges"><span class="sg-badge" ng-if="it.fitted">{{t(\'p.on_the_car\')}}</span><span class="sg-badge sg-new" ng-if="it.owned >{{t(\'p.0_on_the_shelf\')}}&times;' + '{{it.owned}}' + '</span><span class="sg-badge sg-used" ng-if="it.used">{{t(\'p.used_2\')}}&minus;' + '{{it.used}}%' + '</span></div>'),
     '          </div>',
     '          <div class="sg-meta"><div class="sg-cslot">{{it.slot}}</div><div class="sg-cname" title="{{it.part}}">{{it.name}}</div>',
-    '            <div class="sg-buyrow"><div class="sg-price">{{money(it.price)}}</div><div class="sg-btn sg-go" ng-click="buy(it)">Add</div></div></div>',
+    ('            ' + '<div class="sg-buyrow"><div class="sg-price">' + '{{money(it.price)}}' + '</div><div class="sg-btn sg-go" ng-click="buy(it)">{{t(\'p.add\')}}</div></div></div>'),
     '        </div>',
     '      </div>',
-    '      <div class="sg-blank" ng-if="!pageItems().length && !cur.search">Pick a chapter on the left.<br>Everything you buy lands on the shelf in the garage,<br>ready to be fitted with one click.</div>',
-    '      <div class="sg-blank" ng-if="!pageItems().length && cur.search">Nothing here matches &ldquo;{{cur.search}}&rdquo;.</div>',
+    ('      ' + '<div class="sg-blank" ng-if="!pageItems().length && !cur.search">{{t(\'p.pick_a_chapter_on_the\')}}<br>{{t(\'p.everything_you_buy_lands_on\')}}<br>{{t(\'p.ready_to_be_fitted_with\')}}</div>'),
+    ('      ' + '<div class="sg-blank" ng-if="!pageItems().length && cur.search">{{t(\'p.nothing_here_matches\')}}&ldquo;' + '{{cur.search}}' + '&rdquo;' + '.' + '</div>'),
     '      <div class="sg-foot" ng-if="pageCount() > 1">',
-    '        <div class="sg-btn" ng-class="{\'sg-nope\': cur.page <= 0}" ng-click="turn(-1)">&#9664; Prev</div>',
+    ('        ' + '<div class="sg-btn" ng-class="{\'sg-nope\': cur.page <= 0}" ng-click="turn(-1)">&#9664;{{t(\'p.prev\')}}</div>'),
     '        Page {{cur.page + 1}} of {{pageCount()}}',
     '        <div class="sg-btn" ng-class="{\'sg-nope\': cur.page >= pageCount() - 1}" ng-click="turn(1)">Next &#9654;</div>',
     '      </div>',
@@ -707,17 +707,17 @@ angular.module('beamng.apps')
     '<div class="sg-veil sg-cfg" ng-if="cfg && !cfg.waiting && (s.phase === \'catalog\' || s.phase === \'shop\')">',
     '  <div class="sg-modal sg-wide">',
     '    <div class="sg-dhead"><div><div class="sg-pslot" style="font-size:11px;letter-spacing:1px;color:#ffb380;text-transform:uppercase">{{cfg.item.slot}}</div><div class="sg-h">{{cfg.item.name}}</div></div><div class="sg-x" ng-click="cfgClose()" ng-bind-html="icon(\'close\')"></div></div>',
-    '    <div class="sg-note">This part has options of its own. Choose them here and it arrives built that way, ready to fit in one go. Whatever you leave alone comes as standard.</div>',
+    ('    ' + '<div class="sg-note">{{t(\'p.this_part_has_options_of\')}}</div>'),
     '    <div class="sg-scrolly">',
     '      <div class="sg-crow" ng-repeat="r in cfgRows() track by r.slot.path" ng-style="{\'margin-left\': (r.depth * 22) + \'px\'}">',
     '        <div class="sg-chead" ng-click="cfgToggle(r.slot)"><span>{{r.slot.title}}</span><b>{{cfgName(r.slot)}}</b><i>{{cfgCost(r.slot)}}</i><em>{{cfg.open === r.slot.path ? \'▴\' : \'▾\'}}</em></div>',
     '        <div class="sg-copts" ng-if="cfg.open === r.slot.path">',
-    '          <div class="sg-copt" ng-if="!r.slot.core" ng-class="{\'sg-act\': !cfg.choice[r.slot.path]}" ng-click="cfgChoose(r.slot, null)"><span>None</span></div>',
+    ('          ' + '<div class="sg-copt" ng-if="!r.slot.core" ng-class="{\'sg-act\': !cfg.choice[r.slot.path]}" ng-click="cfgChoose(r.slot, null)"><span>{{t(\'p.none\')}}</span></div>'),
     '          <div class="sg-copt" ng-repeat="o in r.slot.options track by o.part" ng-class="{\'sg-act\': cfg.choice[r.slot.path] === o.part}" ng-click="cfgChoose(r.slot, o)" title="{{o.part}}"><span>{{o.name}}</span><i>{{optCost(r.slot, o)}}</i></div>',
     '        </div>',
     '      </div>',
     '    </div>',
-    '    <div class="sg-cfgfoot"><div class="sg-total">Total<b>{{money(cfgTotal())}}</b></div><div class="sg-btn" ng-click="cfgPlain()">Add as standard</div><div class="sg-btn sg-go" ng-click="cfgConfirm()">Add to list</div></div>',
+    ('    ' + '<div class="sg-cfgfoot"><div class="sg-total">{{t(\'p.total\')}}<b>' + '{{money(cfgTotal())}}' + '</b></div><div class="sg-btn" ng-click="cfgPlain()">{{t(\'p.add_as_standard\')}}</div><div class="sg-btn sg-go" ng-click="cfgConfirm()">{{t(\'p.add_to_list\')}}</div></div>'),
     '  </div>',
     '</div>',
 
@@ -743,12 +743,12 @@ angular.module('beamng.apps')
     if (rects.length) {
       var box = container.getBoundingClientRect();
       var w = Math.round(box.width), h = Math.round(box.height);
-      var pts = ['0px 0px', w + 'px 0px', w + 'px ' + h + 'px', '0px ' + h + 'px', '0px 0px'];
+      var pts = ['0px 0px', w + 'px 0px', w + 'px ' + h + 'px', $scope.t('p.0px_1_px', '0px {1}px', h), '0px 0px'];
       for (var i = 0; i < rects.length; i++) {
         var r = rects[i], x1 = Math.round(r.left - box.left), y1 = Math.round(r.top - box.top), x2 = Math.round(r.right - box.left), y2 = Math.round(r.bottom - box.top);
         pts.push(x1 + 'px ' + y1 + 'px', x2 + 'px ' + y1 + 'px', x2 + 'px ' + y2 + 'px', x1 + 'px ' + y2 + 'px', x1 + 'px ' + y1 + 'px', '0px 0px');
       }
-      value = 'polygon(evenodd, ' + pts.join(', ') + ')';
+      value = $scope.t('p.polygon_evenodd_1', 'polygon(evenodd, {1})', pts.join(', '));
     }
     if (container.__punch !== value) {
       container.__punch = value;
@@ -785,7 +785,7 @@ angular.module('beamng.apps')
       $scope.lua = function (call) { bngApi.engineLua('slrr_garage.' + call); };
       // the player-facing text: slrr/garageStrings (slrr_garage.requestStrings, event slrrGarageStrings); the second argument shows until it has arrived
       $scope.strings = {};
-      $scope.t = function (key, fallback) { var v = $scope.strings[key]; return v === undefined ? fallback : v; };
+      $scope.t = function (key, fallback) { var v = $scope.strings[key], a = arguments; if (v === undefined) v = fallback; return v === undefined ? '' : String(v).replace(/\{(\d+)\}/g, function (m, i) { var x = a[Number(i) + 1]; return x === undefined ? '' : x; }); };
       $scope.$on('slrrGarageStrings', function (ev, data) { $scope.$evalAsync(function () { $scope.strings = (data && data.text) || {}; }); });
       $scope.lua('requestStrings()');
       $scope.money = function (v) {
@@ -840,24 +840,24 @@ angular.module('beamng.apps')
         var groups = [], byName = {};
         ($scope.s.services || []).forEach(function (sv) {
           if ((sv.tab || 'services') !== (tab || 'services')) return;
-          var n = sv.group || 'Services';
+          var n = sv.group || $scope.t('p.services', 'Services');
           if (!byName[n]) { byName[n] = { name: n, items: [] }; groups.push(byName[n]); }
           byName[n].items.push(sv);
         });
         return groups;
       };
       $scope.tips = {
-        repairPart: { title: 'Repair part', desc: 'then click the damaged part' },
-        sell: { title: 'Sell part', desc: 'then click a part, on the car or on the shelf' }
+        repairPart: { title: $scope.t('p.repair_part', 'Repair part'), desc: $scope.t('p.then_click_the_damaged_part', 'then click the damaged part') },
+        sell: { title: $scope.t('p.sell_part', 'Sell part'), desc: $scope.t('p.then_click_a_part_on', 'then click a part, on the car or on the shelf') }
       };
       $scope.repairAllTip = function () {
-        return { title: 'Repair the whole car', desc: $scope.s.damaged ? ('costs ' + $scope.money($scope.s.repairAllCost)) : 'nothing is damaged' };
+        return { title: $scope.t('p.repair_the_whole_car', 'Repair the whole car'), desc: $scope.s.damaged ? ($scope.t('p.costs_1', 'costs {1}', $scope.money($scope.s.repairAllCost))) : $scope.t('p.nothing_is_damaged', 'nothing is damaged') };
       };
       $scope.filterDefs = [
-        { id: 'engine', tip: { title: 'Engine parts', desc: 'hide or show' } },
-        { id: 'body', tip: { title: 'Body parts', desc: 'hide or show' } },
-        { id: 'running', tip: { title: 'Running gear', desc: 'hide or show' } },
-        { id: 'interior', tip: { title: 'Interior', desc: 'hide or show' } }
+        { id: 'engine', tip: { title: $scope.t('p.engine_parts', 'Engine parts'), desc: $scope.t('p.hide_or_show', 'hide or show') } },
+        { id: 'body', tip: { title: $scope.t('p.body_parts', 'Body parts'), desc: $scope.t('p.hide_or_show', 'hide or show') } },
+        { id: 'running', tip: { title: $scope.t('p.running_gear', 'Running gear'), desc: $scope.t('p.hide_or_show', 'hide or show') } },
+        { id: 'interior', tip: { title: $scope.t('p.interior', 'Interior'), desc: $scope.t('p.hide_or_show', 'hide or show') } }
       ];
 
       // ---- what a click on the car would do
@@ -872,10 +872,10 @@ angular.module('beamng.apps')
       $scope.hoverBlocked = function () { return !!$scope.hover.name && !$scope.canAct(); };
       $scope.hoverHint = function () {
         var h = $scope.hover;
-        if ($scope.s.tool === 'repair') return h.damaged ? ('click to repair for ' + $scope.money(h.repairCost)) : 'not damaged';
-        if ($scope.s.tool === 'sell') return h.removable ? ('click to take it off and sell it for ' + $scope.money(h.sellValue)) : (h.reason || 'cannot be removed');
-        if ($scope.s.mode === 'tune') return 'click to pick and tune';
-        return h.removable ? 'click to remove' : (h.reason || 'cannot be removed');
+        if ($scope.s.tool === 'repair') return h.damaged ? ($scope.t('p.click_to_repair_for_1', 'click to repair for {1}', $scope.money(h.repairCost))) : $scope.t('p.not_damaged', 'not damaged');
+        if ($scope.s.tool === 'sell') return h.removable ? ($scope.t('p.click_to_take_it_off', 'click to take it off and sell it for {1}', $scope.money(h.sellValue))) : (h.reason || $scope.t('p.cannot_be_removed', 'cannot be removed'));
+        if ($scope.s.mode === 'tune') return $scope.t('p.click_to_pick_and_tune', 'click to pick and tune');
+        return h.removable ? $scope.t('p.click_to_remove', 'click to remove') : (h.reason || $scope.t('p.cannot_be_removed', 'cannot be removed'));
       };
 
       // ---- shelf
@@ -886,7 +886,7 @@ angular.module('beamng.apps')
         return out;
       };
       $scope.scroll = function (d) { $scope.line = Math.max(0, Math.min($scope.lineCount() - 1, $scope.line + d)); wantPreviews(); };
-      $scope.sellAllTip = function () { return { title: 'Sell everything on the shelf', desc: $scope.s.inventory.length ? 'for ' + $scope.money($scope.s.shelfValue) + ' (asks first)' : 'the shelf is empty' }; };
+      $scope.sellAllTip = function () { return { title: $scope.t('p.sell_everything_on_the_shelf', 'Sell everything on the shelf'), desc: $scope.s.inventory.length ? $scope.t('p.for_1_asks_first', 'for {1} (asks first)', $scope.money($scope.s.shelfValue)) : $scope.t('p.the_shelf_is_empty_2', 'the shelf is empty') }; };
       // parts that were bought and have not been on the car yet
       $scope.boughtCount = function () {
         var inv = $scope.s.inventory || [], n = 0;
@@ -917,7 +917,7 @@ angular.module('beamng.apps')
       // What the right-hand page shows: the open chapter, or - once something is typed in the
       // search box - every part in the book that matches, whatever chapter it is in.
       var CHEAP_PART = 1500;
-      var SORTS = [null, 'up', 'down'], SORT_LABELS = { 'null': 'By slot', up: 'Cheapest first', down: 'Dearest first' };
+      var SORTS = [null, 'up', 'down'], SORT_LABELS = { 'null': $scope.t('p.by_slot', 'By slot'), up: $scope.t('p.cheapest_first', 'Cheapest first'), down: $scope.t('p.dearest_first', 'Dearest first') };
       $scope.cur.sort = null;
       $scope.sortLabel = function () { return SORT_LABELS[String($scope.cur.sort)]; };
       $scope.cycleSort = function () { $scope.cur.sort = SORTS[(SORTS.indexOf($scope.cur.sort) + 1) % SORTS.length]; $scope.cur.page = 0; };
@@ -1046,7 +1046,7 @@ angular.module('beamng.apps')
         return rows;
       };
       $scope.optCost = function (slot, o) { return o.price > 0 ? '+' + $scope.money(o.price) : (o.part === slot.default ? 'standard' : 'free'); };
-      $scope.cfgName = function (slot) { var o = optionOf(slot, $scope.cfg.choice[slot.path]); return o ? o.name : 'None'; };
+      $scope.cfgName = function (slot) { var o = optionOf(slot, $scope.cfg.choice[slot.path]); return o ? o.name : $scope.t('p.none', 'None'); };
       $scope.cfgCost = function (slot) { var o = optionOf(slot, $scope.cfg.choice[slot.path]); return o ? $scope.optCost(slot, o) : ''; };
       $scope.cfgToggle = function (slot) { $scope.cfg.open = $scope.cfg.open === slot.path ? null : slot.path; };
       $scope.cfgChoose = function (slot, o) {
@@ -1285,8 +1285,8 @@ angular.module('beamng.apps')
 
       // ---- paint
       $scope.paintChannels = [
-        { title: 'Red', key: 'baseColor', idx: 0 }, { title: 'Green', key: 'baseColor', idx: 1 }, { title: 'Blue', key: 'baseColor', idx: 2 },
-        { title: 'Metallic', key: 'metallic' }, { title: 'Roughness', key: 'roughness' }, { title: 'Clearcoat', key: 'clearcoat' }
+        { title: $scope.t('p.red', 'Red'), key: 'baseColor', idx: 0 }, { title: $scope.t('p.green', 'Green'), key: 'baseColor', idx: 1 }, { title: $scope.t('p.blue', 'Blue'), key: 'baseColor', idx: 2 },
+        { title: $scope.t('p.metallic', 'Metallic'), key: 'metallic' }, { title: $scope.t('p.roughness', 'Roughness'), key: 'roughness' }, { title: $scope.t('p.clearcoat', 'Clearcoat'), key: 'clearcoat' }
       ];
       $scope.pct = function (ch) { var v = ch.idx !== undefined ? $scope.paint.cur[ch.key][ch.idx] : $scope.paint.cur[ch.key]; return Math.round(parseFloat(v) * 100); };
       $scope.css = function (p) {
@@ -1303,12 +1303,12 @@ angular.module('beamng.apps')
       }
       // finishes: how the paint looks, keeping the colour that is being mixed (metallic, roughness, clearcoat, clearcoat roughness)
       $scope.finishes = [
-        { name: 'Gloss', desc: 'deep and shiny', v: { metallic: 0.15, roughness: 0.2, clearcoat: 1, clearcoatRoughness: 0.03 } },
-        { name: 'Satin', desc: 'a soft sheen', v: { metallic: 0.2, roughness: 0.45, clearcoat: 0.6, clearcoatRoughness: 0.2 } },
-        { name: 'Matte', desc: 'no shine at all', v: { metallic: 0, roughness: 0.9, clearcoat: 0, clearcoatRoughness: 0.5 } },
-        { name: 'Metallic', desc: 'flakes in the paint', v: { metallic: 0.85, roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.05 } },
-        { name: 'Pearl', desc: 'a pale glow', v: { metallic: 0.5, roughness: 0.15, clearcoat: 1, clearcoatRoughness: 0.02 } },
-        { name: 'Chrome', desc: 'like a mirror', v: { metallic: 1, roughness: 0.05, clearcoat: 0, clearcoatRoughness: 0.05 } }
+        { name: $scope.t('p.gloss', 'Gloss'), desc: $scope.t('p.deep_and_shiny', 'deep and shiny'), v: { metallic: 0.15, roughness: 0.2, clearcoat: 1, clearcoatRoughness: 0.03 } },
+        { name: $scope.t('p.satin', 'Satin'), desc: $scope.t('p.a_soft_sheen', 'a soft sheen'), v: { metallic: 0.2, roughness: 0.45, clearcoat: 0.6, clearcoatRoughness: 0.2 } },
+        { name: $scope.t('p.matte', 'Matte'), desc: $scope.t('p.no_shine_at_all', 'no shine at all'), v: { metallic: 0, roughness: 0.9, clearcoat: 0, clearcoatRoughness: 0.5 } },
+        { name: $scope.t('p.metallic', 'Metallic'), desc: $scope.t('p.flakes_in_the_paint', 'flakes in the paint'), v: { metallic: 0.85, roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.05 } },
+        { name: $scope.t('p.pearl', 'Pearl'), desc: $scope.t('p.a_pale_glow', 'a pale glow'), v: { metallic: 0.5, roughness: 0.15, clearcoat: 1, clearcoatRoughness: 0.02 } },
+        { name: $scope.t('p.chrome', 'Chrome'), desc: $scope.t('p.like_a_mirror', 'like a mirror'), v: { metallic: 1, roughness: 0.05, clearcoat: 0, clearcoatRoughness: 0.05 } }
       ];
       $scope.useFinish = function (f) { for (var k in f.v) $scope.paint.cur[k] = f.v[k]; };
       // the same paint on all three colours at once

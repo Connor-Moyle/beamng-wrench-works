@@ -253,6 +253,7 @@ local function sendState()
   })
 end
 
+local gs = require('slrr/garageStrings').t
 local function say(text, seconds)
   message = text
   messageTimer = seconds or 3.5
@@ -793,7 +794,7 @@ end
 local function startEnter(_site, id, side, wantMode)
   if phase ~= 'idle' then return end
   local open, why = parts.providerGarage(_site.id)
-  if not open then say(why or 'Not yet.', 5) return end
+  if not open then say(why or gs('say.not_yet'), 5) return end
   entryMode = wantMode
   site = _site
   viaSide = side == true
@@ -833,7 +834,7 @@ end
 local function startLot(_site)
   if phase ~= 'idle' then return end
   local open, why = parts.providerGarage(_site.id)
-  if not open then say(why or 'Not yet.', 5) return end
+  if not open then say(why or gs('say.not_yet'), 5) return end
   armed = false
   if parts.inCareer() then
     if ui_message then ui_message('In career mode cars come from the dealership. Drive one in to work on it.', 6, 'slrrGarage') end
@@ -867,7 +868,7 @@ local function buyShell(key)
   if not entry then return end
   if parts.getMoney() < entry.price then
     playSound('warn.wav', 0.6)
-    say('Not enough money for that shell.')
+    say(gs('say.shell_no_money'))
     return
   end
   phase = 'film'
@@ -892,7 +893,7 @@ local function buyShell(key)
       if phase == 'film' then
         fromLot, phase = false, 'lot'
         setFade(0)
-        say('That one could not be delivered.')
+        say(gs('say.shell_not_delivered'))
       end
       return
     end
@@ -903,7 +904,7 @@ local function buyShell(key)
     previousCamera = nil      -- what was noted on the way in was the walking camera; the car gets its own
     job.sleep(0.25)
     enterJob(job)
-    if phase == 'garage' then say(string.format('The %s shell is on the lift. Everything else is in the catalog.', entry.name), 5) end
+    if phase == 'garage' then say(gs('say.shell_on_lift', entry.name), 5) end
   end)
 end
 
@@ -1210,14 +1211,14 @@ local function click()
   if not d then return end
   if not d.removable then
     playSound('warn.wav', 0.6)
-    say(d.reason or "That cannot come off.")
+    say(d.reason or gs('say.cannot_come_off'))
     return
   end
   work('Taking off the ' .. d.name, parts.partWeight(d.partName), function()
     local item, err = parts.removePart(path)
     if not item then
       playSound('warn.wav', 0.6)
-      say(err or "That cannot come off.")
+      say(err or gs('say.cannot_come_off'))
       return
     end
     playSound('wrench.wav')
@@ -1239,7 +1240,7 @@ sell = function(itemId)
   if ok then
     extensions.hook('onWrenchWorksPartSold', vehId, item.slotPath, item.part, value)     -- (a career's salvage job counts them)
     playSound('money.wav')
-    say(string.format('Sold the %s for $%d.', item.name, value), 2.5)
+    say(gs('say.sold_part', item.name, value), 2.5)
   end
 end
 
@@ -1248,13 +1249,13 @@ local function sellAll()
   if phase ~= 'garage' then return end
   local count = #parts.getInventory()
   if count == 0 then
-    say('There is nothing on the shelf to sell.', 2.5)
+    say(gs('say.shelf_empty'), 2.5)
     return
   end
   if not sellAllTimer and settings.get('confirmSellAll') then
     sellAllTimer = 5
     playSound('warn.wav', 0.5)
-    say(string.format('Sell all %d parts on the shelf for $%d? Click again to confirm.', count, parts.shelfValue()), 5)
+    say(gs('say.sell_all_confirm', count, parts.shelfValue()), 5)
     return
   end
   sellAllTimer = nil
@@ -1263,7 +1264,7 @@ local function sellAll()
   local sold, total = parts.sellAll()
   for _, it in ipairs(items) do extensions.hook('onWrenchWorksPartSold', vehId, it[1], it[2], it[3]) end
   playSound('money.wav')
-  say(string.format('Sold %d parts for $%d.', sold, total), 3)
+  say(gs('say.sold_parts', sold, total), 3)
 end
 
 -- click on a shelf part: fit it (or sell / repair it when that tool is armed)
@@ -1318,11 +1319,11 @@ local function installNew()
     local fitted, needsLoad = parts.installNew()
     if fitted == 0 then
       playSound('warn.wav', 0.6)
-      say('Nothing on the car to bolt the new parts to. Fit what they attach to first.')
+      say(gs('say.nothing_to_bolt'))
       return
     end
     playSound('screw.wav')
-    say(fitted == count and (fitted .. ' parts fitted.') or string.format('%d of %d parts fitted. The rest have nothing to bolt to yet.', fitted, count), 3.5)
+    say(fitted == count and gs('say.parts_fitted', fitted) or gs('say.parts_fitted_some', fitted, count), 3.5)
     if needsLoad then core_jobsystem.create(applyInGarage) end
   end)
 end
@@ -1467,7 +1468,7 @@ local function checkDeliveries()
   local arrived = parts.collectDeliveries()
   if arrived > 0 then
     playSound('ok.wav')
-    say(arrived == 1 and 'A delivery has arrived. The part is on the shelf.' or (arrived .. ' parts have been delivered. They are on the shelf.'), 4)
+    say(arrived == 1 and gs('say.delivery_one') or gs('say.delivery_many', arrived), 4)
     if phase == 'catalog' then sendCart() end
   end
   return arrived
@@ -1541,7 +1542,7 @@ local function applyTuning(values)
   if phase ~= 'garage' then return end
   if parts.setTuning(values) and parts.varsDirty() then
     playSound('screw.wav')
-    say('Adjusted. The car is set up this way when you drive out.', 3)
+    say(gs('say.adjusted'), 3)
   end
   sendTuning()
   sendTunePart()
@@ -1584,7 +1585,7 @@ end
 local function sendPaint()
   local v = veh()
   if not v then return end
-  if not parts.getFeatures().paint then say('No paint booth in this garage yet. A paint shop will do it, or put a booth in.') return end
+  if not parts.getFeatures().paint then say(gs('say.no_booth')) return end
   local swatches = {}
   local info = core_vehicles.getModel(v:getJBeamFilename())
   for name, paint in pairs(info and info.model and info.model.paints or {}) do
@@ -1982,7 +1983,7 @@ local function updateIdle(dt)
           -- a garage above your level: no marker, no way in; at its door it says why, once
           if armed and distance < 3.5 then
             armed = false
-            say(why or 'Not yet.', 6)
+            say(why or gs('say.not_yet'), 6)
           end
           if distance < 12 then nearDoor = true end
           goto nextDoor
@@ -2308,7 +2309,7 @@ M.sell = sell
 M.saveBuild = function(name)
   if phase ~= 'garage' then return end
   local ok, saved = parts.saveBuild(name)
-  if ok then playSound('ok.wav') say('Saved as "' .. saved .. '".', 2.5) end
+  if ok then playSound('ok.wav') say(gs('say.saved_as', saved), 2.5) end
   sendInfo()
 end
 M.deleteBuild = function(index)
@@ -2418,7 +2419,7 @@ M.photo = function()
     job.sleep(1.5)
     if was ~= nil then pcall(function() ui_visibility.set(was) end) end
     M.photoBusy = false
-    say('Photo saved: ' .. name .. '.png', 6)
+    say(gs('say.photo_saved', name), 6)
   end)
 end
 M.photoMode = function()
