@@ -917,6 +917,13 @@ local function leaveJob(job)
   parts.detach()
   picker.clear()
   freezeCar(false)
+  -- The latches are pushed shut NOW, with the car free to move. The damage put back after a rebuild lets every latch go and pushes
+  -- them shut again from the car's own update, but the car was frozen while that ran, and a frozen car cannot latch: the retries
+  -- were spent before it moved and the doors were left open (B64). shutLatches starts the retries afresh.
+  do
+    local lv = veh()
+    if lv then lv:queueLuaCommand('if slrrGarageVeh then slrrGarageVeh.shutLatches() end') end
+  end
 
   local route = exitRoute(half)
   local outside = false
@@ -945,7 +952,7 @@ local function leaveJob(job)
       if t > 3 and (c - from):length() < 1 then break end      -- it is not going anywhere
     end
     v = veh()
-    if v then v:queueLuaCommand('ai.scriptStop(true, true) ai.setMode("disabled") input.event("throttle", 0, FILTER_DIRECT) input.event("brake", 0, FILTER_DIRECT)') end
+    if v then v:queueLuaCommand('ai.scriptStop(true, true) ai.setMode("disabled") input.event("throttle", 0, FILTER_DIRECT) input.event("brake", 0, FILTER_DIRECT) if slrrGarageVeh then slrrGarageVeh.shutLatches() end') end      -- (and once more, outside)
     setFade(1)
     job.sleep(FADE_TIME)
   else
