@@ -251,6 +251,7 @@ local function sendState()
     retro = settings.get('retroCatalog'),
     services = (phase == 'garage') and servicesList() or {},
     upgrades = (sl_upgrades ~= nil and parts.inCareer()) or nil,
+    canStore = (phase == 'garage' and sl_fleet ~= nil and sl_fleet.carOfVehicle ~= nil and vehId ~= nil and sl_fleet.carOfVehicle(vehId) ~= nil) or nil,
     lifted = parts.getFeatures().lift, crane = parts.getFeatures().crane,
   })
 end
@@ -972,6 +973,8 @@ local function syncCareer()
 end
 
 local function leaveJob(job)
+  local store, vid = M.storeOnLeave, vehId      -- (B9: 'store' or 'walk': the car is put away once it stands outside, and you are on foot)
+  M.storeOnLeave = nil
   local missing = parts.missingEssentials()
   local v = veh()
   local half = v and v:getInitialLength() * 0.5 or 2.2
@@ -1063,6 +1066,13 @@ local function leaveJob(job)
   if missing and ui_message then
     ui_message('You left the garage without ' .. missing .. '.', 6, 'slrrGarage')
   end
+  if store and sl_fleet and sl_fleet.carOfVehicle and sl_fleet.despawn then
+    local carId = sl_fleet.carOfVehicle(vid)
+    if carId then
+      local _, text = sl_fleet.despawn(carId)
+      if ui_message then ui_message((text or '') .. ' ' .. gs(store == 'walk' and 'say.walk_hint' or 'say.store_hint'), 7, 'slrrGarage') end
+    end
+  end
 end
 
 -- Drive out. First the job sheet: what was done to the car this visit and what it cost.
@@ -1080,6 +1090,14 @@ local function leave(confirmed)
   setHover(nil)
   sendState()
   core_jobsystem.create(leaveJob)
+end
+
+-- B9: whatever car is on the lift, you can leave: drive out (above), put the car away and stay on foot (store / switch car), or walk out and leave it in the garage.
+-- Both put the car away in the career (it waits in the garage; the phone's Cars app brings another, or this one, out).
+M.storeCar = function(how)
+  if phase ~= 'garage' or not (sl_fleet and sl_fleet.carOfVehicle and sl_fleet.carOfVehicle(vehId)) then return end
+  M.storeOnLeave = how == 'walk' and 'walk' or 'store'
+  leave(true)
 end
 
 ----------------------------------------------------------------------------------------------
