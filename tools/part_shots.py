@@ -23,28 +23,54 @@ from PIL import Image
 DEFAULT = os.path.join(os.environ.get('LOCALAPPDATA', ''), 'BeamNG', 'BeamNG.drive', 'current', 'settings', 'street_legal', 'part_shots')
 
 
-def corner_mean(a, size=6):
-    """the card's colour: the mean of the four corners (nothing of the part reaches them)"""
+def border_median(a, frac=0.02):
+    """the card's colour: the median over the picture's outer strip (nothing of the part reaches it). The white card is not 255 on screen and is
+    different from shot to shot (the game's exposure adapts), so it is measured in each shot."""
     h, w = a.shape[:2]
-    patches = [a[:size, :size], a[:size, w - size:], a[h - size:, :size], a[h - size:, w - size:]]
-    return np.mean([p.reshape(-1, a.shape[2]).mean(axis=0) for p in patches], axis=0)
+    t = max(2, int(min(h, w) * frac))
+    strip = np.concatenate([a[:t].reshape(-1, a.shape[2]), a[-t:].reshape(-1, a.shape[2]),
+                            a[:, :t].reshape(-1, a.shape[2]), a[:, -t:].reshape(-1, a.shape[2])])
+    return np.median(strip, axis=0)
 
 
 def matte(black, white):
-    """black, white: float arrays (h, w, 3) in 0..1 of the same part on a black and a white card. Returns RGBA (h, w, 4), 0..1"""
-    bg_b, bg_w = corner_mean(black), corner_mean(white)
+    """black, white: float arrays (h, w, 3) in 0..1 of the same part on a black and a white card. Returns RGBA (h, w, 4), 0..1.
+    Alpha comes from the difference of the two shots; the white card bleeds a little light onto the part (bloom), so an opaque part measures
+    0.8-0.95 and not 1: the measure is stretched so the part's own core is fully opaque. Colour comes from the black shot alone (the black card
+    adds no light): colour = black / alpha."""
+    bg_b, bg_w = border_median(black), border_median(white)
     span = np.maximum(bg_w - bg_b, 1e-3)
-    alpha = 1.0 - np.clip((white - black) / span, 0, 1).mean(axis=2)          # (c_w - c_b) = (1 - alpha) * (bg_w - bg_b)
-    alpha = np.clip(alpha, 0, 1)
+    raw = 1.0 - np.clip((white - black) / span, 0, 1).mean(axis=2)
+    core = raw[raw > 0.5]
+    hi = float(np.clip(np.percentile(core, 90), 0.7, 1.0)) if core.size else 1.0
+    lo = 0.08
+    alpha = np.clip((raw - lo) / (hi - lo), 0, 1)
     a3 = alpha[..., None]
-    colour = np.where(a3 > 0.02, (black - (1 - a3) * bg_b) / np.maximum(a3, 0.02), 0)
+    colour = np.where(a3 > 0.03, (black - (1 - a3) * bg_b) / np.maximum(a3, 0.03), 0)
     return np.dstack([np.clip(colour, 0, 1), alpha])
+
+
+def keep_main(alpha, thr=0.1, share=0.05):
+    """clear specks and leftovers: keep the connected pieces that are at least `share` of the biggest (needs scipy; without it nothing is cleared)"""
+    try:
+        from scipy import ndimage
+    except ImportError:
+        return alpha
+    lab, n = ndimage.label(alpha > thr)
+    if n <= 1:
+        return alpha
+    areas = ndimage.sum(np.ones_like(alpha), lab, index=range(1, n + 1))
+    keep = np.zeros(n + 1, bool)
+    keep[1:] = areas >= areas.max() * share
+    return np.where(keep[lab], alpha, 0)
 
 
 def fit(rgba, size, margin=0.06):
     """crop to the outline, centre in a square with a margin, scale to size x size"""
+    rgba = rgba.copy()
+    rgba[..., 3] = keep_main(rgba[..., 3])
     a = rgba[..., 3]
-    ys, xs = np.where(a > 0.03)
+    ys, xs = np.where(a > 0.1)
     if len(ys) == 0:
         return None
     img = Image.fromarray((rgba[ys.min():ys.max() + 1, xs.min():xs.max() + 1] * 255 + 0.5).astype(np.uint8), 'RGBA')
@@ -135,10 +161,10 @@ def selftest():
     fg = np.array([0.8, 0.2, 0.1])
     for bg_b, bg_w in (((0, 0, 0), (1, 1, 1)), ((0.02, 0.02, 0.03), (0.93, 0.94, 0.95))):
         b = alpha * fg + (1 - alpha) * np.array(bg_b)
-        wh = alpha * fg + (1 - alpha) * np.array(bg_w)
+        wh = alpha * fg + (1 - alpha) * np.array(bg_w) + alpha * 0.12      # (the white card bleeds some light onto the part)
         m = matte(b.astype(np.float32), wh.astype(np.float32))
-        assert abs(m[48, 40, 3] - 1) < 0.02 and np.allclose(m[48, 40, :3], fg, atol=0.03), 'opaque part'
-        assert abs(m[60, 70, 3] - 0.4) < 0.03 and np.allclose(m[60, 70, :3], fg, atol=0.06), 'see-through part'
+        assert m[48, 40, 3] > 0.97 and np.allclose(m[48, 40, :3], fg, atol=0.05), 'opaque part'
+        assert abs(m[60, 70, 3] - 0.4) < 0.12 and np.allclose(m[60, 70, :3], fg, atol=0.3), 'see-through part'
         assert m[2, 2, 3] < 0.01, 'background is clear'
         out = fit(m, 64)
         assert out.size == (64, 64) and out.getpixel((0, 0))[3] == 0 and out.getchannel('A').getextrema()[1] > 250, 'fitted square'
