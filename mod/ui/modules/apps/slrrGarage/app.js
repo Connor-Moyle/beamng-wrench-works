@@ -50,7 +50,7 @@ angular.module('beamng.apps')
 
     // the template's texts until slrr/garageStrings has arrived (tools/strings_test.js checks they equal the table)
   var TEMPLATE_TEXT = {
-    "p.0_on_the_shelf": " 0\">On the shelf ",
+    "p.on_the_shelf": "On the shelf",
     "p.a_damaged_part_to_repair": "a damaged part to repair it",
     "p.a_part_on_the_car": "a part, on the car or the shelf, to sell it",
     "p.a_part_to_pick_it": "a part to pick it and tune it",
@@ -776,7 +776,7 @@ var TEMPLATE = [
     '          <div class="sg-stage" ng-mouseenter="hoverStats(it)" ng-mouseleave="hoverStats(null)"><span class="sg-glyph" ng-bind-html="icon(curSec().id)"></span>',
     '            <div class="sg-stats" ng-if="statsFor === it.part && stats[it.part].length"><div class="sg-kv" ng-repeat="r in stats[it.part]"><span>{{r.label}}</span><b>{{r.value}}</b></div></div>',
     '            <div class="sg-prev" ng-if="hasModel(it.part)" data-part="{{it.part}}" data-id="c{{it.part}}" data-spin="always"></div>',
-    ('            ' + '<div class="sg-badges"><span class="sg-badge" ng-if="it.fitted">{{t(\'p.on_the_car\')}}</span><span class="sg-badge sg-new" ng-if="it.owned >{{t(\'p.0_on_the_shelf\')}}&times;' + '{{it.owned}}' + '</span><span class="sg-badge sg-used" ng-if="it.used">{{t(\'p.used_2\')}}&minus;' + '{{it.used}}%' + '</span></div>'),
+    ('            ' + '<div class="sg-badges"><span class="sg-badge" ng-if="it.fitted">{{t(\'p.on_the_car\')}}</span><span class="sg-badge sg-new" ng-if="it.owned > 0">{{t(\'p.on_the_shelf\')}} &times;' + '{{it.owned}}' + '</span><span class="sg-badge sg-used" ng-if="it.used">{{t(\'p.used_2\')}}&minus;' + '{{it.used}}%' + '</span></div>'),
     '          </div>',
     '          <div class="sg-meta"><div class="sg-cslot">{{it.slot}}</div><div class="sg-cname" title="{{it.part}}">{{it.name}}</div>',
     ('            ' + '<div class="sg-buyrow"><div class="sg-price">' + '{{money(it.price)}}' + '</div><div class="sg-btn sg-go" ng-click="buy(it)">{{t(\'p.add\')}}</div></div></div>'),
