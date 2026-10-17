@@ -78,9 +78,14 @@ float4 main(VertToPix IN) : SV_Target
     float risk = normalSpread * gloss * sparkle * (1.0 - thin);
     float spec = tsmParams.w;
 
+    if (tsmSize.z > 4.5)      // probes: 5 solid magenta (the pass runs), 6 prepass RT0.z, 7 RT0.w, 8 RT0.x (grey)
+    {
+        float v = tsmSize.z < 5.5 ? 0.0 : (tsmSize.z < 6.5 ? g0.z : (tsmSize.z < 7.5 ? g0.w : g0.x));
+        return tsmSize.z < 5.5 ? float4(1, 0, 1, 1) : float4(v, v, v, 1.0);
+    }
     if (tsmSize.z > 0.5)      // debug views: the mask and what it is made of, as grey
     {
-        float v = tsmSize.z < 1.5 ? risk : (tsmSize.z < 2.5 ? normalSpread : (tsmSize.z < 3.5 ? gloss : sparkle));
+        float v =tsmSize.z < 1.5 ? risk : (tsmSize.z < 2.5 ? normalSpread : (tsmSize.z < 3.5 ? gloss : sparkle));
         return float4(v, v, v, 1.0);
     }
 

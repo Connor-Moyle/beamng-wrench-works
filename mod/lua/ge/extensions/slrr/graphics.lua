@@ -47,7 +47,7 @@ M.PRESETS = {
     note = 'SMAA Ultra with depth predication and gentle AMD CAS sharpening. Clean edges, cheap.' },
   { id = 'smooth', label = 'Smooth', values = { mode = 'smaaUltraTemporal', predication = true, temporal = 0.7, edgeAA = false, spec = 0.5, sharpener = 'cas', strength = 0.6 },
     note = 'SMAA Ultra plus Temporal smoothing and firmer CAS: the calmest picture while driving.' },
-  { id = 'max', label = 'Maximum', values = { mode = 'smaaUltraTemporal', predication = true, temporal = 0.85, edgeAA = true, spec = 0.7, sharpener = 'nis', strength = 0.5 },
+  { id = 'max', label = 'Maximum', values = { mode = 'smaaUltraTemporal', predication = true, temporal = 0.85, edgeAA = false, spec = 0.7, sharpener = 'nis', strength = 0.5 },
     note = 'The strongest smoothing and NVIDIA NIS sharpening. For real supersampling add NVIDIA DSR / AMD VSR in the driver and pick the bigger resolution in the game.' },
 }
 
@@ -577,7 +577,7 @@ function M.optionsGroup()
       choiceItem('Anti-aliasing mode', k.mode, M.MODES, 'Anything but Game\'s own takes over the Anti-aliasing and Anti-aliasing type settings above while it is picked.'),
       checkItem('Depth predication (SMAA Ultra)', k.predication, 'Lets SMAA Ultra use the depth: edges of objects are caught at full sensitivity and fine texture detail is not mistaken for edges.'),
       sliderItem('Temporal smoothing amount', k.temporal, 'For the Temporal smoothing mode: how much of the previous frame is kept. More calms shimmer more but can soften the picture while moving.'),
-      checkItem('Edge smoothing pass (game\'s own)', k.edgeAA, 'The game\'s own depth and normal edge blur (a cheap extra pass that smooths creases and silhouettes SMAA sees little of). Off by default in the game; a little soft.'),
+      checkItem('Edge smoothing pass (game\'s own)', k.edgeAA, 'The game\'s own depth and normal edge blur (a cheap extra pass that smooths creases and silhouettes SMAA sees little of). Its vertex shader fails to compile in BeamNG 0.39, so it does nothing there (kept for other versions).'),
       sliderItem('Specular shimmer reduction', k.spec, 'Calms bright sparkle on glossy, bumpy surfaces (car paint, rain-wet roads): the sparkle pixel is held to what it was last frame and blended towards its neighbours on the same surface. 0 is off; too much dulls real highlights. Works with Temporal smoothing best, and alone as a light blur.'),
       choiceItem('Sharpening', k.sharpener, M.SHARPENERS, 'Brings back the detail anti-aliasing softens. Runs after the anti-aliasing.'),
       sliderItem('Sharpening strength', k.strength, 'How much sharpening. 0.4 is gentle; above 0.7 thin lines start to look etched. 0 is the same as off.'),
