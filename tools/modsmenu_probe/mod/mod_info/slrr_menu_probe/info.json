@@ -1,0 +1,9 @@
+{
+  "name": "slrr_menu_probe",
+  "title": "Mods menu probe",
+  "tagline": "Test only: one pause-menu tab with one button",
+  "description": "A test of the pause menu entry for the Wrench Works Mods menu. Delete when done.",
+  "author": "Connor Moyle",
+  "version": "0.0.1",
+  "game_version": "0.39"
+}
