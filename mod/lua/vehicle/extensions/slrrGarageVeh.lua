@@ -125,10 +125,12 @@ end
 -- afterwards; the doors and lids stay as the build left them (shut), and the panels bend only as far as they allow.
 local function apply(data, options)
   local keepLatches = type(options) == 'table' and options.keepLatches == true
+  -- options.done: a line of game-engine Lua run when the damage is on (or could not be put on), so the caller can wait for it
+  local function finish() if type(options) == 'table' and type(options.done) == 'string' then obj:queueGameEngineLua(options.done) end end
   if not baseline then takeBaseline() end     -- called on a freshly built car
   local o, x, y, z = frame()
   local nodes, beams = v.data.nodes, v.data.beams
-  if not o or not nodes or not beams or type(data) ~= 'table' then return end
+  if not o or not nodes or not beams or type(data) ~= 'table' then finish() return end
   if not keepLatches then releaseLatches() end
   local byName = {}
   for cid, node in pairs(nodes) do
@@ -199,9 +201,10 @@ local function apply(data, options)
   carried = data
   -- every door and lid is shut again, whatever it was when the damage was noted (one sprung in the crash
   -- would otherwise hang open for ever); a door without its hinges just has nothing to latch to
-  if keepLatches then return end
+  if keepLatches then finish() return end
   relatch, relatchTimer = {}, 0.6
   for name in pairs(latchStates()) do relatch[name] = 'attached' end
+  finish()
 end
 
 local function updateLatches(dt)
