@@ -119,7 +119,8 @@ if (lauxlib.luaL_dostring(L, to_luastring(test)) !== lua.LUA_OK) { console.error
     lualib.luaL_openlibs(L2);
     lua.lua_pushstring(L2, to_luastring(text));
     lua.lua_setglobal(L2, to_luastring('LAYOUT_TEXT'));
-    const code = `local G = dofile(${JSON.stringify(file)}); local out, why = G.patchLayoutText(LAYOUT_TEXT); if not out then error(tostring(why), 0) end; OUT = out; AGAIN = G.patchLayoutText(OUT)`;
+    const extDir = path.join(__dirname, '..', 'mod', 'lua', 'ge', 'extensions').split(path.sep).join('/');
+    const code = `package.path = ${JSON.stringify(extDir + '/?.lua;')} .. package.path; local G = dofile(${JSON.stringify(file)}); local out, why = G.patchLayoutText(LAYOUT_TEXT); if not out then error(tostring(why), 0) end; OUT = out; AGAIN = G.patchLayoutText(OUT)`;
     if (lauxlib.luaL_dostring(L2, to_luastring(code)) !== lua.LUA_OK) { console.error(name + ': ' + to_jsstring(lua.lua_tostring(L2, -1))); process.exit(1); }
     lua.lua_getglobal(L2, to_luastring('OUT'));
     const out = Buffer.from(lua.lua_tostring(L2, -1)).toString('utf8');
@@ -147,4 +148,26 @@ if (lauxlib.luaL_dostring(L, to_luastring(test)) !== lua.LUA_OK) { console.error
     if (JSON.stringify(parsed) !== JSON.stringify(orig)) { console.error(name + ': the rest of the layout changed'); process.exit(1); }
     console.log('layout patch ok: ' + name);
   }
+}
+
+// two mods' groups side by side in one layout: each is replaced and removed by its own marker, and stripAll gives the game's text back
+{
+  const base = JSON.stringify({ items: [{ categoryId: 'graphics', items: [{ setting: 'GraphicAntialiasType', options: [] }, { setting: 'Other' }] }] });
+  const extDir = path.join(__dirname, '..', 'mod', 'lua', 'ge', 'extensions').split(path.sep).join('/');
+  const L4 = lauxlib.luaL_newstate();
+  lualib.luaL_openlibs(L4);
+  lua.lua_pushstring(L4, to_luastring(base));
+  lua.lua_setglobal(L4, to_luastring('BASE'));
+  const code = `package.path = ${JSON.stringify(extDir + '/?.lua;')} .. package.path
+    local L = require('slrr/optionsLayout')
+    local a = assert(L.patchText(BASE, 'a-v1', { label = 'A', items = {} }, 'GraphicAntialiasType'))
+    local ab = assert(L.patchText(a, 'b-v1', { label = 'B', items = {} }, 'GraphicAntialiasType'))
+    local ab2 = assert(L.patchText(ab, 'a-v1', { label = 'A2', items = {} }, 'GraphicAntialiasType'))
+    OK = (L.stripAll(ab) == BASE) and (L.strip(ab, 'a-v1') == L.patchText(BASE, 'b-v1', { label = 'B', items = {} }, 'GraphicAntialiasType')) and (L.stripAll(ab2) == BASE)
+      and select(2, ab2:gsub('"_slrr"', '')) == 2 and ab2:find('A2', 1, true) ~= nil and not ab2:find('"A"', 1, true)`;
+  if (lauxlib.luaL_dostring(L4, to_luastring(code)) !== lua.LUA_OK) { console.error('two groups: ' + to_jsstring(lua.lua_tostring(L4, -1))); process.exit(1); }
+  lua.lua_getglobal(L4, to_luastring('OK'));
+  if (!lua.lua_toboolean(L4, -1)) { console.error('two groups: groups did not coexist'); process.exit(1); }
+  JSON.parse(base);
+  console.log('layout groups coexist ok');
 }
