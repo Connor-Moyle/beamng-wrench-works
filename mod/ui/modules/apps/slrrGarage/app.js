@@ -368,6 +368,7 @@ var TEMPLATE = [
     '.sg-head .sg-btn{margin-left:auto}',
     '.sg-search{margin-left:18px;width:230px;padding:6px 10px;font-size:13px;color:#fff;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);border-radius:4px;outline:none}',
     '.sg-search::placeholder{color:#9a9a9a}',
+    '.sg-chiplabel{align-self:center;margin-right:6px;font-size:12px;opacity:.7}',
     '.sg-grid{flex:1;display:flex;flex-wrap:wrap;align-content:flex-start;margin:0 -6px;overflow:hidden;min-height:0}',
     '.sg-card{width:calc(33.333% - 12px);height:calc(50% - 12px);margin:6px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:6px;',
     '  display:flex;flex-direction:column;position:relative;min-width:0;overflow:hidden}',
@@ -763,10 +764,19 @@ var TEMPLATE = [
     '    </div>',
     '    <div class="sg-page-r">',
     '      <div class="sg-head"><div class="sg-h">{{searching() ? \'Search\' : (curSub() ? curSub().title : \'Choose a chapter\')}}</div><div class="sg-crumb" ng-if="curSec()">{{searching() ? \'All chapters\' : curSec().title}} &middot; {{shownItems().length}} parts</div>',
-    '        <input class="sg-search" type="text" placeholder="Search all parts" ng-model="cur.search" ng-change="searchChanged()" ng-if="cat.sections.length">',
+    '        <input class="sg-search" type="text" placeholder="{{searchHint()}}" ng-model="cur.search" ng-change="searchChanged()" ng-if="cat.sections.length">',
+    '        <div class="sg-mini" ng-if="curSub() && cur.search" ng-class="{\'sg-on\': cur.searchAll}" ng-click="cur.searchAll = !cur.searchAll; cur.page = 0">{{allLabel()}}</div>',
     '        <div class="sg-mini" ng-if="shownItems().length > 1" ng-click="cycleSort()">{{sortLabel()}}</div>',
     ('        ' + '<div class="sg-mini" ng-class="{\'sg-on\': cur.cheap}" ng-click="cur.cheap = !cur.cheap; cur.page = 0" title="Affordable upgrades: parts under $1,500">{{t(\'p.under_1_500\')}}</div>'),
     '        <div class="sg-btn sg-go" ng-click="lua(\'closeCatalog()\')">{{s.shop ? \'Leave shop\' : \'Back to garage\'}}</div></div>',
+    '      <div class="sg-chips" ng-if="wheelChips().length > 1 && scopedHere()">',
+    '        <span class="sg-chiplabel">{{sizeLabel()}}</span><div class="sg-tab" ng-class="{\'sg-on\': !cur.size}" ng-click="pickSize(null)">{{t(\'p.all\')}}</div>',
+    '        <div class="sg-tab" ng-repeat="d in wheelChips() track by d" ng-class="{\'sg-on\': cur.size === d}" ng-click="pickSize(d)">{{d}}&quot;</div>',
+    '      </div>',
+    '      <div class="sg-chips" ng-if="cur.size && widthChips().length > 1 && scopedHere()">',
+    '        <span class="sg-chiplabel">{{widthLabel()}}</span><div class="sg-tab" ng-class="{\'sg-on\': !cur.width}" ng-click="pickWidth(null)">{{t(\'p.all\')}}</div>',
+    '        <div class="sg-tab" ng-repeat="w in widthChips() track by w" ng-class="{\'sg-on\': cur.width === w}" ng-click="pickWidth(w)">{{w}}</div>',
+    '      </div>',
     '      <div class="sg-chips" ng-if="!searching() && slotChips().length > 1">',
     ('        ' + '<div class="sg-tab" ng-class="{\'sg-on\': !cur.slot}" ng-click="pickSlot(null)">{{t(\'p.all\')}}</div>'),
     '        <div class="sg-tab" ng-repeat="c in slotChips() track by $index" ng-class="{\'sg-on\': cur.slot === c}" ng-click="pickSlot(c)">{{c}}</div>',
@@ -1012,28 +1022,66 @@ var TEMPLATE = [
       $scope.sortLabel = function () { return SORT_LABELS[String($scope.cur.sort)]; };
       $scope.cycleSort = function () { $scope.cur.sort = SORTS[(SORTS.indexOf($scope.cur.sort) + 1) % SORTS.length]; $scope.cur.page = 0; };
       $scope.searching = function () { return !!($scope.cur.search || '').trim(); };
+      // B6: with a chapter open, the search box searches that chapter only (Running gear > Rear wheels: rear wheels); the switch beside it widens it to every chapter
+      $scope.cur.searchAll = false;
+      $scope.searchHint = function () { var sub = $scope.curSub(); return sub && !$scope.cur.searchAll ? $scope.t('p.search_chapter', 'Search {1}', sub.title) : $scope.t('p.search_all_parts', 'Search all parts'); };
+      $scope.allLabel = function () { return $scope.t('p.all_chapters', 'All chapters'); };
+      $scope.sizeLabel = function () { return $scope.t('p.size', 'Size'); };
+      $scope.widthLabel = function () { return $scope.t('p.width', 'Width'); };
+      // B7: the wheels' size filters, from the parts' own data (a name or part id such as 15x7 or 17 inch): diameter first, then the width of that diameter
+      function wheelSpec(it) {
+        var text = String(it.name || '') + ' ' + String(it.part || ''), m = text.match(/(\d{1,2}(?:\.\d)?)\s*[x\u00d7]\s*(\d{1,2}(?:\.\d)?)/i);
+        if (m) {
+          var a = parseFloat(m[1]), b = parseFloat(m[2]);
+          if (a >= 12 && a <= 26) return { d: String(a), w: String(b) };
+          if (b >= 12 && b <= 26) return { d: String(b), w: String(a) };
+        }
+        m = text.match(/\b(1[2-9]|2[0-6])\s*(?:"|''|in\b|inch)/i);
+        return m ? { d: m[1], w: null } : null;
+      }
+      var isWheelSub = function (sub) { return !!sub && /^rims/.test(sub.id); };
+      $scope.scopedHere = function () { return isWheelSub($scope.curSub()) && !$scope.searching(); };
+      var wheelKey = null, wheelDs = [], wheelWs = [];
+      function wheelData() {
+        var sub = $scope.curSub();
+        var key = $scope.cur.section + '/' + $scope.cur.sub + '/' + $scope.cur.size + '/' + $scope.cat.stamp;
+        if (key !== wheelKey) {
+          wheelKey = key; wheelDs = []; wheelWs = [];
+          (isWheelSub(sub) ? sub.items : []).forEach(function (it) {
+            var sp = wheelSpec(it);
+            if (!sp) return;
+            if (wheelDs.indexOf(sp.d) < 0) wheelDs.push(sp.d);
+            if (sp.w && sp.d === $scope.cur.size && wheelWs.indexOf(sp.w) < 0) wheelWs.push(sp.w);
+          });
+          wheelDs.sort(function (a, b) { return a - b; }); wheelWs.sort(function (a, b) { return a - b; });
+        }
+      }
+      $scope.wheelChips = function () { wheelData(); return wheelDs; };
+      $scope.widthChips = function () { wheelData(); return wheelWs; };
+      $scope.pickSize = function (d) { $scope.cur.size = d; $scope.cur.width = null; $scope.cur.page = 0; };
+      $scope.pickWidth = function (w) { $scope.cur.width = w; $scope.cur.page = 0; };
       var shownKey = null, shownList = [];
       $scope.shownItems = function () {
         var sub = $scope.curSub();
         var q = ($scope.cur.search || '').toLowerCase().trim();
         if (!q && !sub) return [];
-        var key = (q ? '*' : $scope.cur.section + '/' + $scope.cur.sub + '/' + ($scope.cur.slot || '')) + '/' + q + '/' + $scope.cur.sort + '/' + !!$scope.cur.cheap + '/' + $scope.cat.stamp;
+        var scoped = !!(q && sub && !$scope.cur.searchAll);
+        var key = (q ? '*' + (scoped ? sub.id : '') : $scope.cur.section + '/' + $scope.cur.sub + '/' + ($scope.cur.slot || '')) + '/' + q + '/' + $scope.cur.sort + '/' + !!$scope.cur.cheap + '/' + $scope.cur.size + '/' + $scope.cur.width + '/' + $scope.cat.stamp;
         if (key !== shownKey) {
           shownKey = key;
           var list = [];
           if (!q) list = $scope.cur.slot ? sub.items.filter(function (it) { return it.slot === $scope.cur.slot; }) : sub.items;
           else {
             var words = q.split(/\s+/);
-            $scope.cat.sections.forEach(function (sec) {
-              sec.subs.forEach(function (chapter) {
-                chapter.items.forEach(function (it) {
-                  var text = (it.name + ' ' + it.slot + ' ' + it.part).toLowerCase();
-                  for (var i = 0; i < words.length; i++) if (text.indexOf(words[i]) < 0) return;
-                  list.push(it);
-                });
-              });
-            });
+            var match = function (it) {
+              var text = (it.name + ' ' + it.slot + ' ' + it.part).toLowerCase();
+              for (var i = 0; i < words.length; i++) if (text.indexOf(words[i]) < 0) return;
+              list.push(it);
+            };
+            if (scoped) sub.items.forEach(match);
+            else $scope.cat.sections.forEach(function (sec) { sec.subs.forEach(function (chapter) { chapter.items.forEach(match); }); });
           }
+          if (isWheelSub(sub) && !q && $scope.cur.size) list = list.filter(function (it) { var sp = wheelSpec(it); return sp && sp.d === $scope.cur.size && (!$scope.cur.width || sp.w === $scope.cur.width); });
           // affordable upgrades: what a first part from a few jobs' pay buys
           if ($scope.cur.cheap) list = list.filter(function (it) { return it.price > 0 && it.price <= CHEAP_PART; });
           if ($scope.cur.sort) {
@@ -1066,11 +1114,11 @@ var TEMPLATE = [
       };
       $scope.searchChanged = function () { $scope.cur.page = 0; wantPreviews(); };
       $scope.openSection = function (sec) {
-        $scope.cur.section = sec.id; $scope.cur.page = 0; $scope.cur.sub = null; $scope.cur.search = ''; $scope.cur.slot = null;
+        $scope.cur.section = sec.id; $scope.cur.page = 0; $scope.cur.sub = null; $scope.cur.search = ''; $scope.cur.slot = null; $scope.cur.size = null; $scope.cur.width = null;
         for (var i = 0; i < sec.subs.length; i++) if (sec.subs[i].items.length) { $scope.cur.sub = sec.subs[i].id; break; }
         $scope.lua('uiSound("mnuselect.wav")'); wantPreviews();
       };
-      $scope.openSub = function (sec, sub) { $scope.cur.section = sec.id; $scope.cur.sub = sub.id; $scope.cur.page = 0; $scope.cur.search = ''; $scope.cur.slot = null; $scope.lua('uiSound("flip.wav")'); wantPreviews(); };
+      $scope.openSub = function (sec, sub) { $scope.cur.section = sec.id; $scope.cur.sub = sub.id; $scope.cur.page = 0; $scope.cur.search = ''; $scope.cur.slot = null; $scope.cur.size = null; $scope.cur.width = null; $scope.lua('uiSound("flip.wav")'); wantPreviews(); };
       $scope.turn = function (d) {
         var page = Math.max(0, Math.min($scope.pageCount() - 1, $scope.cur.page + d));
         if (page === $scope.cur.page) return;

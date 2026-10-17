@@ -29,8 +29,14 @@ const names = () => $scope.shownItems().map((it) => it.part);
 assert.deepStrictEqual(names(), ['turbo_a', 'turbo_b']);
 assert.strictEqual($scope.pageCount(), 1);
 
-// a search goes through every chapter; every word has to match
+// with a chapter open the search only searches that chapter (B6); the switch widens it to every chapter
 $scope.cur.search = 'turbo'; $scope.searchChanged();
+assert.deepStrictEqual(names(), ['turbo_a', 'turbo_b']);
+$scope.cur.search = 'hood';
+assert.deepStrictEqual(names(), []);
+// a search goes through every chapter once widened; every word has to match
+$scope.cur.searchAll = true;
+$scope.cur.search = 'turbo';
 assert.deepStrictEqual(names(), ['turbo_a', 'turbo_b', 'hood_t']);
 $scope.cur.search = 'turbo hood';
 assert.deepStrictEqual(names(), ['hood_t']);
@@ -46,6 +52,23 @@ $scope.cycleSort(); assert.strictEqual($scope.sortLabel(), 'Dearest first');
 assert.deepStrictEqual(names(), ['turbo_b', 'turbo_a', 'hood_t']);
 $scope.cycleSort(); assert.strictEqual($scope.sortLabel(), 'By slot');
 assert.deepStrictEqual(sections[0].subs[0].items.map((it) => it.part), ['turbo_a', 'turbo_b']);
+
+$scope.cur.searchAll = false;
+
+// wheels (B7): size buttons from the parts' data, then the width of that size
+const rims = { id: 'running', title: 'Running gear', subs: [{ id: 'rims_r', title: 'REAR WHEELS', items: [item('wheel_15x6_a', 'Steel 15x6', 'Rear wheel', 100), item('wheel_15x7_b', 'Alloy 15x7', 'Rear wheel', 300),
+  item('wheel_17x8_c', 'Sport 17x8', 'Rear wheel', 500), item('rim_18_d', 'Show rim 18 inch', 'Rear wheel', 900), item('wheel_bolt', 'Wheel nuts', 'Rear wheel', 20)] }] };
+handlers.slrrGarageCatalog(null, { sections: sections.concat([rims]) });
+$scope.openSub(rims, rims.subs[0]);
+assert.deepStrictEqual($scope.wheelChips(), ['15', '17', '18']);
+$scope.pickSize('15');
+assert.deepStrictEqual(names(), ['wheel_15x6_a', 'wheel_15x7_b']);
+assert.deepStrictEqual($scope.widthChips(), ['6', '7']);
+$scope.pickWidth('7'); assert.deepStrictEqual(names(), ['wheel_15x7_b']);
+$scope.pickSize(null); assert.strictEqual(names().length, 5);
+$scope.cur.search = 'alloy'; assert.deepStrictEqual(names(), ['wheel_15x7_b']);       // (the search stays inside the rear wheels)
+$scope.cur.search = '';
+handlers.slrrGarageCatalog(null, { sections });
 
 // paging: eight hoods are two pages; turning past either end does nothing (and makes no sound)
 $scope.openSub(sections[1], sections[1].subs[0]);
