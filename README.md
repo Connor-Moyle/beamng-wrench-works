@@ -144,12 +144,14 @@ Changing a part in BeamNG normally rebuilds the whole vehicle, which freezes the
 
 ## Graphics (optional)
 
-Settings > **Graphics**, all "Game's own" / off by default and switched live (nothing to restart). Each choice has a note under it saying what it does and what it is for. A **Preset** (Balanced, Smooth, Maximum) picks the rest in one go.
+Options > **Graphics** (the game's own options page, a group called "Wrench Works: anti-aliasing and sharpening" under the anti-aliasing type; the first start after installing needs a game restart to show it). All "Game's own" / off by default and switched live. The settings are saved with the game's other settings. Each choice has a note under it saying what it does and what it is for. A **Preset** (Balanced, Smooth, Maximum) picks the rest in one go.
 
 - **Anti-aliasing:** Game's own, Off, FXAA, **FXAA HQ** (NVIDIA FXAA 3.11, sub-pixel removal at maximum), SMAA High, **SMAA Ultra** (our own copies of the edge and blending shaders with the Ultra preset, colour edges and optional **depth predication**), and **SMAA Ultra + Temporal smoothing**. While one of ours is picked it takes over Options > Graphics > Anti-aliasing; "Game's own" gives it back exactly as the game has it. Our shaders live in `shaders/common/postFx/slrrGfx/`; the game's own shader files and objects are never changed.
 - **Temporal smoothing.** Blends the finished picture with the previous frame, found through the game's own motion-vector buffer and clamped to the surrounding colours so it does not ghost. It calms shimmer and crawling edges while you drive. It is not TAA: the engine has no camera jitter, so it cannot add detail and can soften the picture a little.
 - **Sharpening:** AMD **CAS**, AMD **FSR 1 RCAS**, NVIDIA **NIS** sharpen, with a strength slider (0 to 1).
 - **Not available in BeamNG mods** (and listed as such in the settings): NVIDIA DLSS, DLAA and Frame Generation; AMD FSR 2/3/4; the FSR 1 and NIS upscalers; TAA/TSR; MSAA; real supersampling. They need an SDK in the engine, a jittered camera or a render-scale setting, none of which the game exposes. For supersampling use NVIDIA DSR / AMD VSR in the driver and pick the bigger resolution in the game.
+
+Our group is made by writing a copy of the game's options layout into your BeamNG user folder (`ui/ui-vue/src/modules/options/runtime/layout.json`); switching the mod off in the mod manager takes it out again. If the mod is removed some other way, delete that file (or run `require('slrr/graphics').uninstallOptions()` first) or the game keeps showing our controls. After a game update the copy is not refreshed from the new game layout until you do the same, so delete it then and restart.
 
 Credits and licences (all MIT, kept in the shader headers): AMD FidelityFX CAS and FSR 1 RCAS (Copyright 2019-2021 Advanced Micro Devices, Inc.), NVIDIA Image Scaling NVSharpen (Copyright 2022 NVIDIA Corporation & Affiliates), SMAA (Jimenez et al., from the game's own copy), NVIDIA FXAA 3.11 (Timothy Lottes, from the game's own copy).
 

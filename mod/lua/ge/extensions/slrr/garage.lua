@@ -1825,8 +1825,7 @@ end
 -- and the picture: the Graphics group (slrr/graphics), applied when it changes, at the start of a level and when the anti-aliasing type changes
 -- (a field of the module table, not a local: this file is at LuaJIT's limit of 200 locals)
 M.applyGraphics = function()
-  require('slrr/graphics').apply({ mode = settings.get('gfxAaMode'), predication = settings.get('gfxPredication'), temporal = settings.get('gfxTemporal'),
-                                   sharpener = settings.get('gfxSharpener'), strength = settings.get('gfxSharpenStrength') })
+  require('slrr/graphics').onSettingsChanged()
 end
 
 local function applyDriverAnimation()
@@ -1842,12 +1841,6 @@ local function setSetting(key, value)
   if key == '__reset' then settings.reset() extensions.hook('onWrenchWorksSetting', key)
   elseif not settings.set(key, value) then extensions.hook('onWrenchWorksSetting', key, value) end   -- (another mod's setting)
   if key == 'driverMode' or key == '__reset' or key:find('^ped') or key:find('^driver') then applyDriverAnimation() end
-  if key:find('^gfx') then
-    local preset = key == 'gfxPreset' and require('slrr/graphics').presetValues(value)
-    if preset then for k, v in pairs(preset) do settings.set(k, v) end
-    elseif key ~= 'gfxPreset' then settings.set('gfxPreset', 'custom') end     -- (any single setting made after a preset)
-  end
-  if key == '__reset' or key:find('^gfx') then M.applyGraphics() end
   if key == 'freeroamMoney' then parts.setWallet(settings.get('freeroamMoney')) end
   if (key == 'injuryMode' or key == '__reset') and slrrInjury and slrrInjury.setMode then slrrInjury.setMode(settings.get('injuryMode')) end
   if key == 'saveBetweenSessions' then parts.saveNow() end
@@ -2306,6 +2299,8 @@ local function onExtensionLoaded()
   local current = getPlayerVehicle(0)
   if current then current:queueLuaCommand('extensions.load("slrrGarageVeh")') end
   applyDriverAnimation()
+  require('slrr/graphics').ensureDefaults()
+  require('slrr/graphics').installOptions()
   M.applyGraphics()
   log('I', logTag, 'Wrench Works loaded')
 end
@@ -2313,6 +2308,7 @@ end
 local function onExtensionUnloaded()
   abort()
   music.stop()
+  require('slrr/graphics').apply({})        -- the game's own anti-aliasing, shaders and effects again
 end
 
 -- the UI app asks for the current state when it (re)loads
@@ -2334,6 +2330,11 @@ end
 
 M.onUpdate = onUpdate
 M.onClientPostStartMission = function() M.applyGraphics() end
+M.onModDeactivated = function(modData)       -- (the game: a mod was switched off) ours: take our group out of the Options page again
+  local name = type(modData) == 'table' and tostring(modData.modname or modData.modID or '') or ''
+  if name:find('slrr_garage', 1, true) then require('slrr/graphics').uninstallOptions() end
+end
+M.onSettingsChanged = function() M.applyGraphics() end            -- (the game's: some setting changed, the Graphics group of Options is ours too)
 M.onPreRender = onPreRender
 M.onVehicleSpawned = onVehicleSpawned
 M.onVehicleSwitched = onVehicleSwitched

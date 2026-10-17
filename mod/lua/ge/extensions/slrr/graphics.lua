@@ -43,11 +43,11 @@ M.SHARPENERS = {
 
 M.PRESETS = {
   { id = 'custom', label = 'Custom', note = 'Your own mix of the settings below.' },
-  { id = 'balanced', label = 'Balanced', values = { gfxAaMode = 'smaaUltra', gfxPredication = true, gfxSharpener = 'cas', gfxSharpenStrength = 0.4 },
+  { id = 'balanced', label = 'Balanced', values = { mode = 'smaaUltra', predication = true, edgeAA = false, sharpener = 'cas', strength = 0.4 },
     note = 'SMAA Ultra with depth predication and gentle AMD CAS sharpening. Clean edges, cheap.' },
-  { id = 'smooth', label = 'Smooth', values = { gfxAaMode = 'smaaUltraTemporal', gfxPredication = true, gfxTemporal = 0.7, gfxSharpener = 'cas', gfxSharpenStrength = 0.6 },
+  { id = 'smooth', label = 'Smooth', values = { mode = 'smaaUltraTemporal', predication = true, temporal = 0.7, edgeAA = false, sharpener = 'cas', strength = 0.6 },
     note = 'SMAA Ultra plus Temporal smoothing and firmer CAS: the calmest picture while driving.' },
-  { id = 'max', label = 'Maximum', values = { gfxAaMode = 'smaaUltraTemporal', gfxPredication = true, gfxTemporal = 0.85, gfxSharpener = 'nis', gfxSharpenStrength = 0.5 },
+  { id = 'max', label = 'Maximum', values = { mode = 'smaaUltraTemporal', predication = true, temporal = 0.85, edgeAA = true, sharpener = 'nis', strength = 0.5 },
     note = 'The strongest smoothing and NVIDIA NIS sharpening. For real supersampling add NVIDIA DSR / AMD VSR in the driver and pick the bigger resolution in the game.' },
 }
 
@@ -101,6 +101,7 @@ function M.plan(opts)
   return {
     mode = mode.id, base = p.base, hq = p.hq == true, ultra = p.ultra == true,
     predication = p.ultra == true and opts.predication ~= false,
+    edgeAA = opts.edgeAA == true,
     temporal = p.temporal == true, temporalWeight = 0.6 + 0.35 * amount,      -- weight of last frame's picture: 0.60 .. 0.95
     sharpener = sharpener, strength = strength,
   }
@@ -141,6 +142,8 @@ local SHARP = {
 }
 local TSM, TSM_COPY, TSM_HIST = 'SLRR_TSM_PostEffect', 'SLRR_TSMCopy_PostEffect', '#slrrTsmHist'
 
+-- temporal smoothing: how hard thin geometry (foliage, wires) cuts the history, and the width of the colour clamp (try in game: require('slrr/graphics').tune{guard=0.8, gamma=1})
+local tune = { guard = 0.8, gamma = 1.0 }
 local state = { opts = nil, plan = nil, owned = false, strength = M.DEFAULT_STRENGTH, tsmWeight = 0.85, tsmWait = nil, error = nil }
 
 local function find(name) return scenetree and scenetree.findObject(name) or nil end
@@ -338,10 +341,11 @@ local function ensureTsm()
     block:setField('samplerStates', 0, 'SamplerClampPoint')
     block:setField('samplerStates', 1, 'SamplerClampLinear')
     block:setField('samplerStates', 2, 'SamplerClampPoint')
+    block:setField('samplerStates', 3, 'SamplerClampPoint')
     block:registerObject('SLRR_TSM_StateBlock')
   end
-  makeShaderData('SLRR_TSM_ShaderData', 'slrr_tsmV.hlsl', 'slrr_tsmP.hlsl', { '$curTex', '$histTex', '$velTex' })
-  makeShaderData('SLRR_TSMCopy_ShaderData', 'slrr_tsmV.hlsl', 'slrr_tsmCopyP.hlsl', { '$curTex' })
+  makeShaderData('SLRR_TSM_ShaderData', 'slrr_tsmV.hlsl', 'slrr_tsmP.hlsl', { '$curTex', '$histTex', '$velTex', '$depthTex' })
+  makeShaderData('SLRR_TSMCopy_ShaderData', 'slrr_tsmV.hlsl', 'slrr_tsmCopyP.hlsl', { '$curTex', '$depthTex' })
   if not find(TSM) then
     local e = createObject('PostEffect')
     e.isEnabled = false
@@ -353,6 +357,7 @@ local function ensureTsm()
     e:setField('texture', 0, '$backBuffer')
     e:setField('texture', 1, TSM_HIST)
     e:setField('texture', 2, '#VelocityBuffer')
+    e:setField('texture', 3, '#prepass[Depth]')
     e:setField('target', 0, '$backBuffer')
     e:registerObject(TSM)
   end
@@ -365,6 +370,7 @@ local function ensureTsm()
     e:setField('shader', 0, 'SLRR_TSMCopy_ShaderData')
     e:setField('stateBlock', 0, 'SLRR_TSM_StateBlock')
     e:setField('texture', 0, '$backBuffer')
+    e:setField('texture', 1, '#prepass[Depth]')
     e:setField('target', 0, TSM_HIST)
     e:setField('targetFormat', 0, 'GFXFormatR16G16B16A16F')
     e:registerObject(TSM_COPY)
@@ -376,7 +382,7 @@ local function tsmConsts()
   if not e then return end
   local size = e:getRenderTargetSize()
   if not (size and size.x > 0 and size.y > 0) then return end
-  e:setShaderConst('$tsmParams', string.format('%f 0 0 0', state.tsmWeight))
+  e:setShaderConst('$tsmParams', string.format('%f %f %f 0', state.tsmWeight, tune.guard, tune.gamma))
   e:setShaderConst('$tsmSize', string.format('%f %f 0 0', size.x, size.y))
 end
 rawset(_G, TSM .. 'Callbacks', { preProcess = tsmConsts, onEnabled = function() tsmConsts() return true end })
@@ -397,6 +403,36 @@ local function applyTemporal(plan)
   tsmConsts()
 end
 
+-- the game's own edge smoothing (depth and normal edges, GPU Gems 3): two effects the game makes but leaves off; put back as found
+local EDGE = { 'EdgeDetectPostEffect', 'EdgeAAPostEffect' }
+local function applyEdgeAA(plan)
+  if plan.edgeAA then
+    if not state.edgeSaved then
+      state.edgeSaved = {}
+      for _, name in ipairs(EDGE) do state.edgeSaved[name] = isEnabled(name) end
+    end
+    for _, name in ipairs(EDGE) do
+      local e = find(name)
+      if e and not isEnabled(name) then e:enable() end
+    end
+  elseif state.edgeSaved then
+    for _, name in ipairs(EDGE) do
+      local e = find(name)
+      if e and isEnabled(name) ~= state.edgeSaved[name] then
+        if state.edgeSaved[name] then e:enable() else e:disable() end
+      end
+    end
+    state.edgeSaved = nil
+  end
+end
+
+-- for trying values in game: M.tune({ guard = 0..1, gamma = 0.5..2 }) returns what is set
+function M.tune(t)
+  for k, v in pairs(t or {}) do if tune[k] ~= nil and tonumber(v) then tune[k] = tonumber(v) end end
+  tsmConsts()
+  return tune
+end
+
 -- put the picture as the settings want it; safe to call at any time (a level that is not loaded yet changes nothing)
 function M.apply(opts)
   state.opts = opts or state.opts or {}
@@ -408,6 +444,7 @@ function M.apply(opts)
     applyShaders(plan)
     applyBase(plan)
     applyTemporal(plan)
+    applyEdgeAA(plan)
     applySharpener(plan)
   end)
   if not ok then
@@ -424,7 +461,7 @@ function M.status()
     owned = state.owned, edgeShader = shaderOf('SMAA_PostEffect'), weightShader = shaderOf('SMAA_PostEffect1'), fxaaShader = shaderOf('FXAA_PostEffect'),
     smaaOn = isEnabled('SMAA_PostEffect'), fxaaOn = isEnabled('FXAA_PostEffect'),
     casOn = isEnabled(SHARP.cas.effect), rcasOn = isEnabled(SHARP.rcas.effect), nisOn = isEnabled(SHARP.nis.effect),
-    tsmOn = isEnabled(TSM), tsmCopyOn = isEnabled(TSM_COPY),
+    tsmOn = isEnabled(TSM), tsmCopyOn = isEnabled(TSM_COPY), edgeAAOn = isEnabled('EdgeAAPostEffect'), tune = tune,
   }
 end
 
@@ -443,6 +480,290 @@ function M.tick(dt)
   if timer < 2 or not state.opts then return end
   timer = 0
   M.apply()
+end
+
+----------------------------------------------------------------------------------------------
+-- the controls in the game's own Options > Graphics page
+-- Their values live in the game's settings under the keys below (the options page reads and writes those); the game tells us when one changed
+-- (onSettingsChanged, forwarded by the garage extension). The page itself is the game's options layout (ui/ui-vue/src/modules/options/runtime/layout.json)
+-- with one more group in the Graphics category, written into the user folder by installOptions; the game's own copy is never changed.
+
+M.KEYS = { preset = 'slrrGfxPreset', mode = 'slrrGfxMode', predication = 'slrrGfxPredication', temporal = 'slrrGfxTemporal',
+           edgeAA = 'slrrGfxEdgeAA', sharpener = 'slrrGfxSharpener', strength = 'slrrGfxStrength' }
+M.DEFAULTS = { preset = 'custom', mode = 'game', predication = true, temporal = M.DEFAULT_TEMPORAL, edgeAA = false, sharpener = 'off', strength = M.DEFAULT_STRENGTH }
+local OPTION_NAMES = { 'preset', 'mode', 'predication', 'temporal', 'edgeAA', 'sharpener', 'strength' }
+
+-- the options from a getter (key, default) -> value, e.g. settings.getValue
+function M.readOptions(get)
+  local o = {}
+  for _, name in ipairs(OPTION_NAMES) do
+    local v = get(M.KEYS[name], nil)
+    if v == nil then v = M.DEFAULTS[name] end
+    o[name] = v
+  end
+  return o
+end
+
+-- which preset the options are (a preset's own values; anything else is custom)
+function M.matchPreset(o)
+  for _, p in ipairs(M.PRESETS) do
+    if p.values then
+      local same = true
+      for _, name in ipairs(OPTION_NAMES) do
+        if name ~= 'preset' then
+          local want = p.values[name]
+          if want == nil then want = M.DEFAULTS[name] end
+          local have = o[name]
+          if type(want) == 'number' then
+            if type(have) ~= 'number' or math.abs(have - want) > 1e-3 then same = false end
+          elseif have ~= want then same = false end
+        end
+      end
+      if same then return p.id end
+    end
+  end
+  return 'custom'
+end
+
+-- the settings screen's controls: a group for the Graphics category. Plain texts (not translation keys); the notes of every choice sit in its tooltip.
+local function common(extra)
+  local item = {
+    version = '0.39', tooltip = '', interactive = true, condition_always_off = false, condition_not_shipping = false,
+    condition_simplemenu = '', condition_visible = '', condition_enabled = '', separateLabel = true, manualApply = false, manualLua = '',
+    lua = '', basic_interaction = false, slrr = true,
+  }
+  for k, v in pairs(extra) do item[k] = v end
+  return item
+end
+
+local function choiceItem(label, setting, list, tooltip)
+  local options = {}
+  for _, o in ipairs(list) do options[#options + 1] = { value = o.id, label = o.label } end
+  local notes = {}
+  for _, o in ipairs(list) do notes[#notes + 1] = o.label .. ': ' .. o.note end
+  return common({ label = label, setting = setting, tooltip = (tooltip and (tooltip .. '\n\n') or '') .. table.concat(notes, '\n\n'),
+                  itemType = 'options', component = 'BngSmartSelect', optionsSource = '', options = options, search = { 'label', 'caption', 'tooltip', 'setting', 'options' } })
+end
+
+local function checkItem(label, setting, tooltip)
+  return common({ label = label, setting = setting, tooltip = tooltip, itemType = 'checkbox', component = 'OptionsCheckbox', luaOff = '',
+                  valueOn = true, valueOff = false, search = { 'label', 'caption', 'tooltip', 'setting' } })
+end
+
+local function sliderItem(label, setting, tooltip)
+  return common({ label = label, setting = setting, tooltip = tooltip, itemType = 'slider', component = 'BngSlider', min = 0, max = 1, step = 0.05,
+                  compact = false, valueMultiplier = 1, unit = '', inputMin = nil, inputMax = nil, inputStep = nil, search = { 'label', 'caption', 'tooltip', 'setting' } })
+end
+
+function M.optionsGroup()
+  local k = M.KEYS
+  return common({
+    interactive = false, itemType = 'group', component = 'OptionsGroup', layout = 'column', firstAsTitle = true, separateLabel = nil,
+    items = {
+      common({ label = 'Wrench Works: anti-aliasing and sharpening', interactive = false, itemType = 'heading', component = 'OptionsHeading', icon = '_empty', variant = 'h4', search = { 'label' }, separateLabel = nil }),
+      choiceItem('Preset', k.preset, M.PRESETS, 'Picks the settings below in one go. Changing any of them afterwards makes it Custom.'),
+      choiceItem('Anti-aliasing mode', k.mode, M.MODES, 'Anything but Game\'s own takes over the Anti-aliasing and Anti-aliasing type settings above while it is picked.'),
+      checkItem('Depth predication (SMAA Ultra)', k.predication, 'Lets SMAA Ultra use the depth: edges of objects are caught at full sensitivity and fine texture detail is not mistaken for edges.'),
+      sliderItem('Temporal smoothing amount', k.temporal, 'For the Temporal smoothing mode: how much of the previous frame is kept. More calms shimmer more but can soften the picture while moving.'),
+      checkItem('Edge smoothing pass (game\'s own)', k.edgeAA, 'The game\'s own depth and normal edge blur (a cheap extra pass that smooths creases and silhouettes SMAA sees little of). Off by default in the game; a little soft.'),
+      choiceItem('Sharpening', k.sharpener, M.SHARPENERS, 'Brings back the detail anti-aliasing softens. Runs after the anti-aliasing.'),
+      sliderItem('Sharpening strength', k.strength, 'How much sharpening. 0.4 is gentle; above 0.7 thin lines start to look etched. 0 is the same as off.'),
+      common({ label = '', caption = M.unavailableText(), interactive = false, itemType = 'text', component = 'OptionsText', variant = '', innerCaption = true,
+               optionsSource = '', options = {}, search = { 'caption' }, separateLabel = true }),
+    },
+  })
+end
+
+-- puts the group into a copy of the game's layout (right after the anti-aliasing type); any earlier copy of ours is taken out first. nil + reason when the page is not found.
+function M.patchLayout(layout)
+  if type(layout) ~= 'table' or type(layout.items) ~= 'table' then return nil, 'no layout' end
+  local function strip(items)
+    for i = #items, 1, -1 do
+      local it = items[i]
+      if it.slrr == true then table.remove(items, i)
+      elseif type(it.items) == 'table' then strip(it.items) end
+    end
+  end
+  strip(layout.items)
+  for _, category in ipairs(layout.items) do
+    if category.categoryId == 'graphics' and type(category.items) == 'table' then
+      for i, it in ipairs(category.items) do
+        if it.setting == 'GraphicAntialiasType' then
+          table.insert(category.items, i + 1, M.optionsGroup())
+          return layout
+        end
+      end
+    end
+  end
+  return nil, 'the Graphics page has no anti-aliasing type to put the group after'
+end
+
+-- our group as JSON text (written by hand: the game's encoder cannot tell an empty list from an empty object, and the layout is full of empty lists)
+local function encodeJson(v)
+  local t = type(v)
+  if t == 'string' then
+    local escaped = v:gsub('[%c"\\]', function(c)
+      if c == '"' then return '\\"' elseif c == '\\' then return '\\\\' elseif c == '\n' then return '\\n' end
+      return string.format('\\u%04x', c:byte())
+    end)
+    return '"' .. escaped .. '"'
+  elseif t == 'number' or t == 'boolean' then return tostring(v)
+  elseif t == 'table' then
+    if next(v) == nil or v[1] ~= nil then
+      local out = {}
+      for i = 1, #v do out[i] = encodeJson(v[i]) end
+      return '[' .. table.concat(out, ',') .. ']'
+    end
+    local keys = {}
+    for k in pairs(v) do keys[#keys + 1] = k end
+    table.sort(keys)
+    local out = {}
+    for _, k in ipairs(keys) do out[#out + 1] = encodeJson(k) .. ':' .. encodeJson(v[k]) end
+    return '{' .. table.concat(out, ',') .. '}'
+  end
+  return 'null'
+end
+M.encodeJson = encodeJson
+
+-- The group put into the game's layout text right after the anti-aliasing type item, the rest of the text untouched (byte for byte). nil + reason if it cannot.
+function M.patchLayoutText(text)
+  if type(text) ~= 'string' then return nil, 'no layout' end
+  if text:find('"slrr":true', 1, true) then return nil, 'that layout already has our group' end
+  local anchor = text:find('"setting"%s*:%s*"GraphicAntialiasType"')
+  if not anchor then return nil, 'the Graphics page has no anti-aliasing type to put the group after' end
+  -- walk the text (strings skipped) to find the object that holds the anchor and where it ends
+  local pos, stack, itemStart, depthAtItem = 1, {}, nil, nil
+  while true do
+    local i = text:find('["{}]', pos)
+    if not i then return nil, 'unbalanced layout' end
+    local c = text:sub(i, i)
+    if c == '"' then
+      local j = i + 1
+      while true do
+        j = text:find('["\\]', j)
+        if not j then return nil, 'unbalanced layout' end
+        if text:sub(j, j) == '\\' then j = j + 2 else break end
+      end
+      pos = j + 1
+    elseif c == '{' then
+      stack[#stack + 1] = i
+      pos = i + 1
+    else
+      local opened = table.remove(stack)
+      if itemStart and #stack < depthAtItem then
+        return text:sub(1, i) .. ',' .. encodeJson(M.optionsGroup()) .. text:sub(i + 1)
+      end
+      pos = i + 1
+    end
+    if not itemStart and pos > anchor then
+      itemStart = stack[#stack]
+      depthAtItem = #stack
+    end
+  end
+end
+
+local LAYOUT_DIR = '/ui/ui-vue/src/modules/options/runtime/'
+
+local function readText(path)
+  local f = io.open(path, 'rb')
+  if not f then return nil end
+  local text = f:read('*a')
+  f:close()
+  return text
+end
+
+-- Writes the patched layout into the user folder when it is not there yet or the game's own layout changed (a game update); the game's copy is read from
+-- the game folder because the user folder's copy hides it. Takes effect when the game's UI loads the options page (restart the game the first time).
+local function slash(p) return (string.gsub(p or '', '\\', '/')) end
+local function inUserFolder(real)
+  local user = slash(FS:getUserPath())
+  return user ~= '' and string.sub(slash(real), 1, #user) == user
+end
+
+-- the game's own layout text, from wherever it is: its real file (when that is not our copy in the user folder), the game folder, or the game's virtual file
+-- system (which shows our copy once installed; that one is refused, see patchLayoutText)
+local function gameLayoutText()
+  local vpath = LAYOUT_DIR .. 'layout.json'
+  local real = slash(FS:getFileRealPath(vpath))
+  local tried = { 'real=' .. real, 'game=' .. slash(FS:getGamePath()) }
+  local candidates = {}
+  if real ~= '' and not inUserFolder(real) then candidates[#candidates + 1] = real end
+  candidates[#candidates + 1] = slash(FS:getGamePath()) .. vpath
+  for _, path in ipairs(candidates) do
+    local text = readText(path)
+    if text and #text > 1000 then return text, path end
+  end
+  local ok, text = pcall(readFile, vpath)
+  if ok and type(text) == 'string' and #text > 1000 then return text, 'virtual ' .. vpath end
+  return nil, table.concat(tried, ' ')
+end
+
+-- Writes the patched layout into the user folder when it is not there yet or differs (a game update, a newer mod). Takes effect when the game's UI loads the
+-- options page (restart the game the first time).
+function M.installOptions()
+  local ok, err = pcall(function()
+    local text, source = gameLayoutText()
+    if not text then log('W', 'slrr_graphics', 'options page: the game layout file was not found (' .. tostring(source) .. '), nothing added') return end
+    local patched, why = M.patchLayoutText(text)
+    if not patched then
+      log('W', 'slrr_graphics', 'options page: ' .. tostring(why) .. ' (read from ' .. tostring(source) .. '), nothing changed')
+      return
+    end
+    local mine = slash(FS:getFileRealPath(LAYOUT_DIR .. 'layout.json'))
+    local current = inUserFolder(mine) and readText(mine) or nil
+    if current == patched then return end
+    extensions.load('ui_options')
+    if ui_options.saveLayout('', patched) then
+      log('I', 'slrr_graphics', 'options page: anti-aliasing group added to Options > Graphics, layout read from ' .. tostring(source) .. ' (restart the game to see it if the page was already open)')
+    end
+  end)
+  if not ok then log('E', 'slrr_graphics', 'options page install failed: ' .. tostring(err)) end
+end
+
+-- takes our copy of the layout away again (the game's own shows)
+function M.uninstallOptions()
+  local real = string.gsub(FS:getFileRealPath(LAYOUT_DIR .. 'layout.json') or '', '\\', '/')
+  local userPath = string.gsub(FS:getUserPath() or '', '\\', '/')
+  if userPath ~= '' and string.sub(real, 1, #userPath) == userPath then FS:removeFile(real) end
+end
+
+-- the settings the options page keeps: start values for those not there yet
+function M.ensureDefaults()
+  if not (settings and settings.getValue and settings.setValue) then return end
+  for _, name in ipairs(OPTION_NAMES) do
+    if settings.getValue(M.KEYS[name]) == nil then settings.setValue(M.KEYS[name], M.DEFAULTS[name]) end
+  end
+end
+
+local lastPreset
+-- picks a preset by id (balanced, smooth, max, custom), as the options page does
+function M.applyPreset(id)
+  if not (settings and settings.setValue) then return end
+  settings.setValue(M.KEYS.preset, id)
+  return M.onSettingsChanged()
+end
+
+-- the game says some setting changed: a new preset picks its values; any other change of ours makes the preset Custom (or the one it now equals); then the picture follows
+function M.onSettingsChanged()
+  if not (settings and settings.getValue) then return end
+  local o = M.readOptions(settings.getValue)
+  if o.preset ~= lastPreset then
+    lastPreset = o.preset
+    local values = M.presetValues(o.preset)
+    if values then
+      for name, v in pairs(M.DEFAULTS) do
+        if name ~= 'preset' then
+          local want = values[name]
+          if want == nil then want = v end
+          if o[name] ~= want then settings.setValue(M.KEYS[name], want) o[name] = want end
+        end
+      end
+    end
+  else
+    local match = M.matchPreset(o)
+    if match ~= o.preset then lastPreset = match settings.setValue(M.KEYS.preset, match) o.preset = match end
+  end
+  return M.apply(o)
 end
 
 -- a level ends: our objects may go with it (made again when needed); the game's SMAA/FXAA effects stay, with whatever shader they have

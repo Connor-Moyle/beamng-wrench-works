@@ -55,3 +55,13 @@ Restore rule: every mode remembers the game's own `shader` field of the effect i
 - `#VelocityBuffer` may be empty when GTAO/motion blur are off: temporal mode would then check it and refuse (note in status) or enable the buffer's producer.
 - Temporal history after level change/resize: reset on `onLevelEnd` and when the target size changes.
 - Ghosting on the car interior/dash: rely on the game's velocity for the car; clamp strength.
+
+## 6. Round 2: foliage, the game's options page, more edge quality
+
+Findings (game files, 0.39):
+- Options page: the Vue page loads `/ui/ui-vue/src/modules/options/runtime/layout.json` at run time (user folder copy wins over the game's; `ui_options.saveLayout` writes it). Items are plain data: `setting` = a key of the game's settings values, `options: [{value,label}]` for choices, `min/max/step` for sliders. UI mod slots exist only for main menu and vehicle config, none for Options. So the controls are a group inserted into the Graphics category after the anti-aliasing type, written at start into the user folder from the game's own file (re-made when the game's file changes).
+- Unknown setting keys survive in the game's settings (saved, loaded, only a log warning), the game calls `onSettingsChanged` on extensions after each save: that is the hook.
+- Foliage: wind animation moves vertices in the vertex shader; the velocity buffer has the camera and rigid motion, but a leaf swaying in the wind is a "static" pixel that shows a different surface. Counter in the temporal pass: depth range around the pixel (thin geometry cuts the history), history depth vs now (another surface rejects it), and a colour-distance penalty after the clamp. Tunables: `require('slrr/graphics').tune{guard=0.8, gamma=1}`.
+- Texture LOD bias: only a sampler-state field (`mipLODBias`) of material state blocks; no global setting reachable from Lua. MSAA / alpha-to-coverage: no setting or Lua call (only a Vulkan dynamic-state string in the exe). Not possible.
+- The game's `edgeAA` (EdgeDetectPostEffect + EdgeAAPostEffect, depth and normal edges, 9-tap blur): exists but left off; offered as an optional pass.
+- Specular shimmer: needs normal-variance filtering in the material shaders (core file override). The temporal pass is the post-fx substitute; a normal-variance-driven history boost (#prepass[RT0] holds normals and roughness) is the next idea if shimmer on paint and wet roads stays.
