@@ -57,9 +57,32 @@ local function frame()
   return o, x, y, z
 end
 
+-- Parts that fell off (A13): a part whose break groups are all broken is gone from the car; the garage must not keep it in the saved setup.
+-- Returns the parts' paths (the partPath of its beams, as the setup's parts tree names them).
+local function lostParts()
+  local groups, lost = {}, {}
+  local broken = beamstate and beamstate.brokenBreakGroups or {}
+  for _, beam in pairs(v.data.beams or {}) do
+    if beam.partPath and beam.breakGroup and beam.breakGroup ~= '' then
+      local e = groups[beam.partPath]
+      if not e then e = { n = 0, b = 0 } groups[beam.partPath] = e end
+      for _, name in ipairs(type(beam.breakGroup) == 'table' and beam.breakGroup or { beam.breakGroup }) do
+        if not e[name] then
+          e[name] = true
+          e.n = e.n + 1
+          if broken[name] then e.b = e.b + 1 end
+        end
+      end
+    end
+  end
+  for path, e in pairs(groups) do if e.n > 0 and e.b == e.n then lost[#lost + 1] = path end end
+  table.sort(lost)
+  return lost
+end
+
 -- record the damage and send it to the garage
 local function capture()
-  local data = { nodes = {}, beams = {}, latches = latchStates() }
+  local data = { nodes = {}, beams = {}, latches = latchStates(), lost = lostParts() }
   local o, x, y, z = frame()
   local nodes, beams = v.data.nodes, v.data.beams
   if o and nodes and beams then
