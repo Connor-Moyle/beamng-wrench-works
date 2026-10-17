@@ -27,6 +27,8 @@ angular.module('beamng.apps')
     key: svg('<circle cx="15" cy="24" r="8"/><path d="M23 24h19M35 24v6M41 24v5"/>'),
     clock: svg('<circle cx="24" cy="24" r="17"/><path d="M24 13v11l7 5"/>'),
     gear: svg('<circle cx="24" cy="24" r="6"/><path d="M24 5v6M24 37v6M5 24h6M37 24h6M10.5 10.5l4.3 4.3M33.2 33.2l4.3 4.3M10.5 37.5l4.3-4.3M33.2 14.8l4.3-4.3"/>'),
+    flag: svg('<path d="M10 42V8M10 10h26l-5 8 5 8H10"/>'),
+    driver: svg('<circle cx="24" cy="18" r="9"/><path d="M6 42c2-10 10-14 18-14s16 4 18 14M15 15h18"/>'),
     target: svg('<circle cx="24" cy="24" r="12"/><path d="M24 5v9M24 34v9M5 24h9M34 24h9"/>'),
     // the mechanic's row
     repairPart: svg('<path d="M33 9a8 8 0 0 1-10 10L11 31a3 3 0 0 1-4-4l12-12A8 8 0 0 1 29 5l-5 5 2 5 5 2z"/><path d="M36 30v12M30 36h12"/>'),
@@ -506,16 +508,16 @@ angular.module('beamng.apps')
     '  </div>',
 
     /* services other mods offer (an oil change, a car swap, a race...): their list, their buttons */
-    '  <div class="sg-drawer sg-glass sg-panel" ng-if="panel === \'services\'" ng-mouseenter="overUi(true)">',
-    '    <div class="sg-dhead"><div class="sg-h">Services</div><div class="sg-x" ng-click="closePanel()" ng-bind-html="icon(\'close\')"></div></div>',
+    '  <div class="sg-drawer sg-glass sg-panel" ng-if="svcTabs[panel]" ng-mouseenter="overUi(true)">',
+    '    <div class="sg-dhead"><div class="sg-h">{{svcTabs[panel].title}}</div><div class="sg-x" ng-click="closePanel()" ng-bind-html="icon(\'close\')"></div></div>',
     '    <div class="sg-scrolly">',
-    '      <div ng-repeat="g in serviceGroups()">',
+    '      <div ng-repeat="g in serviceGroups(panel)">',
     '        <div class="sg-cap" style="margin-top:8px">{{g.name}}</div>',
     '        <div class="sg-svc" ng-repeat="sv in g.items" ng-class="{\'sg-dim\': sv.disabled}" ng-click="!sv.disabled && lua(\'service(\\\'\' + sv.id + \'\\\')\')">',
     '          <div class="sg-svct"><b>{{sv.label}}</b><span>{{sv.desc}}</span></div><div class="sg-svcp" ng-if="sv.price">{{money(sv.price)}}</div>',
     '        </div>',
     '      </div>',
-    '      <div class="sg-note" ng-if="!(s.services || []).length">Nothing on offer here.</div>',
+    '      <div class="sg-note" ng-if="!serviceGroups(panel).length">Nothing on offer here.</div>',
     '    </div>',
     '  </div>',
 
@@ -796,7 +798,9 @@ angular.module('beamng.apps')
         { icon: 'screwdriver', title: 'Tune', desc: 'click a part to adjust or open it', act: function () { $scope.closePanel(); $scope.lua('setMode(\'tune\')'); }, on: function () { return $scope.s.mode === 'tune'; } },
         { icon: 'lift', title: 'Lift', desc: 'raise or lower the car', act: function () { $scope.lua('toggleLift()'); }, on: function () { return $scope.s.lift; } },
         { icon: 'spray', title: 'Paint booth', desc: 'respray the car', act: function () { $scope.openPanel('paint'); }, on: function () { return $scope.panel === 'paint'; } },
-        { icon: 'engine', title: 'Services', desc: 'the driver, and what other mods offer', act: function () { $scope.openPanel('services'); }, on: function () { return $scope.panel === 'services'; }, when: function () { return ($scope.s.services || []).length > 0; } },
+        { icon: 'engine', title: 'Services', desc: 'oil, coolant, battery, nitrous, engine rebuild and repairs', act: function () { $scope.openPanel('services'); }, on: function () { return $scope.panel === 'services'; }, when: function () { return $scope.serviceGroups('services').length > 0; } },
+        { icon: 'flag', title: 'Races', desc: 'pick a race or a track', act: function () { $scope.openPanel('races'); }, on: function () { return $scope.panel === 'races'; }, when: function () { return $scope.serviceGroups('races').length > 0; } },
+        { icon: 'driver', title: 'Drivers', desc: 'who sits behind the wheel', act: function () { $scope.openPanel('drivers'); }, on: function () { return $scope.panel === 'drivers'; }, when: function () { return $scope.serviceGroups('drivers').length > 0; } },
         { sep: true },
         { icon: 'key', title: 'Test engine', desc: 'start or stop it where it stands', act: function () { $scope.lua('toggleEngine()'); }, on: function () { return $scope.s.engineOn; } },
         { icon: 'clock', title: 'Advance time', desc: 'move the clock on three hours', act: function () { $scope.lua('advanceTime()'); } },
@@ -804,10 +808,12 @@ angular.module('beamng.apps')
         { icon: 'gear', title: 'Settings', desc: 'money, prices, damage and more', act: function () { $scope.openPanel('settings'); }, on: function () { return $scope.panel === 'settings'; } }
       ];
       $scope.barVisible = function (b) { return !b.when || b.when(); };
-      // the services, grouped as their mod said
-      $scope.serviceGroups = function () {
+      // the entries other mods offer, one list per top tab (an entry says which with `tab`; none: car servicing), grouped as their mod said
+      $scope.svcTabs = { services: { title: 'Services' }, races: { title: 'Races' }, drivers: { title: 'Drivers' } };
+      $scope.serviceGroups = function (tab) {
         var groups = [], byName = {};
         ($scope.s.services || []).forEach(function (sv) {
+          if ((sv.tab || 'services') !== (tab || 'services')) return;
           var n = sv.group || 'Services';
           if (!byName[n]) { byName[n] = { name: n, items: [] }; groups.push(byName[n]); }
           byName[n].items.push(sv);

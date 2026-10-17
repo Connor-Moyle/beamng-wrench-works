@@ -184,7 +184,7 @@ end
 
 -- Services other mods offer in the garage (an oil change, another of your cars, a race...). They
 -- add entries to the list: onWrenchWorksServices(list, vehicleId) with
---   { id, label, desc, price (shown only), group, disabled }
+--   { id, label, desc, price (shown only), group, disabled, tab }   (tab: 'services' - the default, car servicing - 'races' or 'drivers': one top tab each)
 -- and get the click back: onWrenchWorksService(id, vehicleId). Wrench Works itself offers none.
 -- With the SLRR Drivers mod installed the garage offers its drivers, as SLRR's garage did.
 -- A change is announced as onWrenchWorksDriverChanged(vehicleId, driverId) for mods that keep cars.
@@ -192,10 +192,10 @@ local function driverServices(list)
   if not slrrDrivers or not slrrDrivers.getDrivers or not slrrDrivers.setDriver then return end
   local current = slrrDrivers.getDriver and slrrDrivers.getDriver(vehId) or nil
   if current == 'none' then current = nil end
-  list[#list + 1] = { id = 'driver:none', group = 'Driver', label = 'No driver', desc = current and 'an empty seat' or 'in the car now', disabled = current == nil }
+  list[#list + 1] = { id = 'driver:none', tab = 'drivers', group = 'Driver', label = 'No driver', desc = current and 'an empty seat' or 'in the car now', disabled = current == nil }
   for _, d in ipairs(slrrDrivers.getDrivers() or {}) do
     if type(d) == 'table' and d.id then
-      list[#list + 1] = { id = 'driver:' .. tostring(d.id), group = 'Driver', label = d.name or tostring(d.id),
+      list[#list + 1] = { id = 'driver:' .. tostring(d.id), tab = 'drivers', group = 'Driver', label = d.name or tostring(d.id),
         desc = d.id == current and 'in the car now' or 'put them behind the wheel', disabled = d.id == current }
     end
   end

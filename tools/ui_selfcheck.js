@@ -127,4 +127,16 @@ $scope.lot.search = 'ibishu cov';
 assert.deepStrictEqual($scope.lotShown().map((m) => m.key), ['covet']);
 assert.strictEqual($scope.quote('a"b'), '"a\\"b"');
 
+// #26: the garage's top tabs: Services (car servicing: no tab), Races and Drivers (an entry says which with `tab`)
+$scope.s.services = [{ id: 'oil', group: 'Your car', label: 'Oil' }, { id: 'race:1', tab: 'races', group: 'Races', label: 'R1' }, { id: 'track:2', tab: 'races', group: 'Tracks', label: 'T2' },
+  { id: 'driver:a', tab: 'drivers', group: 'Driver', label: 'Ann' }];
+const names2 = (tab) => $scope.serviceGroups(tab).map((g) => g.name + ':' + g.items.map((i) => i.id).join(','));
+assert.deepStrictEqual(names2('services'), ['Your car:oil']);
+assert.deepStrictEqual(names2('races'), ['Races:race:1', 'Tracks:track:2']);
+assert.deepStrictEqual(names2('drivers'), ['Driver:driver:a']);
+const visible = (title) => $scope.bar.filter((b) => b.title === title && (!b.when || b.when())).length;
+assert.ok(visible('Services') && visible('Races') && visible('Drivers'), 'one bar tab each');
+$scope.s.services = [{ id: 'oil', group: 'Your car', label: 'Oil' }];
+assert.ok(visible('Services') && !visible('Races') && !visible('Drivers'), 'a tab with nothing in it is not shown');
+
 console.log('ui self-check passed');
