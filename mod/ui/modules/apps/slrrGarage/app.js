@@ -833,7 +833,7 @@ var TEMPLATE = [
     if (rects.length) {
       var box = container.getBoundingClientRect();
       var w = Math.round(box.width), h = Math.round(box.height);
-      var pts = ['0px 0px', w + 'px 0px', w + 'px ' + h + 'px', $scope.t('p.0px_1_px', '0px {1}px', h), '0px 0px'];
+      var pts = ['0px 0px', w + 'px 0px', w + 'px ' + h + 'px', '0px ' + h + 'px', '0px 0px'];
       for (var i = 0; i < rects.length; i++) {
         var r = rects[i], x1 = Math.round(r.left - box.left), y1 = Math.round(r.top - box.top), x2 = Math.round(r.right - box.left), y2 = Math.round(r.bottom - box.top);
         pts.push(x1 + 'px ' + y1 + 'px', x2 + 'px ' + y1 + 'px', x2 + 'px ' + y2 + 'px', x1 + 'px ' + y2 + 'px', x1 + 'px ' + y1 + 'px', '0px 0px');

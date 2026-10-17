@@ -210,6 +210,8 @@ end
 local function updateLatches(dt)
   relatchTimer = relatchTimer - dt
   if relatchTimer > 0 then return end
+  -- a frozen car cannot latch (A5: doors and hoods stayed open after a reload, the retries spent while the car stood frozen): wait, spending none
+  if controller.isFrozen then relatchTimer = 0.5 return end
   local pending = false
   for name, state in pairs(relatch) do
     local c = controller.getControllerSafe(name)
@@ -219,7 +221,7 @@ local function updateLatches(dt)
     end
   end
   relatch.tries = (relatch.tries or 0) + 1
-  if pending and relatch.tries < 8 then relatchTimer = 0.5 else relatch = nil end   -- (the open force of the release has to die down first)
+  if pending and relatch.tries < 24 then relatchTimer = 0.5 else relatch = nil end   -- (the open force of the release has to die down first)
 end
 
 -- push every door and lid shut (the car is about to drive out through a doorway)
