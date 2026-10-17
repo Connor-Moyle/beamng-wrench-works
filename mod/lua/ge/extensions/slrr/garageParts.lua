@@ -1573,8 +1573,16 @@ function M.partWeight(partName)
 end
 
 -- ways to get an order: collect (only in a shop, you carry it out yourself), standard, express
+-- the mechanic's labour for fitting a part at the counter: a share of its price, never less than a minimum
+function M.fitLabour(price) return math.max(8, math.floor((tonumber(price) or 0) * 0.12 + 0.5)) end
+
 local function shippingOptions(inShop)
-  if inShop then return { { id = 'collect', title = 'Take it with you', factor = 0, seconds = 0 } } end
+  if inShop then
+    local out = { { id = 'collect', title = 'Take it with you', factor = 0, seconds = 0 } }
+    -- a shop with a mechanic fits what you bought on the car you drove in (not the yard: nobody there to do it)
+    if not yardStock then out[2] = { id = 'fit', title = 'Fit them here', factor = 0, seconds = 0, fit = true } end
+    return out
+  end
   local standard = settings.get('deliveryMinutes') * 60
   return {
     { id = 'standard', title = 'Standard delivery', factor = 1, seconds = standard },
@@ -1711,7 +1719,7 @@ function M.cartClear() cart = {} end
 -- the shopping list with prices, for the UI
 function M.cartSummary(inShop)
   local out = { items = {}, subtotal = 0, shipping = {}, orders = {} }
-  local base = 0
+  local base, labour = 0, 0
   for i, entry in ipairs(cart) do
     local info = partInfo(entry.part)
     local weight, size = freight(entry.part)
@@ -1722,9 +1730,10 @@ function M.cartSummary(inShop)
     out.items[i] = { name = info.name .. (entry.used and ' (used)' or '') .. (options > 0 and string.format(' (+%d option%s)', options, options == 1 and '' or 's') or ''), part = entry.part, price = price, weight = math.floor(weight * 10 + 0.5) / 10, size = math.floor(size * 100 + 0.5) / 100, fee = math.floor(fee + 0.5) }
     out.subtotal = out.subtotal + price
     base = base + fee
+    labour = labour + M.fitLabour(price)
   end
   for _, option in ipairs(shippingOptions(inShop)) do
-    local fee = math.floor(base * option.factor + 0.5)
+    local fee = option.fit and labour or math.floor(base * option.factor + 0.5)
     out.shipping[#out.shipping + 1] = { id = option.id, title = option.title, fee = fee, seconds = math.floor(option.seconds + 0.5), total = out.subtotal + fee }
   end
   local now = os.time()
@@ -1746,7 +1755,7 @@ function M.checkout(shippingId, inShop)
     if o.id == shippingId then option = o end
   end
   option = option or shippingOptions(inShop)[1]
-  local subtotal, base, items, bought = 0, 0, {}, {}
+  local subtotal, base, labour, items, bought = 0, 0, 0, {}, {}
   for _, entry in ipairs(cart) do
     local item = newPart(entry.slotPath, entry.part)
     if item then
@@ -1754,6 +1763,7 @@ function M.checkout(shippingId, inShop)
       bought[#bought + 1] = { slotPath = entry.slotPath, part = entry.part, price = cartPrice(entry) }
       subtotal = subtotal + cartPrice(entry)
       base = base + entryFee(entry)
+      labour = labour + M.fitLabour(cartPrice(entry))
       if entry.children then
         -- it arrives built the way it was ordered
         item.tree.children = deepcopy(entry.children)
@@ -1770,7 +1780,7 @@ function M.checkout(shippingId, inShop)
       end
     end
   end
-  local total = subtotal + math.floor(base * option.factor + 0.5)
+  local total = subtotal + (option.fit and labour or math.floor(base * option.factor + 0.5))
   if not spend(total, #items == 1 and ('Bought ' .. items[1].name) or ('Bought ' .. #items .. ' parts')) then return false, "Not enough money." end
   local due = os.time() + math.floor(option.seconds + 0.5)
   for _, item in ipairs(items) do
@@ -1782,6 +1792,7 @@ function M.checkout(shippingId, inShop)
   end
   cart = {}
   writeSave()
+  if option.fit then return true, string.format('Paid $%d for the parts and $%d labour.', subtotal, labour), bought, true end
   if option.seconds <= 0 then return true, #items == 1 and (items[1].name .. ' is on your shelf at the garage.') or (#items .. ' parts are on your shelf at the garage.'), bought end
   local minutes = option.seconds / 60
   return true, string.format('Ordered. Delivery to the garage in %s.', minutes >= 1 and string.format('%.0f min', minutes) or string.format('%.0f s', option.seconds)), bought

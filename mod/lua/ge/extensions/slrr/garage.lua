@@ -1453,10 +1453,25 @@ local function cartClear()
   sendCart()
 end
 
--- confirm the shopping list: pay, and the parts go on the shelf (shop) or on their way (garage)
+-- confirm the shopping list: pay, and the parts go on the shelf (shop), on their way (garage), or on the car at once ("Fit them here")
 local function checkout(shippingId)
   if phase ~= 'catalog' and phase ~= 'shop' then return end
-  local ok, text, bought = parts.checkout(tostring(shippingId), shop ~= nil)
+  -- the car is rebuilt at the counter (after "Fit them here"): as in the garage, without the lift and the camera
+  local function applyInShop(job)
+    phase = 'busy'
+    setFade(1)
+    job.sleep(FADE_TIME)
+    respawnWithDesired(job, false)
+    job.sleep(0.2)
+    freezeCar(true)
+    parts.attach(vehId, true)
+    job.sleep(0.1)
+    phase = 'shop'
+    setFade(0)
+    sendState()
+    sendCatalog()
+  end
+  local ok, text, bought, fitHere = parts.checkout(tostring(shippingId), shop ~= nil)
   if not ok then
     playSound('warn.wav', 0.6)
     say(text)
@@ -1468,6 +1483,17 @@ local function checkout(shippingId)
   playSound('money.wav')
   say(text, 4)
   sendCatalog()
+  if fitHere and phase == 'shop' then
+    local fitted, needsLoad = parts.installNew()
+    if fitted == 0 then
+      playSound('warn.wav', 0.6)
+      say(gs('say.nothing_to_bolt'))
+      return
+    end
+    playSound('screw.wav')
+    say(fitted == #bought and gs('say.parts_fitted', fitted) or gs('say.parts_fitted_some', fitted, #bought), 3.5)
+    if needsLoad then core_jobsystem.create(applyInShop) else sendState() end
+  end
 end
 
 -- deliveries that have arrived go on the shelf
