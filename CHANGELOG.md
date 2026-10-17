@@ -6,6 +6,7 @@ What is new since 1.6.0, for players.
 
 ### Graphics
 
+- **Look** (a second group in Options > Graphics, off by default): a light colour grade and vignette on the finished picture; presets Natural, Cinematic, Vivid, or your own Contrast, Saturation, Warmth, Colour split and Vignette. Off puts the game's picture back exactly.
 - **Anti-aliasing choices** (in the game's own Options > Graphics page, "Game's own" by default, live, with a note under each): Off, FXAA, FXAA HQ, SMAA High, SMAA Ultra (own shader copies, colour edges, optional depth predication) and SMAA Ultra + Temporal smoothing (a blend with the previous frame through the game's motion vectors; calms shimmer, adds no detail). Switching back to "Game's own" restores the game's state exactly.
 - **Sharpening** (off by default): AMD CAS, AMD FSR 1 RCAS or NVIDIA NIS sharpen, with a strength slider.
 - **Temporal smoothing** now backs off on foliage, fences and wires (depth steps around the pixel, history from another surface, colour clamp) and there is an optional edge smoothing pass (the game's own, off by default).

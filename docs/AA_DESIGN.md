@@ -65,3 +65,19 @@ Findings (game files, 0.39):
 - Texture LOD bias: only a sampler-state field (`mipLODBias`) of material state blocks; no global setting reachable from Lua. MSAA / alpha-to-coverage: no setting or Lua call (only a Vulkan dynamic-state string in the exe). Not possible.
 - The game's `edgeAA` (EdgeDetectPostEffect + EdgeAAPostEffect, depth and normal edges, 9-tap blur): exists but left off; offered as an optional pass.
 - Specular shimmer: needs normal-variance filtering in the material shaders (core file override). The temporal pass is the post-fx substitute; a normal-variance-driven history boost (#prepass[RT0] holds normals and roughness) is the next idea if shimmer on paint and wet roads stays.
+
+## 7. Look: a light colour grade and vignette (design, before building)
+
+Asked for: an optional, subtle "Look" next to the anti-aliasing: filmic contrast, saturation, warm/cool, a light vignette, 3 presets (Natural, Cinematic, Vivid); off by default, live, and the game's own state restored exactly.
+
+Findings (game files, 0.39):
+- The game has a grade of its own: the HDR combine pass (`shaders/common/postFx/hdr/finalPassCombineP.hlsl`) applies tone mapping and a per-channel 1D colour ramp (`colorCorrectionRamp`, `colorCorrectionStrength`). That ramp is per channel only (no saturation, no vignette) and is part of the game's graphics settings, so changing it would have to be put back by hand. Not used.
+- The effects that run at `PFXAfterDiffuse` after the game's HDR combine see the finished, display-referred picture (the anti-aliasing and our sharpeners already work there). One more full-screen effect at a lower priority (after the sharpeners) can grade that picture and is removed by disabling it: nothing of the game's is touched, so "restore exactly" is the effect being off.
+- The UI is drawn by the browser layer on top, so a vignette/grade never touches menus or the HUD.
+- Sharper distant detail: not reachable (texture LOD bias is a material sampler-state field only, see round 2). The sharpeners already give the local-contrast part of it.
+
+Plan: one pass, shader `slrr_look*.hlsl`, in display space on the finished picture, in this order: split toning (teal shadows, warm highlights), warmth (cool to warm), filmic contrast (a smoothstep S-curve blended in), saturation, vignette (aspect-correct radial, smooth), then a 1-LSB triangular dither so the 8-bit picture does not band. Every control at its neutral value does nothing, and when all are neutral the effect is disabled (zero cost).
+- Settings (game settings keys `slrrLook*`, group "Wrench Works: look" in Options > Graphics, marker `look-v1`, own module `slrr/look.lua`): Preset (Off / Natural / Cinematic / Vivid / Custom), Contrast 0..1, Saturation -0.5..0.5, Warmth -1..1, Colour split 0..1, Vignette 0..1.
+- Presets: Natural (contrast 0.15, saturation +0.05, warmth +0.10, vignette 0.15), Cinematic (contrast 0.35, saturation -0.05, warmth +0.10, split 0.5, vignette 0.35), Vivid (contrast 0.25, saturation +0.25, vignette 0.10).
+- Same mechanics as the anti-aliasing options: a preset change fills the others, changing any one makes it Custom (or the preset it now equals); `tick` re-applies every 2 s and after a level load, `onModDeactivated`/unload switches it off.
+- Test: `tools/look_test.js` (plan, presets, neutral = off, option reading, group data); frame cost and before/after shots through the tester.

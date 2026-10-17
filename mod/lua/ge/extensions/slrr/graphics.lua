@@ -542,6 +542,12 @@ function M.apply(opts)
   return M.status()
 end
 
+-- everything of ours off, the game's own picture again (the mod is unloaded)
+function M.unload()
+  require('slrr/look').apply({})
+  return M.apply({})
+end
+
 function M.status()
   local plan = state.plan or M.plan(state.opts)
   return {
@@ -557,6 +563,7 @@ end
 -- (the player may change the anti-aliasing in Options > Graphics: with a mode of ours picked, ours wins within two seconds)
 local timer = 0
 function M.tick(dt)
+  require('slrr/look').tick(dt)
   if state.tsmWait then
     state.tsmWait = state.tsmWait - 1
     if state.tsmWait <= 0 then
@@ -638,10 +645,14 @@ local function checkItem(label, setting, tooltip)
                   valueOn = true, valueOff = false, search = { 'label', 'caption', 'tooltip', 'setting' } })
 end
 
-local function sliderItem(label, setting, tooltip)
-  return common({ label = label, setting = setting, tooltip = tooltip, itemType = 'slider', component = 'BngSlider', min = 0, max = 1, step = 0.05,
+local function sliderItem(label, setting, tooltip, min, max, step)
+  return common({ label = label, setting = setting, tooltip = tooltip, itemType = 'slider', component = 'BngSlider', min = min or 0, max = max or 1, step = step or 0.05,
                   compact = false, valueMultiplier = 1, unit = '', inputMin = nil, inputMax = nil, inputStep = nil, search = { 'label', 'caption', 'tooltip', 'setting' } })
 end
+
+-- (the item builders, for the second group, slrr/look.lua)
+local builders = { common = common, choiceItem = choiceItem, sliderItem = sliderItem }
+M.builders = builders
 
 function M.optionsGroup()
   local k = M.KEYS
@@ -702,18 +713,21 @@ end
 -- Writes the patched layout into the user folder when it is not there yet or differs (a game update, a newer mod). Takes effect when the game's UI loads the
 -- options page (restart the game the first time).
 function M.installOptions()
+  require('slrr/look').installOptions(builders)          -- first: each group goes right after the anti-aliasing type, so the later one shows first
   require('slrr/optionsLayout').install({ marker = MARKER, group = M.optionsGroup(), after = ANCHOR, legacy = LEGACY,
                                           log = function(level, msg) log(level, 'slrr_graphics', msg) end })
 end
 
 -- takes our group away again (the game's own page shows)
 function M.uninstallOptions()
+  require('slrr/look').uninstallOptions()
   require('slrr/optionsLayout').uninstall(MARKER, LEGACY)
 end
 
 -- the settings the options page keeps: start values for those not there yet
 function M.ensureDefaults()
   if not (settings and settings.getValue and settings.setValue) then return end
+  require('slrr/look').ensureDefaults()
   for _, name in ipairs(OPTION_NAMES) do
     if settings.getValue(M.KEYS[name]) == nil then settings.setValue(M.KEYS[name], M.DEFAULTS[name]) end
   end
@@ -747,6 +761,7 @@ function M.onSettingsChanged()
     local match = M.matchPreset(o)
     if match ~= o.preset then lastPreset = match settings.setValue(M.KEYS.preset, match) o.preset = match end
   end
+  require('slrr/look').onSettingsChanged()
   return M.apply(o)
 end
 

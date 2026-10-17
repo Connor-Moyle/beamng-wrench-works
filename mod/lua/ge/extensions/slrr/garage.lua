@@ -2308,7 +2308,7 @@ end
 local function onExtensionUnloaded()
   abort()
   music.stop()
-  require('slrr/graphics').apply({})        -- the game's own anti-aliasing, shaders and effects again
+  require('slrr/graphics').unload()        -- the game's own anti-aliasing, shaders and effects again
 end
 
 -- the UI app asks for the current state when it (re)loads

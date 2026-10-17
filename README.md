@@ -158,6 +158,8 @@ Credits and licences (all MIT, kept in the shader headers): AMD FidelityFX CAS a
 
 Frame cost: SMAA Ultra runs the same three passes as the game's SMAA with a longer search in two of them (plus a depth read with predication); Temporal smoothing is two more full-screen passes and a history texture; CAS and RCAS are one pass, NIS one pass with 25 reads. Measured once on one machine (Windows, parked car, orbit camera, 18 s per mode, about 0.5 ms of noise): game's own 15.0 ms per frame, Off 14.9, FXAA 15.7, FXAA HQ 14.7, SMAA Ultra 14.5, SMAA Ultra + Temporal 14.9 (14.8 with shimmer reduction at 0.7), and CAS, RCAS or NIS on top of SMAA Ultra 14.7 to 14.8. All of that is within noise of Off; plain SMAA High read 17.1 ms in that run, with a few long hitches that looked like first-use shader compilation. Your card and resolution will differ: switch them on and watch the frame time (the game's own frame-time display).
 
+**Look** (a second group in Options > Graphics, off by default): a light colour grade and vignette on the finished picture, one extra full-screen pass that only runs while something is set. Presets Natural, Cinematic and Vivid, or your own mix of Contrast, Saturation, Warmth, Colour split (cool shadows, warm highlights) and Vignette. It does not touch the game's own colour settings, the menus or the HUD; turning it off puts the game's picture back exactly.
+
 ## Good to know
 
 - The shelf (per car model), parts on order and your freeroam money are saved in `settings/slrr_garage/save.json` in your BeamNG user folder. "Keep parts and money between sessions" in Settings switches that off, so each time you start the game you begin from scratch.
