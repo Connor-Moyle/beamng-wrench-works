@@ -13,6 +13,7 @@ local M = {}
 M.dependencies = { 'core_jobsystem', 'core_vehicle_manager', 'core_camera', 'core_input_actionFilter' }
 
 local sites = require('slrr/garageSites')
+local doorway = require('slrr/garageDoorway')
 local picker = require('slrr/garagePicker')
 local parts = require('slrr/garageParts')
 local camera = require('slrr/garageCamera')
@@ -1760,7 +1761,7 @@ end
 -- another mod's screen (Street Legal's laptop) sends a car into the garage it stands at and opens it in a mode:
 -- 'catalog', 'tune', 'paint' or 'repair'. The same visit as driving in (the player is put in the car first, as the doorway does).
 -- false and a reason when it cannot (busy, no such car, not at a garage)
-local ENTRY_MODES = { catalog = true, tune = true, paint = true, repair = true }
+local ENTRY_MODES = { catalog = true, tune = true, paint = true, repair = true, work = true }      -- (work: the visit as it is, no mode opened)
 local function enterWith(id, wantMode)
   if phase ~= 'idle' then return false, 'The garage is busy.' end
   if not ENTRY_MODES[wantMode] then return false, 'Unknown mode.' end
@@ -1894,7 +1895,7 @@ local function updateIdle(dt)
           goto nextDoor
         end
         if distance < 90 and settings.get('markers') then drawMarker(s, distance, base) end
-        if (centre - door.pos):length() < 9 then nearDoor = true end
+        if (onFoot and distance < 5) or (not onFoot and (centre - door.pos):length() < 9) then nearDoor = true end
         -- stopping on the marker goes in too, whichever way the car faces (as a shop's marker does)
         if armed and settings.get('autoEnter') and not onFoot and (pos - base):length() < 2.2 then
           onMarker = true
@@ -1909,19 +1910,22 @@ local function updateIdle(dt)
             markerTimer = 0
           end
         end
-        -- the way in is the doorway itself: the nose of the car reaching the door, heading in
+        -- the way in is the doorway itself: the nose of the car reaching the door, heading in; a walker anywhere in it, any way, any speed
         local rel = (onFoot and pos or nose) - door.pos
         local depth = rel:dot(door.inward)
         local across = math.abs(rel:dot(vec3(-door.inward.y, door.inward.x, 0)))
-        if armed and settings.get('autoEnter') and depth > -1.6 and depth < 1.2 and across < 2.6 then
+        local inZone = onFoot and doorway.footZone(depth, across, s.halfWidth) or (not onFoot and doorway.carZone(depth, across))
+        if armed and settings.get('autoEnter') and inZone then
           local vel = v:getVelocity()
           if onFoot then
             -- walking in: the lift is empty, and there are body shells for sale
-            if settings.get('walkIn') and parts.providerAllows('walkIn') and vel:dot(door.inward) > 0.3 then
+            if settings.get('walkIn') and parts.providerAllows('walkIn') then
               startLot(s)
               return
-            elseif vel:dot(door.inward) > 0.3 then
-              -- in a career the doorway opens the garage with your car: you get in and it is driven in as usual
+            else
+              armed = false      -- (once; the doorway works again when you have left it)
+              -- in a career the doorway shows the career's garage panel: take another car out, put this one away
+              if parts.providerPanel(s.id) then return end
               local car, career = parts.providerCar()
               if car then
                 if gameplay_walk and gameplay_walk.getInVehicle then gameplay_walk.getInVehicle(car) else be:enterVehicle(0, car) end

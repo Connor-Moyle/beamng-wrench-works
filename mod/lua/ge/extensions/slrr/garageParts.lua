@@ -104,6 +104,10 @@ function M.providerGarage(siteId)
   if not (provider and type(provider.garageAccess) == 'function') then return true end
   return provider.garageAccess(siteId)
 end
+-- on foot in the doorway: the career shows its own garage panel (the cars: take out, store, despawn); true when it did
+function M.providerPanel(siteId)
+  return provider ~= nil and type(provider.panel) == 'function' and provider.panel(siteId) == true
+end
 -- on foot with the car stored: the career brings it out front (true when it has started to)
 function M.providerFetch()
   return provider ~= nil and type(provider.fetch) == 'function' and provider.fetch() == true
