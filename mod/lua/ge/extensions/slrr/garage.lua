@@ -1822,6 +1822,12 @@ local function applyAppearance()
   if not same then slrrDrivers.setAppearance(nil, want) end
 end
 
+-- and the picture: the Graphics group (slrr/graphics), applied when it changes, at the start of a level and when the anti-aliasing type changes
+-- (a field of the module table, not a local: this file is at LuaJIT's limit of 200 locals)
+M.applyGraphics = function()
+  require('slrr/graphics').apply({ ultra = settings.get('gfxSmaaUltra') == true, sharpen = settings.get('gfxSharpen') == true, strength = settings.get('gfxSharpenStrength') })
+end
+
 local function applyDriverAnimation()
   applyPedestrians()
   applyAppearance()
@@ -1835,6 +1841,7 @@ local function setSetting(key, value)
   if key == '__reset' then settings.reset() extensions.hook('onWrenchWorksSetting', key)
   elseif not settings.set(key, value) then extensions.hook('onWrenchWorksSetting', key, value) end   -- (another mod's setting)
   if key == 'driverMode' or key == '__reset' or key:find('^ped') or key:find('^driver') then applyDriverAnimation() end
+  if key == '__reset' or key:find('^gfx') then M.applyGraphics() end
   if key == 'freeroamMoney' then parts.setWallet(settings.get('freeroamMoney')) end
   if (key == 'injuryMode' or key == '__reset') and slrrInjury and slrrInjury.setMode then slrrInjury.setMode(settings.get('injuryMode')) end
   if key == 'saveBetweenSessions' then parts.saveNow() end
@@ -2162,6 +2169,7 @@ end
 
 local function onUpdate(dtReal)
   frame = frame + 1
+  require('slrr/graphics').tick(dtReal)
   music.update(dtReal, phase ~= 'idle', (site and sites.radio(site)) or (shop and shop.pos + vec3(0, 0, 1.5)) or nil)
   if messageTimer then
     messageTimer = messageTimer - dtReal
@@ -2272,6 +2280,7 @@ local function onVehicleDestroyed(id)
 end
 
 local function onClientEndMission()
+  require('slrr/graphics').onLevelEnd()
   if phase ~= 'idle' then
     camera.stop()
     picker.clear()
@@ -2291,6 +2300,7 @@ local function onExtensionLoaded()
   local current = getPlayerVehicle(0)
   if current then current:queueLuaCommand('extensions.load("slrrGarageVeh")') end
   applyDriverAnimation()
+  M.applyGraphics()
   log('I', logTag, 'Wrench Works loaded')
 end
 
@@ -2317,6 +2327,7 @@ M.onJbeamLoadingPhase2 = function(loadingProgress, objID, vehicle)
 end
 
 M.onUpdate = onUpdate
+M.onClientPostStartMission = function() M.applyGraphics() end
 M.onPreRender = onPreRender
 M.onVehicleSpawned = onVehicleSpawned
 M.onVehicleSwitched = onVehicleSwitched

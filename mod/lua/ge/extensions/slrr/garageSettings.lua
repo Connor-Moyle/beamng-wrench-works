@@ -106,6 +106,13 @@ M.defs = {
     desc = 'They cross the road at crossings when the lights let them.' },
   { key = 'pedBusy', ped = 'busyAreas', group = 'World', title = 'Busier downtown and on the beachfront', type = 'bool', default = true, needs = 'pedestrians',
     desc = 'More people where a city would have them.' },
+  -- Graphics (slrr/graphics): both off by default, live
+  { key = 'gfxSmaaUltra', group = 'Graphics', title = 'SMAA Ultra', type = 'bool', default = false,
+    desc = 'The game\'s SMAA anti-aliasing at its Ultra preset, with colour edge detection: fewer jagged edges and shimmer on thin lines. Costs a little more frame time than the game\'s own preset (the edge search is longer). Only works while Options > Graphics > Anti-aliasing is SMAA.' },
+  { key = 'gfxSharpen', group = 'Graphics', title = 'Sharpening (AMD CAS)', type = 'bool', default = false,
+    desc = 'AMD FidelityFX Contrast Adaptive Sharpening after the anti-aliasing: brings back the detail anti-aliasing softens, without halos on edges that are already crisp. Cheap: one pass over the picture.' },
+  { key = 'gfxSharpenStrength', group = 'Graphics', title = 'Sharpening strength', type = 'range', min = 0, max = 1, step = 0.05, default = 0.4, unit = 'x',
+    desc = 'How much sharpening. 0.4 is a gentle default; above 0.7 thin lines start to look etched.' },
   { key = 'driverDoor', group = 'Garage', title = 'Driver\'s door opens on arrival', type = 'bool', default = true,
     desc = 'When the car has parked, the driver\'s door swings open and shut as if someone got out.' },
   { key = 'arrivalScene', group = 'Garage', title = 'The driver gets out on arrival', type = 'bool', default = true,

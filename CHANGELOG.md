@@ -4,6 +4,11 @@
 
 What is new since 1.6.0, for players.
 
+### Graphics
+
+- **SMAA Ultra** (Settings > Graphics, off by default): the game's SMAA at its Ultra preset with colour edge detection, using our own copies of the shaders; the game's files are untouched and the option restores the stock state exactly when off. Only while the anti-aliasing is SMAA.
+- **Sharpening** (Settings > Graphics, off by default): AMD FidelityFX Contrast Adaptive Sharpening after the anti-aliasing, with a strength slider.
+
 ### Garage
 
 - **The garage is yours the moment the car stops.** After you park, the driver gets out, walks round the car looking it over and shuts the door while you already work: the screen is up and everything is usable, the scene only plays in the background. If it cannot play, the garage still opens.

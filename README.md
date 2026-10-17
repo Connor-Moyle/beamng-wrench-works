@@ -142,6 +142,15 @@ Changing a part in BeamNG normally rebuilds the whole vehicle, which freezes the
 - tuning changes are just noted;
 - the one real rebuild happens when you drive out, behind the fade. Repairs are the exception: they rebuild the car on the spot.
 
+## Graphics (optional)
+
+Settings > **Graphics**, both off by default and switched live (nothing to restart):
+
+- **SMAA Ultra.** The game anti-aliases with SMAA at its "high" preset. With this on, the two steps that find edges and blend them (`SMAA_PostEffect` and its first child) use our own copies of the shaders with the **Ultra** preset (a lower edge threshold, a longer edge search, diagonal and corner handling) and colour edge detection. Our shaders live in `shaders/common/postFx/slrrGfx/`; the game's own shader files are never changed, and turning the option off points the effects back at the shaders they had. It only does anything while Options > Graphics > Anti-aliasing is **SMAA** (the Graphics group says when it is waiting).
+- **Sharpening (AMD CAS).** FidelityFX Contrast Adaptive Sharpening as one extra pass after the anti-aliasing, with a strength slider (0 to 1, 0.4 when you switch it on). CAS is by AMD and MIT licensed; the licence is kept in the header of `slrr_cas.h.hlsl`.
+
+Frame cost: SMAA Ultra runs the same three passes as the game's SMAA with a longer search in two of them, and CAS is one full-screen pass (nine texture reads). Neither needs more video memory than a screen-sized texture. The exact cost depends on your card and resolution: switch them on and watch the frame time (the game's own frame-time display) at your own settings.
+
 ## Good to know
 
 - The shelf (per car model), parts on order and your freeroam money are saved in `settings/slrr_garage/save.json` in your BeamNG user folder. "Keep parts and money between sessions" in Settings switches that off, so each time you start the game you begin from scratch.
