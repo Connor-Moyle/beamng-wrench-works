@@ -82,6 +82,11 @@ float4 main(VertToPix IN) : SV_Target
     float risk = normalSpread * gloss * sparkle * (1.0 - thin);
     float spec = tsmParams.w;
 
+    if (dbg > 8.5)      // what the constants are: 9 weight of the history, 10 guard, 11 width / 4000, 12 debug / 8 (grey)
+    {
+        float c = dbg < 9.5 ? tsmParams.x : (dbg < 10.5 ? tsmParams.y : (dbg < 11.5 ? tsmSize.x / 4000.0 : tsmSize.z / 8.0));
+        return float4(c, c, c, 1.0);
+    }
     if (dbg > 4.5)      // probes: 5 solid magenta (the pass runs), 6 prepass RT0.z, 7 RT0.w, 8 RT0.x (grey)
     {
         float v = dbg < 5.5 ? 0.0 : (dbg < 6.5 ? g0.z : (dbg < 7.5 ? g0.w : g0.x));

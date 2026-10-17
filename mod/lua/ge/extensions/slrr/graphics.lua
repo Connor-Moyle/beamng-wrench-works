@@ -488,7 +488,7 @@ function M.probeNew(kind)
     makeShaderData('SLRR_TSMProbe2_ShaderData', 'slrr_sharpenV.hlsl', 'slrr_probe2P.hlsl', { '$colorTex' })
   else
     ensureTsm()
-    makeShaderData('SLRR_TSMForce_ShaderData', 'slrr_tsmV.hlsl', 'slrr_tsmForceP.hlsl', { '$curTex', '$histTex', '$velTex', '$depthTex', '$rt0Tex' })
+    for _, n in ipairs({ '', '9', '12' }) do makeShaderData('SLRR_TSMForce' .. n .. '_ShaderData', 'slrr_tsmV.hlsl', 'slrr_tsmForce' .. n .. 'P.hlsl', { '$curTex', '$histTex', '$velTex', '$depthTex', '$rt0Tex' }) end
     makeShaderData('SLRR_TSMProbe_ShaderData', 'slrr_tsmV.hlsl', 'slrr_tsmProbeP.hlsl', { '$curTex', '$histTex', '$velTex', '$depthTex', '$rt0Tex' })
   end
   local e = createObject('PostEffect')
@@ -496,7 +496,7 @@ function M.probeNew(kind)
   e.allowReflectPass = false
   e:setField('renderTime', 0, 'PFXAfterDiffuse')
   e.renderPriority = 0.4
-  e:setField('shader', 0, kind == 1 and 'SLRR_TSMProbe2_ShaderData' or (kind == 3 and 'SLRR_TSM_ShaderData' or (kind == 4 and 'SLRR_TSMForce_ShaderData' or 'SLRR_TSMProbe_ShaderData')))
+  e:setField('shader', 0, kind == 1 and 'SLRR_TSMProbe2_ShaderData' or (kind == 3 and 'SLRR_TSM_ShaderData' or (kind == 4 and 'SLRR_TSMForce_ShaderData' or (kind == 5 and 'SLRR_TSMForce9_ShaderData' or (kind == 6 and 'SLRR_TSMForce12_ShaderData' or 'SLRR_TSMProbe_ShaderData')))))
   e:setField('stateBlock', 0, kind == 1 and 'SLRR_CAS_StateBlock' or 'SLRR_TSM_StateBlock')
   e:setField('texture', 0, '$backBuffer')
   if kind ~= 1 then
@@ -506,7 +506,7 @@ function M.probeNew(kind)
     e:setField('texture', 4, '#prepass[RT0]')
   end
   e:setField('target', 0, '$backBuffer')
-  if kind == 3 then      -- the real smoothing shader on a fresh effect, with its constants set here (debug view from tune.debug)
+  if kind >= 3 then      -- the real smoothing shader on a fresh effect, with its constants set here (debug view from tune.debug)
     local function consts()
       local me = find(name)
       local size = me and me:getRenderTargetSize()
