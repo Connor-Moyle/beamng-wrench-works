@@ -465,9 +465,12 @@ function M.probeSet(effect, field, idx, value)
 end
 
 -- diagnosis: the smoothing effect with a shader that paints everything magenta (M.probeShader(true)), or put back (M.probeShader(false))
+-- M.probeShader(2): the same with the sharpeners' vertex shader and header, one sampler (tells a fault in the smoothing shaders' header from a fault in the effect)
 function M.probeShader(on)
   makeShaderData('SLRR_TSMProbe_ShaderData', 'slrr_tsmV.hlsl', 'slrr_tsmProbeP.hlsl', { '$curTex', '$histTex', '$velTex', '$depthTex', '$rt0Tex' })
-  return M.probeSet(TSM, 'shader', 0, on and 'SLRR_TSMProbe_ShaderData' or 'SLRR_TSM_ShaderData')
+  makeShaderData('SLRR_TSMProbe2_ShaderData', 'slrr_sharpenV.hlsl', 'slrr_probe2P.hlsl', { '$colorTex' })
+  local name = on == 2 and 'SLRR_TSMProbe2_ShaderData' or (on and 'SLRR_TSMProbe_ShaderData' or 'SLRR_TSM_ShaderData')
+  return M.probeSet(TSM, 'shader', 0, name)
 end
 
 -- put the picture as the settings want it; safe to call at any time (a level that is not loaded yet changes nothing)
