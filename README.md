@@ -23,6 +23,13 @@ Built on BeamNG.drive 0.39.4.
 | Industrial Garage | drive-through hall, either direction |
 | Canyon Service Center (Utah) | one open bay: drive in, and the car backs out |
 
+## Install and requirements
+
+- **BeamNG.drive** 0.39.4 or newer, with the stock **West Coast USA** (garages and shops) or **Utah** map.
+- **One zip, no unpacking:** `wrench_works.zip` is the garage on its own. For the career, take the bundle **Wrench Works Street Legal - West Coast** instead: it holds this garage, the career and the drivers, with each one's version checked against the others, so install that one *or* the single zips, not both.
+- Optional: the **Wrench Works: Drivers & Pedestrians** mod (a driver behind the wheel, the arrival walk-round, outfits and helmets); [ffmpeg](https://ffmpeg.org) if you want to convert your own music for the radio.
+- Remove an older copy of the mod from the mods folder before dropping in a new version.
+
 Sounds are the game's own. A `.wav` dropped into `art/sound/slrr_garage/` under one of the names in `garage.lua` replaces the matching sound; `tools/install.ps1` can copy such a set from a Street Legal Racing: Redline install you own.
 
 ## With the career: Wrench Works Street Legal - West Coast
@@ -31,6 +38,9 @@ This garage is the one the **Wrench Works: Street Legal** career works in. Downl
 
 The garage bar has: **Drive out**, **Catalog**, **Car info**, **Mechanic**, **Tune**, **Lift**, **Paint booth**, then the tabs the career fills: **Services** (oil, coolant, battery, nitrous, engine rebuild), **Races** (pick an event) and **Drivers** (who drives, their outfit, a helmet), then **Test engine**, **Whole car**, **Settings** and **Photo**.
 
+- **Upgrades** (career only) lists what this garage can have: **lift**, **engine crane**, **workbench**, **dyno**, **paint booth**, **more shelves** and a **photo corner**. A new garage starts without them and the lift and the crane only stand in it once you buy them. Engine work needs the crane (a crude animation shows the engine rising out of the bay and going back in); underside work (gearbox, suspension, driveline, headers) needs the lift. The club garages come with the lift, the bench and the crane.
+- **Leaving.** Besides **Drive out**: **Store this car** puts the car away and leaves you on foot (bring it or another car out again from the phone), **Walk out** leaves on foot and the car waits in the garage. Both work whatever car is on the lift.
+- **The arrival.** When you park, the driver (Drivers & Pedestrians installed) gets out, walks round the car and shuts the door while the garage is already up and usable.
 - **Tune** opens a panel with every tuning item of the car, grouped as the game's tuning menu groups them.
 - **Paint booth**: three colours, finishes (gloss, satin, matte, metallic, pearl, chrome) and mixing sliders; **All three** sprays one paint everywhere. Colours are saved with the car.
 - **Catalog**: hover a part to see what it does: an engine's power, torque, rev range and rated strength; springs, grip, brake torque and weight for the rest.
@@ -69,11 +79,11 @@ Every part comes off except the body shell itself. Take off what you like and dr
 The icon bar along the top:
 
 - **Drive out** – shows the job sheet (what was fitted, taken off and spent this visit), then builds the car as you left it and drives it out of the other door.
-- **Catalog** – every part that fits the car, in five sections (Engine, Body, Running Gear, Interior, Paint) split into small chapters such as Front Bumpers, Rear Suspension or Front Tyres. The search box looks through every chapter at once, the list can be sorted by price, and the mouse wheel turns the page. A chapter that holds parts for several slots gets a filter for each, named the way the car (or the mod the part comes from) names them. Parts go on a shopping list; you pay when you confirm it, and they are delivered to the shelf (see below).
+- **Catalog** – every part that fits the car, in five sections (Engine, Body, Running Gear, Interior, Paint) split into small chapters such as Front Bumpers, Rear Suspension or Front Tyres. The search box looks through the chapter you are in (an **All chapters** switch widens it to every chapter), wheel chapters have size and width buttons, the list can be sorted by price, and the mouse wheel turns the page. A chapter that holds parts for several slots gets a filter for each, named the way the car (or the mod the part comes from) names them. Parts go on a shopping list; you pay when you confirm it, and they are delivered to the shelf (see below).
 - **Car info** – specs, part count and value, damage and repair cost, the engine's power and torque curve, and your saved builds.
 - **Mechanic (wrench)** – the default mode: fit and remove parts.
 - **Tune (screwdriver)** – click a door, hood or boot to open it; click any other part and it is outlined and a small panel pops up with just that part's adjustments (tyre pressure for a tyre, camber for the suspension, and so on). The full list is in the drawer on the right. Adjustments take effect when you drive out.
-- **Lift** – every garage has a two-post lift. The car parks between its posts, the arms swing in under the sills, and this button carries the car about 1.3 m up, camera and all.
+- **Lift** – a two-post lift (in a career you buy it under Upgrades; outside one every garage has it). The car parks between its posts, the arms swing in under the sills, and this button carries the car about 1.3 m up, camera and all.
 - **Paint booth** – factory colours or mix your own, three colour slots. The car disappears in a cloud of the new colour while it is sprayed.
 - **Test engine**, **Advance time**, **Whole car** (camera reset) and **Settings**.
 
@@ -97,7 +107,7 @@ In Car info, "Save the car as it stands" stores the parts and tuning that are on
 
 - **Shopping list.** "Add" in the catalog puts a part on the list. Nothing is paid until you press Confirm purchase.
 - **Delivery.** Parts ordered from the garage are delivered, and delivery is charged by weight and bulk: a hood costs many times what a mirror or a hub cap does. Standard delivery takes a few minutes; express costs more and arrives ten times sooner. Arrivals drop onto the shelf while you are in the garage, or are waiting there next time; out on the road a message tells you when an order has arrived.
-- **Shops in town.** Seven businesses on West Coast USA sell parts over the counter. Stop on the blue marker on their forecourt. You take the parts with you (they are on the shelf when you reach the garage), there is no delivery charge, and prices are 5% lower.
+- **Shops in town.** Seven businesses on West Coast USA sell parts over the counter. Stop on the blue marker on their forecourt. You either take the parts with you (they are on the shelf when you reach the garage) or choose **Fit them here**: they are fitted on the car you drove in for a labour charge (12 % of the part price, at least $8 a part), except at the used-parts yard, there is no delivery charge, and prices are 5% lower.
 
 | Shop | Sells |
 | --- | --- |
@@ -173,5 +183,13 @@ Changing a part in BeamNG normally rebuilds the whole vehicle, which freezes the
 | `lua/ge/extensions/slrr/garageCatalog.lua`, `garageSettings.lua` | catalog chapters, settings |
 | `lua/ge/extensions/slrr/garageMusic.lua` | the radio |
 | `ui/modules/apps/slrrGarage/app.js` | the garage screen |
+
+## Known issues
+
+- The engine crane animation is a simple block on a sling; its position is the same for every car.
+- Wheel size buttons only appear where the wheel parts carry a size in their name or id (for example 15x7 or 17 inch); other wheel chapters keep the slot filters.
+- "Fit them here" fits every new, not yet fitted part on the shelf for that car, not only what was bought in that visit.
+- The garage is in English; the texts are in `slrr/garageStrings.lua` and the screen's fallbacks if you want to translate them.
+- Report anything else on the mod's page.
 
 Not affiliated with BeamNG GmbH or the makers of Street Legal Racing: Redline.
