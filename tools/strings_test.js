@@ -21,3 +21,11 @@ const asked = [...app.matchAll(/\$scope\.t\('([^']+)'/g)].map((m) => m[1]);
 const missing = asked.filter((k) => !lt.includes("['" + k + "']"));
 if (missing.length) { console.error('asked for but not in garageStrings.lua: ' + missing.join(', ')); process.exit(1); }
 console.log('and the screen asks for ' + asked.length + ' keys, all in the table');
+// the template's {{t('key')}} texts all have their English text in TEMPLATE_TEXT (shown until the table arrives), equal to the table
+const tt = eval('(' + app.match(/var TEMPLATE_TEXT = (\{[\s\S]*?\n  \});/)[1] + ')');
+const used = [...new Set([...app.matchAll(/\{\{t\(\\'([^']+)\\'\)\}\}/g)].map((m) => m[1]))];
+const table = {};
+for (const m of lt.matchAll(/\['([^']+)'\] = '((?:[^'\\]|\\.)*)',/g)) table[m[1]] = m[2].replace(/\\(.)/g, '$1');
+const bad = used.filter((k) => tt[k] !== table[k]);
+if (bad.length || Object.keys(tt).some((k) => !used.includes(k))) { console.error('TEMPLATE_TEXT differs from the table or has unused keys: ' + bad.join(', ')); process.exit(1); }
+console.log('template fallbacks match the table (' + used.length + ' keys)');
