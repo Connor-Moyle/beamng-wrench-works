@@ -241,6 +241,7 @@ local function sendState()
     paint = (parts.getPaints()[1] or {}).baseColor,
     paintSmoke = settings.get('paintSmoke'),
     hints = settings.get('hints'),
+    scene = sceneOn,
     retro = settings.get('retroCatalog'),
     services = (phase == 'garage') and servicesList() or {},
   })
@@ -579,6 +580,72 @@ local function driverDoorJob(job)
   end
 end
 
+-- The arrival scene (#36, with the SLRR Drivers mod): the car has parked, the driver's door opens, the driver (the driver chosen for the car) gets out
+-- and walks round the car looking it over, the door shuts, then the garage appears. Skippable (the Skip button, or the slrrGarageSkip action).
+local sceneOn, sceneSkip = false, false
+local SCENE_MAX = 22                -- s: the scene never runs longer than this
+
+-- where the driver walks: out of the door, round the nose and down the far side, across the back, home. Stops at the corners to look.
+local function scenePath(v, driverLeft)
+  local c = carCenter()
+  if not c or not site then return nil end
+  local f = vec3(v:getDirectionVector())
+  f.z = 0
+  f:normalize()
+  local right = f:cross(vec3(0, 0, 1)):normalized()
+  local halfL, halfW = v:getInitialLength() * 0.5, v:getInitialWidth() * 0.5
+  local out = math.max(halfW + 0.35, math.min(site.halfWidth - 0.8, halfW + 1.0))
+  local floorZ = sites.point(site, 0, 0, 0.03).z
+  local door = driverLeft and -1 or 1
+  local seat = halfL * 0.15
+  local function P(along, lateral)
+    local p = c + f * along + right * lateral
+    p.z = floorZ
+    return p
+  end
+  return {
+    P(seat, door * (halfW + 0.45)),
+    P(seat, door * out),
+    { pos = P(halfL + 0.9, door * out), wait = 0.9 },
+    { pos = P(halfL + 0.9, -door * out), wait = 0.9 },
+    { pos = P(-halfL - 0.9, -door * out), wait = 0.9 },
+    { pos = P(-halfL - 0.9, door * out), wait = 0.5 },
+    P(seat, door * out),
+  }
+end
+
+-- true when it ran
+local function arrivalScene(job)
+  if not settings.get('arrivalScene') then return false end
+  local ped, drv = slrrPedestrians, slrrDrivers
+  if not (ped and ped.playActor and drv and drv.getDriver and drv.setDisplayMode and drv.getDisplayMode) then return false end
+  local v = veh()
+  local id = v and drv.getDriver(vehId)
+  if not id then return false end                      -- nobody drives it
+  local dir = '/art/slrr_drivers/' .. id .. '/walker/'
+  if not FS:directoryExists(dir) then return false end
+  local st = drv.getState and drv.getState(vehId)
+  local pts = scenePath(v, not st or st.seatLeft ~= false)
+  if not pts then return false end
+  sceneOn, sceneSkip = true, false
+  sendState()
+  core_jobsystem.create(driverDoorJob)                 -- the door swings open now and is pushed shut after 1.9 s
+  job.sleep(0.7)
+  local override = drv.getDisplayMode(vehId) ~= drv.getDisplayMode() and drv.getDisplayMode(vehId) or nil
+  drv.setDisplayMode('hidden', vehId)                  -- he is out of the seat
+  local actor = ped.playActor(dir, pts)
+  local t = 0
+  while actor and not ped.actorDone(actor) and t < SCENE_MAX and not sceneSkip and phase == 'film' and veh() do
+    job.sleep(0.05)
+    t = t + 0.05
+  end
+  if actor then ped.stopActor(actor) end
+  drv.setDisplayMode(override, vehId)                  -- back in the seat, as he was
+  sceneOn = false
+  sendState()
+  return true
+end
+
 -- a visit another mod's screen asked for (enterWith): what to open once the car is on the lift
 local entryMode
 local applyEntryMode
@@ -686,7 +753,7 @@ local function enterJob(job)
     end
     job.sleep(0.35)
     v:queueLuaCommand('input.event("brake", 0, FILTER_DIRECT)')
-    if settings.get('driverDoor') then core_jobsystem.create(driverDoorJob) end
+    if not arrivalScene(job) and settings.get('driverDoor') then core_jobsystem.create(driverDoorJob) end
   else
     placeCarAt(sites.point(site, 0, 0, 0.05), route.parkDir)
     job.sleep(0.35)
@@ -2225,6 +2292,7 @@ M.enter = enterNearest
 M.enterWith = enterWith
 M.garageAt = function(pos) local g = garageAt(pos) return g and g.id or nil end   -- (the site's id, for comparing)
 M.leave = leave
+M.skipScene = function() sceneSkip = true end
 M.abort = abort
 M.click = click
 M.install = install
