@@ -25,6 +25,17 @@ Built on BeamNG.drive 0.39.4.
 
 Sounds are the game's own. A `.wav` dropped into `art/sound/slrr_garage/` under one of the names in `garage.lua` replaces the matching sound; `tools/install.ps1` can copy such a set from a Street Legal Racing: Redline install you own.
 
+## With the career: Wrench Works Street Legal - West Coast
+
+This garage is the one the **Wrench Works: Street Legal** career works in. Download **Wrench Works Street Legal - West Coast** to get this garage, the career and the drivers in one go, with each one's version checked against the others. The career pays for parts and services from its own money, adds a phone and laptops, and opens the garage when you walk or drive into a garage door.
+
+The garage bar has: **Drive out**, **Catalog**, **Car info**, **Mechanic**, **Tune**, **Lift**, **Paint booth**, then the tabs the career fills: **Services** (oil, coolant, battery, nitrous, engine rebuild), **Races** (pick an event) and **Drivers** (who drives, their outfit, a helmet), then **Test engine**, **Whole car**, **Settings** and **Photo**.
+
+- **Tune** opens a panel with every tuning item of the car, grouped as the game's tuning menu groups them.
+- **Paint booth**: three colours, finishes (gloss, satin, matte, metallic, pearl, chrome) and mixing sliders; **All three** sprays one paint everywhere. Colours are saved with the car.
+- **Catalog**: hover a part to see what it does: an engine's power, torque, rev range and rated strength; springs, grip, brake torque and weight for the rest.
+- **Photo** saves a picture of the car without the screen (to `screenshots/slrr_garage` in the game's user folder); **Showcase** turns the camera round it; **Photo mode** opens the game's own.
+
 ## The radio
 
 Every garage has a radio, and it plays your music while you are in a garage or a shop, one track after another in a shuffled order. With "Music comes from the radio" switched on (it is by default) the sound has a place in the room: it is louder near the radio and moves between your ears as the camera goes round the car.
