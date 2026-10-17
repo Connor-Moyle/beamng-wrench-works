@@ -226,13 +226,15 @@ local player = getPlayerVehicle(0)
 local anchor = (player and player:getPosition() or core_camera.getPosition()) + vec3(25, 0, 0)
 
 core_jobsystem.create(function(job)
-  local uiWas
+  local uiWas, markersWere
   local failures, aliased = {}, 0
   local started = os.time()
   local summaryOf
   local ok, err = pcall(function()
   -- the game's own UI (the camera help, the apps bar) must not be in the pictures
   pcall(function() extensions.load('ui_visibility') uiWas = ui_visibility.get() ui_visibility.set(false) end)
+  -- and no world markers (the mission and place markers that stand in the world)
+  pcall(function() gameplay_markerInteraction.setMarkersVisibleTemporary(false) markersWere = true end)
   local index = readIndex()
   local shot, skipped, failed, seen = 0, 0, 0, {}
   local canon = {}            -- signature -> the part whose picture serves every part drawn the same
@@ -277,6 +279,8 @@ core_jobsystem.create(function(job)
       job.sleep(3)
       -- the camera stays a free camera, but the spawn may have taken it
       commands.setFreeCamera()
+      job.sleep(0.3)
+      pcall(function() core_camera.setFOV(0, FOV) end)          -- (a free camera started after the spawn has the game's default FOV; set it here, after)
       local colors = veh and { veh:getField('color', 0), veh:getField('colorPalette0', 0), veh:getField('colorPalette1', 0) } or {}
       for i, p in ipairs(todo) do
         if rawget(_G, 'PART_SHOTS_STOP') then break end
@@ -291,7 +295,9 @@ core_jobsystem.create(function(job)
           place(obj, stage - centre, vec3(0, 1, 0), vec3(0, 0, 1), vec3(1, 1, 1))
           -- the outer face: front-right-above for a part at the front right, and so on (the car's front is -Y, its right +X)
           local dir = vec3(centre.x >= -0.15 and 0.8 or -0.8, centre.y <= 0 and -1 or 1, 0.55):normalized()
-          local dist = radius / (math.tan(math.rad(FOV / 2)) * FILL)
+          local fov = tonumber(core_camera.getFovDeg and core_camera.getFovDeg()) or FOV       -- (the real vertical field of view now, not the one asked for)
+          if i == 1 then log('I', TAG, string.format('camera FOV %.1f (asked %d)', fov, FOV)) end
+          local dist = radius / (math.tan(math.rad(fov / 2)) * FILL)
           local camPos = stage + dir * dist
           local look = (stage - camPos):normalized()
           local rot = quatFromDir(look, vec3(0, 0, 1))
@@ -342,6 +348,7 @@ core_jobsystem.create(function(job)
   end)
   if not ok then failures[#failures + 1] = { part = '(the run)', why = tostring(err) } log('E', TAG, 'the run failed: ' .. tostring(err)) end
   if uiWas ~= nil then pcall(function() ui_visibility.set(uiWas) end) end         -- the UI comes back
+  if markersWere then pcall(function() gameplay_markerInteraction.setMarkersVisibleTemporary(true) end) end
   pcall(function() commands.setGameCamera() end)
   local shot, skipped, failed = 0, 0, 0
   if summaryOf then shot, skipped, failed = summaryOf() end

@@ -50,8 +50,10 @@ def matte(black, white):
     return np.dstack([np.clip(colour, 0, 1), alpha])
 
 
-def keep_main(alpha, thr=0.1, share=0.05):
-    """clear specks and leftovers: keep the connected pieces that are at least `share` of the biggest (needs scipy; without it nothing is cleared)"""
+def keep_main(alpha, thr=0.1, share=0.02, reach=0.5):
+    """clear specks and leftovers (a world marker, a bit of UI): keep the biggest connected piece, and the other pieces only when they are at least
+    `share` of its area AND within `reach` x its size of it (a part in several pieces, like a pair of bars, stays whole). Needs scipy; without it
+    nothing is cleared."""
     try:
         from scipy import ndimage
     except ImportError:
@@ -60,8 +62,15 @@ def keep_main(alpha, thr=0.1, share=0.05):
     if n <= 1:
         return alpha
     areas = ndimage.sum(np.ones_like(alpha), lab, index=range(1, n + 1))
+    boxes = ndimage.find_objects(lab)
+    main = int(np.argmax(areas))
+    my0, my1, mx0, mx1 = boxes[main][0].start, boxes[main][0].stop, boxes[main][1].start, boxes[main][1].stop
+    size = max(my1 - my0, mx1 - mx0)
     keep = np.zeros(n + 1, bool)
-    keep[1:] = areas >= areas.max() * share
+    for k in range(n):
+        y0, y1, x0, x1 = boxes[k][0].start, boxes[k][0].stop, boxes[k][1].start, boxes[k][1].stop
+        gap = max(0, max(my0 - y1, y0 - my1), max(mx0 - x1, x0 - mx1))      # the distance between the two boxes
+        keep[k + 1] = k == main or (areas[k] >= areas[main] * share and gap <= size * reach)
     return np.where(keep[lab], alpha, 0)
 
 
