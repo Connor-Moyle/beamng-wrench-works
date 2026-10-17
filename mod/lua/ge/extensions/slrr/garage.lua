@@ -759,7 +759,14 @@ local function enterJob(job)
     end
     job.sleep(0.35)
     v:queueLuaCommand('input.event("brake", 0, FILTER_DIRECT)')
-    if not arrivalScene(job) and settings.get('driverDoor') then core_jobsystem.create(driverDoorJob) end
+    local okScene, ran = pcall(arrivalScene, job)      -- (a failing scene must never stop the entry: the car rolled into the wall and the screen hung)
+    if not okScene then
+      log('E', 'slrr', 'arrival scene failed: ' .. tostring(ran))
+      scene.on, ran = false, false
+      if slrrDrivers and slrrDrivers.setDisplayMode then pcall(slrrDrivers.setDisplayMode, nil, vehId) end
+      sendState()
+    end
+    if not ran and settings.get('driverDoor') then core_jobsystem.create(driverDoorJob) end
   else
     placeCarAt(sites.point(site, 0, 0, 0.05), route.parkDir)
     job.sleep(0.35)
