@@ -81,3 +81,16 @@ Plan: one pass, shader `slrr_look*.hlsl`, in display space on the finished pictu
 - Presets: Natural (contrast 0.15, saturation +0.05, warmth +0.10, vignette 0.15), Cinematic (contrast 0.35, saturation -0.05, warmth +0.10, split 0.5, vignette 0.35), Vivid (contrast 0.25, saturation +0.25, vignette 0.10).
 - Same mechanics as the anti-aliasing options: a preset change fills the others, changing any one makes it Custom (or the preset it now equals); `tick` re-applies every 2 s and after a level load, `onModDeactivated`/unload switches it off.
 - Test: `tools/look_test.js` (plan, presets, neutral = off, option reading, group data); frame cost and before/after shots through the tester.
+
+## 8. Cinematic camera: motion blur, depth of field, letterbox (design, before building)
+
+Asked for: an option set for replays and photo mode: motion blur strength, depth of field focused on the car, letterbox; reusing the post-effect work.
+
+Findings (game files, 0.39):
+- The game already has all three effects as its own post effects, and its photo mode (`ui/photomode/effects.lua`) drives them: `PostFxMotionBlur` (`strength`, limits 0..2, `client/postFx/MotionBlurFx.lua`) and `DOFPostEffect` (`$DOFPostFx::*` registry values: BlurMin/BlurMax near/far blur, FocusRangeMin aperture, FocusRangeMax focus distance, EnableAutoFocus; applied with `client/postFx/dof.lua updateDOFSettings`). DOF autofocus follows the camera target (`calculateFocusDistance`), which in a replay or photo mode is the followed car.
+- So blur and DOF are not rebuilt: our module only sets the game's own values from simple options and puts the old values back afterwards. The photo mode's session code saves and restores the same values (`postFxPersistence.lua`); our restore must not fight it, so the options act only outside an open photo-mode session.
+- Letterbox is the one new pass: black bars at a chosen aspect (2.39, 2.0, 1.85), drawn as a full-screen effect after everything else (priority below the Look pass), same recipe as `slrr/look.lua`. The UI is drawn above it, so the HUD is not cut.
+- Not reachable: a bokeh shape or per-object focus other than the camera target; a motion-blur shutter angle (only the strength).
+
+Plan: module `slrr/camera.lua`, group "Wrench Works: cinematic camera" in Options > Graphics (marker `camera-v1`, after the Look group), settings `slrrCam*`: Preset (Off / Subtle / Film / Dramatic / Custom), Motion blur 0..2, Depth of field 0..1 (background blur amount, autofocus on the car), Letterbox (Off / 2.39 / 2.0 / 1.85). Off by default; "off" = nothing of the game's touched (the saved game values are put back exactly). Test: `tools/camera_test.js` (plan, presets, restore bookkeeping, group data), then proof shots and frame cost through the tester.
+Open question for the tester before building: whether the game's motion blur and DOF draw in the replay camera when set from Lua (they may be gated by the graphics quality setting).
