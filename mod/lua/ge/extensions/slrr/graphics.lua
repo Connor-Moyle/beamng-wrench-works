@@ -464,6 +464,12 @@ function M.probeSet(effect, field, idx, value)
   return tostring(e:getField(field, idx))
 end
 
+-- diagnosis: the smoothing effect with a shader that paints everything magenta (M.probeShader(true)), or put back (M.probeShader(false))
+function M.probeShader(on)
+  makeShaderData('SLRR_TSMProbe_ShaderData', 'slrr_tsmV.hlsl', 'slrr_tsmProbeP.hlsl', { '$curTex', '$histTex', '$velTex', '$depthTex', '$rt0Tex' })
+  return M.probeSet(TSM, 'shader', 0, on and 'SLRR_TSMProbe_ShaderData' or 'SLRR_TSM_ShaderData')
+end
+
 -- put the picture as the settings want it; safe to call at any time (a level that is not loaded yet changes nothing)
 function M.apply(opts)
   state.opts = opts or state.opts or {}
