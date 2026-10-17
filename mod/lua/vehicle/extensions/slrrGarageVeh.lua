@@ -183,25 +183,44 @@ local function apply(data, options)
   -- them take that shape. From then on it is ordinary damage.
   for _, rec in ipairs(data.beams or {}) do
     if rec.dent then
-      local moved, seed = {}, rec.seed or 1
-      local function rnd()
-        seed = (seed * 1103515245 + 12345) % 2147483648
-        return seed / 2147483648 * 2 - 1
-      end
-      for cid, node in pairs(nodes) do
-        if node.partPath == rec.pa and not node.wheelID then
-          local p = obj:getNodePosition(cid) + vec3(rnd(), rnd(), rnd()) * rec.dent
-          obj:setNodePosition(cid, p)
-          moved[cid] = p
+      -- Only a plain body panel is dented, and only where nothing special hangs on it (a lot's dents crashed the game's heap, 0x140386: nodes of other
+      -- parts, pressure, hydro, bounded, support, L-beams and latch beams were moved or re-measured). A node moves only if EVERY beam on it is a plain
+      -- beam (type 0, no break group, not broken) of the dented part; the move is capped; and only those beams are re-measured.
+      local part = tostring(rec.pa or '')
+      if not part:lower():find('rad') and not part:lower():find('fuel') and not part:lower():find('tank') and not part:lower():find('engine')
+          and not part:lower():find('trans') and not part:lower():find('axle') and not part:lower():find('susp') and not part:lower():find('wheel')
+          and not part:lower():find('brake') and not part:lower():find('steer') and not part:lower():find('exhaust') then
+        local plain, blocked = {}, {}
+        for cid = 0, tableSizeC(beams) - 1 do
+          local beam = beams[cid]
+          if beam and beam.id1 and beam.id2 then
+            local ok = beam.partPath == rec.pa and (beam.beamType or 0) == 0 and not isLatchBeam(beam) and not obj:beamIsBroken(cid)
+              and (beam.breakGroup == nil or beam.breakGroup == '') and (beam.beamPrecompression or 1) == 1 and not beam.deformLimit
+            if ok then plain[cid] = true
+            else blocked[beam.id1], blocked[beam.id2] = true, true end
+          end
         end
-      end
-      for cid = 0, tableSizeC(beams) - 1 do
-        local beam = beams[cid]
-        if beam and (moved[beam.id1] or moved[beam.id2]) and not obj:beamIsBroken(cid) then
-          local length = (obj:getNodePosition(beam.id1) - obj:getNodePosition(beam.id2)):length()
-          if length > 0.001 then
-            obj:setBeamLength(cid, length)
-            applied = applied + 1
+        local moved, seed = {}, rec.seed or 1
+        local function rnd()
+          seed = (seed * 1103515245 + 12345) % 2147483648
+          return seed / 2147483648 * 2 - 1
+        end
+        local amount = math.min(tonumber(rec.dent) or 0, 0.1)
+        for cid, node in pairs(nodes) do
+          if node.partPath == rec.pa and not node.wheelID and not node.fixed and not blocked[cid] then
+            local p = obj:getNodePosition(cid) + vec3(rnd(), rnd(), rnd()) * amount
+            obj:setNodePosition(cid, p)
+            moved[cid] = true
+          end
+        end
+        for cid in pairs(plain) do
+          local beam = beams[cid]
+          if moved[beam.id1] or moved[beam.id2] then
+            local length = (obj:getNodePosition(beam.id1) - obj:getNodePosition(beam.id2)):length()
+            if length > 0.001 then
+              obj:setBeamLength(cid, length)
+              applied = applied + 1
+            end
           end
         end
       end
