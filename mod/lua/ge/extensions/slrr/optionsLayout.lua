@@ -78,7 +78,9 @@ end
 
 -- the text without the group of one marker (`legacy`: extra start strings of earlier versions of that group)
 function M.strip(text, marker, legacy)
-  for _, start in ipairs({ ',{"_slrr":' .. M.encodeJson(marker) , table.unpack(legacy or {}) }) do
+  local starts = { ',{"_slrr":' .. M.encodeJson(marker) }
+  for _, l in ipairs(legacy or {}) do starts[#starts + 1] = l end      -- (the game's Lua has no table.unpack)
+  for _, start in ipairs(starts) do
     text = stripStart(text, start)
     if not text then return nil end
   end
