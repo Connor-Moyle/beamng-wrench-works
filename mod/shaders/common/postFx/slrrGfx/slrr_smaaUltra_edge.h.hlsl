@@ -3,10 +3,17 @@
 #ifndef SLRR_SMAA_ULTRA_EDGE_H_HLSL
 #define SLRR_SMAA_ULTRA_EDGE_H_HLSL
 
+#ifdef SLRR_PREDICATED
+// depth predication: the threshold is worked out per pixel in the pixel shader (SMAA's own predication compares raw non-linear depth, which barely differs in the distance)
+static float slrrThreshold = 0.05;
+#define SMAA_THRESHOLD slrrThreshold
+#else
 #define SMAA_PRESET_ULTRA
+#endif
 #include "../postFx.h.hlsl"
 
 Texture2D colorTexGamma : register(t0); // gamma space :(
+Texture2D prepassDepthTex : register(t1); // only read when SLRR_PREDICATED
 SamplerState smaaPointSampler : register(s0);
 SamplerState smaaLinearSampler : register(s1);
 

@@ -1825,7 +1825,8 @@ end
 -- and the picture: the Graphics group (slrr/graphics), applied when it changes, at the start of a level and when the anti-aliasing type changes
 -- (a field of the module table, not a local: this file is at LuaJIT's limit of 200 locals)
 M.applyGraphics = function()
-  require('slrr/graphics').apply({ ultra = settings.get('gfxSmaaUltra') == true, sharpen = settings.get('gfxSharpen') == true, strength = settings.get('gfxSharpenStrength') })
+  require('slrr/graphics').apply({ mode = settings.get('gfxAaMode'), predication = settings.get('gfxPredication'), temporal = settings.get('gfxTemporal'),
+                                   sharpener = settings.get('gfxSharpener'), strength = settings.get('gfxSharpenStrength') })
 end
 
 local function applyDriverAnimation()
@@ -1841,6 +1842,11 @@ local function setSetting(key, value)
   if key == '__reset' then settings.reset() extensions.hook('onWrenchWorksSetting', key)
   elseif not settings.set(key, value) then extensions.hook('onWrenchWorksSetting', key, value) end   -- (another mod's setting)
   if key == 'driverMode' or key == '__reset' or key:find('^ped') or key:find('^driver') then applyDriverAnimation() end
+  if key:find('^gfx') then
+    local preset = key == 'gfxPreset' and require('slrr/graphics').presetValues(value)
+    if preset then for k, v in pairs(preset) do settings.set(k, v) end
+    elseif key ~= 'gfxPreset' then settings.set('gfxPreset', 'custom') end     -- (any single setting made after a preset)
+  end
   if key == '__reset' or key:find('^gfx') then M.applyGraphics() end
   if key == 'freeroamMoney' then parts.setWallet(settings.get('freeroamMoney')) end
   if (key == 'injuryMode' or key == '__reset') and slrrInjury and slrrInjury.setMode then slrrInjury.setMode(settings.get('injuryMode')) end

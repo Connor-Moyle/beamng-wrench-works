@@ -3,6 +3,13 @@
 
 local M = {}
 
+local gfx = require('slrr/graphics')
+local function gfxOptions(list)
+  local out = {}
+  for _, o in ipairs(list) do out[#out + 1] = { id = o.id, label = o.label, note = o.note } end
+  return out
+end
+
 local FILE = '/settings/slrr_garage/settings.json'
 
 -- order here is the order on the settings screen
@@ -106,13 +113,19 @@ M.defs = {
     desc = 'They cross the road at crossings when the lights let them.' },
   { key = 'pedBusy', ped = 'busyAreas', group = 'World', title = 'Busier downtown and on the beachfront', type = 'bool', default = true, needs = 'pedestrians',
     desc = 'More people where a city would have them.' },
-  -- Graphics (slrr/graphics): both off by default, live
-  { key = 'gfxSmaaUltra', group = 'Graphics', title = 'SMAA Ultra', type = 'bool', default = false,
-    desc = 'The game\'s SMAA anti-aliasing at its Ultra preset, with colour edge detection: fewer jagged edges and shimmer on thin lines. Costs a little more frame time than the game\'s own preset (the edge search is longer). Only works while Options > Graphics > Anti-aliasing is SMAA.' },
-  { key = 'gfxSharpen', group = 'Graphics', title = 'Sharpening (AMD CAS)', type = 'bool', default = false,
-    desc = 'AMD FidelityFX Contrast Adaptive Sharpening after the anti-aliasing: brings back the detail anti-aliasing softens, without halos on edges that are already crisp. Cheap: one pass over the picture.' },
+  -- Graphics (slrr/graphics): all "Game's own" / off by default, live; the notes under each choice come from slrr/graphics
+  { key = 'gfxPreset', group = 'Graphics', title = 'Preset', type = 'choice', default = 'custom', options = gfxOptions(gfx.PRESETS),
+    desc = 'Picks the settings below in one go. Changing any of them afterwards makes it Custom.' },
+  { key = 'gfxAaMode', group = 'Graphics', title = 'Anti-aliasing', type = 'choice', default = 'game', options = gfxOptions(gfx.MODES),
+    desc = 'Which anti-aliasing is used. Anything but the first choice takes over Options > Graphics > Anti-aliasing while it is picked. ' .. gfx.unavailableText() },
+  { key = 'gfxPredication', group = 'Graphics', title = 'Depth predication (SMAA Ultra)', type = 'bool', default = true,
+    desc = 'Lets SMAA Ultra use the depth: edges of objects are caught at full sensitivity and fine texture detail is not mistaken for edges. Turn off to compare.' },
+  { key = 'gfxTemporal', group = 'Graphics', title = 'Temporal smoothing amount', type = 'range', min = 0, max = 1, step = 0.05, default = 0.7, unit = 'x',
+    desc = 'For the Temporal smoothing mode: how much of the previous frame is kept. More calms shimmer more but can soften the picture while moving.' },
+  { key = 'gfxSharpener', group = 'Graphics', title = 'Sharpening', type = 'choice', default = 'off', options = gfxOptions(gfx.SHARPENERS),
+    desc = 'Brings back the detail anti-aliasing softens. Runs after the anti-aliasing.' },
   { key = 'gfxSharpenStrength', group = 'Graphics', title = 'Sharpening strength', type = 'range', min = 0, max = 1, step = 0.05, default = 0.4, unit = 'x',
-    desc = 'How much sharpening. 0.4 is a gentle default; above 0.7 thin lines start to look etched.' },
+    desc = 'How much sharpening. 0.4 is gentle; above 0.7 thin lines start to look etched. 0 is the same as off.' },
   { key = 'driverDoor', group = 'Garage', title = 'Driver\'s door opens on arrival', type = 'bool', default = true,
     desc = 'When the car has parked, the driver\'s door swings open and shut as if someone got out.' },
   { key = 'arrivalScene', group = 'Garage', title = 'The driver gets out on arrival', type = 'bool', default = true,

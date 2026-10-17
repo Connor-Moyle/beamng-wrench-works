@@ -144,12 +144,16 @@ Changing a part in BeamNG normally rebuilds the whole vehicle, which freezes the
 
 ## Graphics (optional)
 
-Settings > **Graphics**, both off by default and switched live (nothing to restart):
+Settings > **Graphics**, all "Game's own" / off by default and switched live (nothing to restart). Each choice has a note under it saying what it does and what it is for. A **Preset** (Balanced, Smooth, Maximum) picks the rest in one go.
 
-- **SMAA Ultra.** The game anti-aliases with SMAA at its "high" preset. With this on, the two steps that find edges and blend them (`SMAA_PostEffect` and its first child) use our own copies of the shaders with the **Ultra** preset (a lower edge threshold, a longer edge search, diagonal and corner handling) and colour edge detection. Our shaders live in `shaders/common/postFx/slrrGfx/`; the game's own shader files are never changed, and turning the option off points the effects back at the shaders they had. It only does anything while Options > Graphics > Anti-aliasing is **SMAA** (the Graphics group says when it is waiting).
-- **Sharpening (AMD CAS).** FidelityFX Contrast Adaptive Sharpening as one extra pass after the anti-aliasing, with a strength slider (0 to 1, 0.4 when you switch it on). CAS is by AMD and MIT licensed; the licence is kept in the header of `slrr_cas.h.hlsl`.
+- **Anti-aliasing:** Game's own, Off, FXAA, **FXAA HQ** (NVIDIA FXAA 3.11, sub-pixel removal at maximum), SMAA High, **SMAA Ultra** (our own copies of the edge and blending shaders with the Ultra preset, colour edges and optional **depth predication**), and **SMAA Ultra + Temporal smoothing**. While one of ours is picked it takes over Options > Graphics > Anti-aliasing; "Game's own" gives it back exactly as the game has it. Our shaders live in `shaders/common/postFx/slrrGfx/`; the game's own shader files and objects are never changed.
+- **Temporal smoothing.** Blends the finished picture with the previous frame, found through the game's own motion-vector buffer and clamped to the surrounding colours so it does not ghost. It calms shimmer and crawling edges while you drive. It is not TAA: the engine has no camera jitter, so it cannot add detail and can soften the picture a little.
+- **Sharpening:** AMD **CAS**, AMD **FSR 1 RCAS**, NVIDIA **NIS** sharpen, with a strength slider (0 to 1).
+- **Not available in BeamNG mods** (and listed as such in the settings): NVIDIA DLSS, DLAA and Frame Generation; AMD FSR 2/3/4; the FSR 1 and NIS upscalers; TAA/TSR; MSAA; real supersampling. They need an SDK in the engine, a jittered camera or a render-scale setting, none of which the game exposes. For supersampling use NVIDIA DSR / AMD VSR in the driver and pick the bigger resolution in the game.
 
-Frame cost: SMAA Ultra runs the same three passes as the game's SMAA with a longer search in two of them, and CAS is one full-screen pass (nine texture reads). Neither needs more video memory than a screen-sized texture. The exact cost depends on your card and resolution: switch them on and watch the frame time (the game's own frame-time display) at your own settings.
+Credits and licences (all MIT, kept in the shader headers): AMD FidelityFX CAS and FSR 1 RCAS (Copyright 2019-2021 Advanced Micro Devices, Inc.), NVIDIA Image Scaling NVSharpen (Copyright 2022 NVIDIA Corporation & Affiliates), SMAA (Jimenez et al., from the game's own copy), NVIDIA FXAA 3.11 (Timothy Lottes, from the game's own copy).
+
+Frame cost: SMAA Ultra runs the same three passes as the game's SMAA with a longer search in two of them (plus a depth read with predication); Temporal smoothing is two more full-screen passes and a history texture; CAS and RCAS are one pass, NIS one pass with 25 reads. The exact cost depends on your card and resolution: switch them on and watch the frame time (the game's own frame-time display).
 
 ## Good to know
 

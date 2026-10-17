@@ -6,8 +6,9 @@ What is new since 1.6.0, for players.
 
 ### Graphics
 
-- **SMAA Ultra** (Settings > Graphics, off by default): the game's SMAA at its Ultra preset with colour edge detection, using our own copies of the shaders; the game's files are untouched and the option restores the stock state exactly when off. Only while the anti-aliasing is SMAA.
-- **Sharpening** (Settings > Graphics, off by default): AMD FidelityFX Contrast Adaptive Sharpening after the anti-aliasing, with a strength slider.
+- **Anti-aliasing choices** (Settings > Graphics, "Game's own" by default, live, with a note under each): Off, FXAA, FXAA HQ, SMAA High, SMAA Ultra (own shader copies, colour edges, optional depth predication) and SMAA Ultra + Temporal smoothing (a blend with the previous frame through the game's motion vectors; calms shimmer, adds no detail). Switching back to "Game's own" restores the game's state exactly.
+- **Sharpening** (off by default): AMD CAS, AMD FSR 1 RCAS or NVIDIA NIS sharpen, with a strength slider.
+- **Presets:** Balanced, Smooth, Maximum. The settings also list what a mod cannot do (DLSS, DLAA, FSR 2/3/4, TAA, real supersampling) and why.
 
 ### Garage
 
