@@ -144,7 +144,7 @@ Changing a part in BeamNG normally rebuilds the whole vehicle, which freezes the
 
 ## Graphics (optional)
 
-Settings > **Graphics**, all "Game's own" / off by default and switched live (nothing to restart). Each choice has a note under it saying what it does and what it is for. A **Preset** (Balanced, Smooth, Maximum) picks the rest in one go.
+Options > **Graphics** (the game's own options page, a group called "Wrench Works: anti-aliasing and sharpening" under the anti-aliasing type; the first start after installing needs a game restart to show it). All "Game's own" / off by default and switched live. The settings are saved with the game's other settings. Each choice has a note under it saying what it does and what it is for. A **Preset** (Balanced, Smooth, Maximum) picks the rest in one go.
 
 - **Anti-aliasing:** Game's own, Off, FXAA, **FXAA HQ** (NVIDIA FXAA 3.11, sub-pixel removal at maximum), SMAA High, **SMAA Ultra** (our own copies of the edge and blending shaders with the Ultra preset, colour edges and optional **depth predication**), and **SMAA Ultra + Temporal smoothing**. While one of ours is picked it takes over Options > Graphics > Anti-aliasing; "Game's own" gives it back exactly as the game has it. Our shaders live in `shaders/common/postFx/slrrGfx/`; the game's own shader files and objects are never changed.
 - **Temporal smoothing.** Blends the finished picture with the previous frame, found through the game's own motion-vector buffer and clamped to the surrounding colours so it does not ghost. It calms shimmer and crawling edges while you drive. It is not TAA: the engine has no camera jitter, so it cannot add detail and can soften the picture a little.
