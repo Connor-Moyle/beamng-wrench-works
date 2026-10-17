@@ -271,7 +271,8 @@ local function sendTuning(category)
   guihooks.trigger('slrrGarageTuning', { vars = parts.getTuning(), category = category })
 end
 
-local function sendSettings()
+-- every setting with its value, the other mods' groups included (the settings screen, and another mod's own screen: the phone's Settings)
+local function settingsDefs()
   -- settings for another mod (the driver) only when that mod is there and new enough
   local defs = {}
   for _, d in ipairs(settings.describe()) do
@@ -287,7 +288,11 @@ local function sendSettings()
   end
   -- other mods add their own groups (definitions in the same shape, with their value)
   extensions.hook('onWrenchWorksSettingsDefs', defs)
-  guihooks.trigger('slrrGarageSettings', { defs = defs, career = parts.inCareer() })
+  return defs
+end
+
+local function sendSettings()
+  guihooks.trigger('slrrGarageSettings', { defs = settingsDefs(), career = parts.inCareer() })
 end
 
 ----------------------------------------------------------------------------------------------
@@ -2274,6 +2279,7 @@ M.service = function(id)
 end
 M.refresh = function() sendState() end
 M.requestSettings = requestSettings
+M.settingsDefs = settingsDefs
 M.setSetting = setSetting
 M.cameraDrag = cameraDrag
 M.cameraZoom = cameraZoom
