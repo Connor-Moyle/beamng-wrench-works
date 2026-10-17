@@ -495,7 +495,7 @@ function M.probeNew(kind)
   e.allowReflectPass = false
   e:setField('renderTime', 0, 'PFXAfterDiffuse')
   e.renderPriority = 0.4
-  e:setField('shader', 0, kind == 1 and 'SLRR_TSMProbe2_ShaderData' or 'SLRR_TSMProbe_ShaderData')
+  e:setField('shader', 0, kind == 1 and 'SLRR_TSMProbe2_ShaderData' or (kind == 3 and 'SLRR_TSM_ShaderData' or 'SLRR_TSMProbe_ShaderData'))
   e:setField('stateBlock', 0, kind == 1 and 'SLRR_CAS_StateBlock' or 'SLRR_TSM_StateBlock')
   e:setField('texture', 0, '$backBuffer')
   if kind ~= 1 then
@@ -505,6 +505,16 @@ function M.probeNew(kind)
     e:setField('texture', 4, '#prepass[RT0]')
   end
   e:setField('target', 0, '$backBuffer')
+  if kind == 3 then      -- the real smoothing shader on a fresh effect, with its constants set here (debug view from tune.debug)
+    local function consts()
+      local me = find(name)
+      local size = me and me:getRenderTargetSize()
+      if not (size and size.x > 0) then return end
+      me:setShaderConst('$tsmParams', string.format('%f %f %f %f', 0.8, tune.guard, tune.gamma, 0.7))
+      me:setShaderConst('$tsmSize', string.format('%f %f %f 0', size.x, size.y, tune.debug))
+    end
+    rawset(_G, name .. 'Callbacks', { preProcess = consts, onEnabled = function() consts() return true end })
+  end
   e:registerObject(name)
   e:enable()
   return name .. ' enabled=' .. tostring(isEnabled(name))
