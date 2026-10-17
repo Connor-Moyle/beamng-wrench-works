@@ -8,6 +8,7 @@
 --   PART_SHOTS = {
 --     models = { 'covet' },     which models (default: every stock car and truck found on this PC; mods are skipped)
 --     count = true,             only count the parts (no spawn, no shots): how many, how many have a 3D model, how many are new after the earlier models
+--     minValue = 150,           only parts worth at least this much (default 150: the cheap bits stay with their category icons)
 --     limit = 20,               stop after this many parts (a trial)
 --     only = { 'covet_exhaust_sport' },   just these parts
 --     force = true,             shoot again parts whose raw pair or PNG exists
@@ -69,7 +70,7 @@ local function partsOf(model, ctx)
       local slot = part and (type(part.slotType) == 'table' and part.slotType[1] or part.slotType)
       local _, sub = catalog.classify(slot or '', name, nil)
       local shared = type(file) == 'string' and file:find('^/vehicles/common/') ~= nil
-      if (tonumber(info.value) or 0) >= 20 and type(slot) == 'string' and slot ~= 'main' and not SKIP_SUBS[sub] and not shared then
+      if (tonumber(info.value) or 0) >= (tonumber(rawget(_G, "PART_SHOTS") and PART_SHOTS.minValue) or 150) and type(slot) == 'string' and slot ~= 'main' and not SKIP_SUBS[sub] and not shared then
         local rows = shapes.rowsOfPart(name)
         list[#list + 1] = { part = name, name = info.name or desc.description or name, slot = slot, rows = rows }
       end
