@@ -9,6 +9,7 @@ What is new since 1.6.0, for players.
 - **Anti-aliasing choices** (in the game's own Options > Graphics page, "Game's own" by default, live, with a note under each): Off, FXAA, FXAA HQ, SMAA High, SMAA Ultra (own shader copies, colour edges, optional depth predication) and SMAA Ultra + Temporal smoothing (a blend with the previous frame through the game's motion vectors; calms shimmer, adds no detail). Switching back to "Game's own" restores the game's state exactly.
 - **Sharpening** (off by default): AMD CAS, AMD FSR 1 RCAS or NVIDIA NIS sharpen, with a strength slider.
 - **Temporal smoothing** now backs off on foliage, fences and wires (depth steps around the pixel, history from another surface, colour clamp) and there is an optional edge smoothing pass (the game's own, off by default).
+- **Specular shimmer reduction** slider (off by default) for sparkle on car paint and wet roads.
 - **Presets:** Balanced, Smooth, Maximum. The settings also list what a mod cannot do (DLSS, DLAA, FSR 2/3/4, TAA, real supersampling) and why.
 
 ### Garage

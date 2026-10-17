@@ -45,9 +45,9 @@ M.PRESETS = {
   { id = 'custom', label = 'Custom', note = 'Your own mix of the settings below.' },
   { id = 'balanced', label = 'Balanced', values = { mode = 'smaaUltra', predication = true, edgeAA = false, sharpener = 'cas', strength = 0.4 },
     note = 'SMAA Ultra with depth predication and gentle AMD CAS sharpening. Clean edges, cheap.' },
-  { id = 'smooth', label = 'Smooth', values = { mode = 'smaaUltraTemporal', predication = true, temporal = 0.7, edgeAA = false, sharpener = 'cas', strength = 0.6 },
+  { id = 'smooth', label = 'Smooth', values = { mode = 'smaaUltraTemporal', predication = true, temporal = 0.7, edgeAA = false, spec = 0.5, sharpener = 'cas', strength = 0.6 },
     note = 'SMAA Ultra plus Temporal smoothing and firmer CAS: the calmest picture while driving.' },
-  { id = 'max', label = 'Maximum', values = { mode = 'smaaUltraTemporal', predication = true, temporal = 0.85, edgeAA = true, sharpener = 'nis', strength = 0.5 },
+  { id = 'max', label = 'Maximum', values = { mode = 'smaaUltraTemporal', predication = true, temporal = 0.85, edgeAA = true, spec = 0.7, sharpener = 'nis', strength = 0.5 },
     note = 'The strongest smoothing and NVIDIA NIS sharpening. For real supersampling add NVIDIA DSR / AMD VSR in the driver and pick the bigger resolution in the game.' },
 }
 
@@ -101,7 +101,7 @@ function M.plan(opts)
   return {
     mode = mode.id, base = p.base, hq = p.hq == true, ultra = p.ultra == true,
     predication = p.ultra == true and opts.predication ~= false,
-    edgeAA = opts.edgeAA == true,
+    edgeAA = opts.edgeAA == true, spec = clamp01(tonumber(opts.spec) or 0),
     temporal = p.temporal == true, temporalWeight = 0.6 + 0.35 * amount,      -- weight of last frame's picture: 0.60 .. 0.95
     sharpener = sharpener, strength = strength,
   }
@@ -142,8 +142,8 @@ local SHARP = {
 }
 local TSM, TSM_COPY, TSM_HIST = 'SLRR_TSM_PostEffect', 'SLRR_TSMCopy_PostEffect', '#slrrTsmHist'
 
--- temporal smoothing: how hard thin geometry (foliage, wires) cuts the history, and the width of the colour clamp (try in game: require('slrr/graphics').tune{guard=0.8, gamma=1})
-local tune = { guard = 0.8, gamma = 1.0 }
+-- temporal smoothing: how hard thin geometry (foliage, wires) cuts the history, and the width of the colour clamp (try in game: require('slrr/graphics').tune{guard=0.8, gamma=1}; tune{debug=1} shows the specular mask)
+local tune = { guard = 0.8, gamma = 1.0, debug = 0 }       -- debug: 0 off; 1 the specular risk mask, 2 normal spread, 3 glossiness, 4 sparkle (grey pictures)
 local state = { opts = nil, plan = nil, owned = false, strength = M.DEFAULT_STRENGTH, tsmWeight = 0.85, tsmWait = nil, error = nil }
 
 local function find(name) return scenetree and scenetree.findObject(name) or nil end
@@ -342,9 +342,10 @@ local function ensureTsm()
     block:setField('samplerStates', 1, 'SamplerClampLinear')
     block:setField('samplerStates', 2, 'SamplerClampPoint')
     block:setField('samplerStates', 3, 'SamplerClampPoint')
+    block:setField('samplerStates', 4, 'SamplerClampPoint')
     block:registerObject('SLRR_TSM_StateBlock')
   end
-  makeShaderData('SLRR_TSM_ShaderData', 'slrr_tsmV.hlsl', 'slrr_tsmP.hlsl', { '$curTex', '$histTex', '$velTex', '$depthTex' })
+  makeShaderData('SLRR_TSM_ShaderData', 'slrr_tsmV.hlsl', 'slrr_tsmP.hlsl', { '$curTex', '$histTex', '$velTex', '$depthTex', '$rt0Tex' })
   makeShaderData('SLRR_TSMCopy_ShaderData', 'slrr_tsmV.hlsl', 'slrr_tsmCopyP.hlsl', { '$curTex', '$depthTex' })
   if not find(TSM) then
     local e = createObject('PostEffect')
@@ -358,6 +359,7 @@ local function ensureTsm()
     e:setField('texture', 1, TSM_HIST)
     e:setField('texture', 2, '#VelocityBuffer')
     e:setField('texture', 3, '#prepass[Depth]')
+    e:setField('texture', 4, '#prepass[RT0]')
     e:setField('target', 0, '$backBuffer')
     e:registerObject(TSM)
   end
@@ -382,23 +384,32 @@ local function tsmConsts()
   if not e then return end
   local size = e:getRenderTargetSize()
   if not (size and size.x > 0 and size.y > 0) then return end
-  e:setShaderConst('$tsmParams', string.format('%f %f %f 0', state.tsmWeight, tune.guard, tune.gamma))
-  e:setShaderConst('$tsmSize', string.format('%f %f 0 0', size.x, size.y))
+  e:setShaderConst('$tsmParams', string.format('%f %f %f %f', state.tsmWeight, tune.guard, tune.gamma, state.spec or 0))
+  e:setShaderConst('$tsmSize', string.format('%f %f %f 0', size.x, size.y, tune.debug))
 end
 rawset(_G, TSM .. 'Callbacks', { preProcess = tsmConsts, onEnabled = function() tsmConsts() return true end })
 
 local function applyTemporal(plan)
-  state.tsmWeight = plan.temporalWeight
-  if not plan.temporal then
+  state.spec = plan.spec
+  -- the smoothing effect also carries the specular shimmer reduction: with the temporal mode off it runs with no history (weight 0)
+  local wantTsm = plan.temporal or plan.spec > 0 or tune.debug > 0
+  state.tsmWeight = plan.temporal and plan.temporalWeight or 0
+  if not wantTsm then
     state.tsmWait = nil
     if isEnabled(TSM) then find(TSM):disable() log('I', 'slrr_graphics', 'temporal smoothing off') end
     if isEnabled(TSM_COPY) then find(TSM_COPY):disable() end
     return
   end
   ensureTsm()
-  if not isEnabled(TSM_COPY) then find(TSM_COPY):enable() end
-  if not isEnabled(TSM) and not state.tsmWait then
-    state.tsmWait = 3          -- a few frames for the history to fill before the smoothing reads it
+  if plan.temporal then
+    if not isEnabled(TSM_COPY) then find(TSM_COPY):enable() end
+    if not isEnabled(TSM) and not state.tsmWait then
+      state.tsmWait = 3          -- a few frames for the history to fill before the smoothing reads it
+    end
+  else
+    state.tsmWait = nil
+    if isEnabled(TSM_COPY) then find(TSM_COPY):disable() end
+    if not isEnabled(TSM) then find(TSM):enable() log('I', 'slrr_graphics', 'specular shimmer reduction on (no history)') end
   end
   tsmConsts()
 end
@@ -429,6 +440,7 @@ end
 -- for trying values in game: M.tune({ guard = 0..1, gamma = 0.5..2 }) returns what is set
 function M.tune(t)
   for k, v in pairs(t or {}) do if tune[k] ~= nil and tonumber(v) then tune[k] = tonumber(v) end end
+  if state.opts then M.apply() end
   tsmConsts()
   return tune
 end
@@ -473,7 +485,7 @@ function M.tick(dt)
     state.tsmWait = state.tsmWait - 1
     if state.tsmWait <= 0 then
       state.tsmWait = nil
-      if state.plan and state.plan.temporal and find(TSM) then find(TSM):enable() log('I', 'slrr_graphics', 'temporal smoothing on') end
+      if state.plan and (state.plan.temporal or state.plan.spec > 0) and find(TSM) then find(TSM):enable() log('I', 'slrr_graphics', 'temporal smoothing on') end
     end
   end
   timer = timer + (dt or 0)
@@ -489,9 +501,9 @@ end
 -- with one more group in the Graphics category, written into the user folder by installOptions; the game's own copy is never changed.
 
 M.KEYS = { preset = 'slrrGfxPreset', mode = 'slrrGfxMode', predication = 'slrrGfxPredication', temporal = 'slrrGfxTemporal',
-           edgeAA = 'slrrGfxEdgeAA', sharpener = 'slrrGfxSharpener', strength = 'slrrGfxStrength' }
-M.DEFAULTS = { preset = 'custom', mode = 'game', predication = true, temporal = M.DEFAULT_TEMPORAL, edgeAA = false, sharpener = 'off', strength = M.DEFAULT_STRENGTH }
-local OPTION_NAMES = { 'preset', 'mode', 'predication', 'temporal', 'edgeAA', 'sharpener', 'strength' }
+           edgeAA = 'slrrGfxEdgeAA', spec = 'slrrGfxSpec', sharpener = 'slrrGfxSharpener', strength = 'slrrGfxStrength' }
+M.DEFAULTS = { preset = 'custom', mode = 'game', predication = true, temporal = M.DEFAULT_TEMPORAL, edgeAA = false, spec = 0, sharpener = 'off', strength = M.DEFAULT_STRENGTH }
+local OPTION_NAMES = { 'preset', 'mode', 'predication', 'temporal', 'edgeAA', 'spec', 'sharpener', 'strength' }
 
 -- the options from a getter (key, default) -> value, e.g. settings.getValue
 function M.readOptions(get)
@@ -558,7 +570,7 @@ end
 function M.optionsGroup()
   local k = M.KEYS
   return common({
-    interactive = false, itemType = 'group', component = 'OptionsGroup', layout = 'column', firstAsTitle = true, separateLabel = nil,
+    interactive = false, itemType = 'group', component = 'OptionsGroup', layout = 'column', firstAsTitle = true, separateLabel = nil, _slrr = 'group-v2',
     items = {
       common({ label = 'Wrench Works: anti-aliasing and sharpening', interactive = false, itemType = 'heading', component = 'OptionsHeading', icon = '_empty', variant = 'h4', search = { 'label' }, separateLabel = nil }),
       choiceItem('Preset', k.preset, M.PRESETS, 'Picks the settings below in one go. Changing any of them afterwards makes it Custom.'),
@@ -566,6 +578,7 @@ function M.optionsGroup()
       checkItem('Depth predication (SMAA Ultra)', k.predication, 'Lets SMAA Ultra use the depth: edges of objects are caught at full sensitivity and fine texture detail is not mistaken for edges.'),
       sliderItem('Temporal smoothing amount', k.temporal, 'For the Temporal smoothing mode: how much of the previous frame is kept. More calms shimmer more but can soften the picture while moving.'),
       checkItem('Edge smoothing pass (game\'s own)', k.edgeAA, 'The game\'s own depth and normal edge blur (a cheap extra pass that smooths creases and silhouettes SMAA sees little of). Off by default in the game; a little soft.'),
+      sliderItem('Specular shimmer reduction', k.spec, 'Calms bright sparkle on glossy, bumpy surfaces (car paint, rain-wet roads): the sparkle pixel is held to what it was last frame and blended towards its neighbours on the same surface. 0 is off; too much dulls real highlights. Works with Temporal smoothing best, and alone as a light blur.'),
       choiceItem('Sharpening', k.sharpener, M.SHARPENERS, 'Brings back the detail anti-aliasing softens. Runs after the anti-aliasing.'),
       sliderItem('Sharpening strength', k.strength, 'How much sharpening. 0.4 is gentle; above 0.7 thin lines start to look etched. 0 is the same as off.'),
       common({ label = '', caption = M.unavailableText(), interactive = false, itemType = 'text', component = 'OptionsText', variant = '', innerCaption = true,
@@ -626,9 +639,49 @@ end
 M.encodeJson = encodeJson
 
 -- The group put into the game's layout text right after the anti-aliasing type item, the rest of the text untouched (byte for byte). nil + reason if it cannot.
+-- where the object that opens at text[open] ends (strings skipped); nil if the text runs out
+local function objectEnd(text, open)
+  local depth, pos = 0, open
+  while true do
+    local i = text:find('["{}]', pos)
+    if not i then return nil end
+    local c = text:sub(i, i)
+    if c == '"' then
+      local j = i + 1
+      while true do
+        j = text:find('["\\]', j)
+        if not j then return nil end
+        if text:sub(j, j) == '\\' then j = j + 2 else break end
+      end
+      pos = j + 1
+    elseif c == '{' then
+      depth = depth + 1
+      pos = i + 1
+    else
+      depth = depth - 1
+      if depth == 0 then return i end
+      pos = i + 1
+    end
+  end
+end
+
+-- the text without any earlier copy of our group (this version's marker, or the first version's start)
+local function stripGroup(text)
+  for _, start in ipairs({ ',{"_slrr":"group-v2"', ',{"basic_interaction":false,"component":"OptionsGroup"' }) do
+    local at = text:find(start, 1, true)
+    if at then
+      local close = objectEnd(text, at + 1)
+      if not close then return nil end
+      return text:sub(1, at - 1) .. text:sub(close + 1)
+    end
+  end
+  return text
+end
+
 function M.patchLayoutText(text)
   if type(text) ~= 'string' then return nil, 'no layout' end
-  if text:find('"slrr":true', 1, true) then return nil, 'that layout already has our group' end
+  text = stripGroup(text)
+  if not text then return nil, 'unbalanced layout' end
   local anchor = text:find('"setting"%s*:%s*"GraphicAntialiasType"')
   if not anchor then return nil, 'the Graphics page has no anti-aliasing type to put the group after' end
   -- walk the text (strings skipped) to find the object that holds the anchor and where it ends

@@ -37,7 +37,7 @@ check('sharpening is independent of the mode', G.plan({ mode = 'game', sharpener
 for _, list in ipairs({ G.MODES, G.SHARPENERS, G.PRESETS }) do
   for _, o in ipairs(list) do check('note for ' .. o.id, type(o.note) == 'string' and #o.note > 10 and type(o.label) == 'string') end
 end
-local known = { mode = true, predication = true, temporal = true, edgeAA = true, sharpener = true, strength = true }
+local known = { mode = true, predication = true, temporal = true, edgeAA = true, spec = true, sharpener = true, strength = true }
 for _, pr in ipairs(G.PRESETS) do
   for k, v in pairs(pr.values or {}) do check('preset key ' .. k, known[k]) end
   if pr.values then
@@ -60,6 +60,8 @@ local store = {}
 local function get(key, default) local v = store[key]; if v == nil then return default end return v end
 local o = G.readOptions(get)
 check('defaults from empty settings', o.preset == 'custom' and o.mode == 'game' and o.predication == true and o.temporal == 0.7 and o.edgeAA == false and o.sharpener == 'off' and o.strength == 0.4)
+check('specular default off, clamped', o.spec == 0 and G.plan({ spec = 0.5 }).spec == 0.5 and G.plan({ spec = 9 }).spec == 1 and G.plan({}).spec == 0)
+check('presets: smooth 0.5, max 0.7, balanced 0', G.presetValues('smooth').spec == 0.5 and G.presetValues('max').spec == 0.7 and (G.presetValues('balanced').spec or 0) == 0)
 check('edge aa in the plan', G.plan({ edgeAA = true }).edgeAA == true and G.plan({}).edgeAA == false)
 store[G.KEYS.mode] = 'smaaUltra'; store[G.KEYS.sharpener] = 'cas'; store[G.KEYS.predication] = false
 o = G.readOptions(get)
@@ -122,7 +124,17 @@ if (lauxlib.luaL_dostring(L, to_luastring(test)) !== lua.LUA_OK) { console.error
     lua.lua_getglobal(L2, to_luastring('OUT'));
     const out = Buffer.from(lua.lua_tostring(L2, -1)).toString('utf8');
     lua.lua_getglobal(L2, to_luastring('AGAIN'));
-    if (!lua.lua_isnil(L2, -1)) { console.error(name + ': patching twice should be refused'); process.exit(1); }
+    const again = Buffer.from(lua.lua_tostring(L2, -1)).toString('utf8');
+    if (again !== out) { console.error(name + ': patching twice should give the same text'); process.exit(1); }
+    {   // the first version of our group (no marker) is replaced, not doubled
+      const L3 = lauxlib.luaL_newstate();
+      lualib.luaL_openlibs(L3);
+      lua.lua_pushstring(L3, to_luastring(out.replace('{"_slrr":"group-v2",', '{')));
+      lua.lua_setglobal(L3, to_luastring('LAYOUT_TEXT'));
+      if (lauxlib.luaL_dostring(L3, to_luastring(code)) !== lua.LUA_OK) { console.error(name + ' (old copy): ' + to_jsstring(lua.lua_tostring(L3, -1))); process.exit(1); }
+      lua.lua_getglobal(L3, to_luastring('OUT'));
+      if (Buffer.from(lua.lua_tostring(L3, -1)).toString('utf8') !== out) { console.error(name + ': an old copy of our group was not replaced cleanly'); process.exit(1); }
+    }
     const parsed = JSON.parse(out);
     const graphics = parsed.items.find(i => i.categoryId === 'graphics' || i.label === 'ui.options.graphics');
     const idx = graphics.items.findIndex(i => i.setting === 'GraphicAntialiasType');
