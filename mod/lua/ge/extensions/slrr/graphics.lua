@@ -598,6 +598,70 @@ function M.patchLayout(layout)
   return nil, 'the Graphics page has no anti-aliasing type to put the group after'
 end
 
+-- our group as JSON text (written by hand: the game's encoder cannot tell an empty list from an empty object, and the layout is full of empty lists)
+local function encodeJson(v)
+  local t = type(v)
+  if t == 'string' then
+    local escaped = v:gsub('[%c"\\]', function(c)
+      if c == '"' then return '\\"' elseif c == '\\' then return '\\\\' elseif c == '\n' then return '\\n' end
+      return string.format('\\u%04x', c:byte())
+    end)
+    return '"' .. escaped .. '"'
+  elseif t == 'number' or t == 'boolean' then return tostring(v)
+  elseif t == 'table' then
+    if next(v) == nil or v[1] ~= nil then
+      local out = {}
+      for i = 1, #v do out[i] = encodeJson(v[i]) end
+      return '[' .. table.concat(out, ',') .. ']'
+    end
+    local keys = {}
+    for k in pairs(v) do keys[#keys + 1] = k end
+    table.sort(keys)
+    local out = {}
+    for _, k in ipairs(keys) do out[#out + 1] = encodeJson(k) .. ':' .. encodeJson(v[k]) end
+    return '{' .. table.concat(out, ',') .. '}'
+  end
+  return 'null'
+end
+M.encodeJson = encodeJson
+
+-- The group put into the game's layout text right after the anti-aliasing type item, the rest of the text untouched (byte for byte). nil + reason if it cannot.
+function M.patchLayoutText(text)
+  if type(text) ~= 'string' then return nil, 'no layout' end
+  if text:find('"slrr":true', 1, true) then return nil, 'that layout already has our group' end
+  local anchor = text:find('"setting"%s*:%s*"GraphicAntialiasType"')
+  if not anchor then return nil, 'the Graphics page has no anti-aliasing type to put the group after' end
+  -- walk the text (strings skipped) to find the object that holds the anchor and where it ends
+  local pos, stack, itemStart, depthAtItem = 1, {}, nil, nil
+  while true do
+    local i = text:find('["{}]', pos)
+    if not i then return nil, 'unbalanced layout' end
+    local c = text:sub(i, i)
+    if c == '"' then
+      local j = i + 1
+      while true do
+        j = text:find('["\\]', j)
+        if not j then return nil, 'unbalanced layout' end
+        if text:sub(j, j) == '\\' then j = j + 2 else break end
+      end
+      pos = j + 1
+    elseif c == '{' then
+      stack[#stack + 1] = i
+      pos = i + 1
+    else
+      local opened = table.remove(stack)
+      if itemStart and #stack < depthAtItem then
+        return text:sub(1, i) .. ',' .. encodeJson(M.optionsGroup()) .. text:sub(i + 1)
+      end
+      pos = i + 1
+    end
+    if not itemStart and pos > anchor then
+      itemStart = stack[#stack]
+      depthAtItem = #stack
+    end
+  end
+end
+
 local LAYOUT_DIR = '/ui/ui-vue/src/modules/options/runtime/'
 
 local function readText(path)
@@ -610,21 +674,47 @@ end
 
 -- Writes the patched layout into the user folder when it is not there yet or the game's own layout changed (a game update); the game's copy is read from
 -- the game folder because the user folder's copy hides it. Takes effect when the game's UI loads the options page (restart the game the first time).
+local function slash(p) return (string.gsub(p or '', '\\', '/')) end
+local function inUserFolder(real)
+  local user = slash(FS:getUserPath())
+  return user ~= '' and string.sub(slash(real), 1, #user) == user
+end
+
+-- the game's own layout text, from wherever it is: its real file (when that is not our copy in the user folder), the game folder, or the game's virtual file
+-- system (which shows our copy once installed; that one is refused, see patchLayoutText)
+local function gameLayoutText()
+  local vpath = LAYOUT_DIR .. 'layout.json'
+  local real = slash(FS:getFileRealPath(vpath))
+  local tried = { 'real=' .. real, 'game=' .. slash(FS:getGamePath()) }
+  local candidates = {}
+  if real ~= '' and not inUserFolder(real) then candidates[#candidates + 1] = real end
+  candidates[#candidates + 1] = slash(FS:getGamePath()) .. vpath
+  for _, path in ipairs(candidates) do
+    local text = readText(path)
+    if text and #text > 1000 then return text, path end
+  end
+  local ok, text = pcall(readFile, vpath)
+  if ok and type(text) == 'string' and #text > 1000 then return text, 'virtual ' .. vpath end
+  return nil, table.concat(tried, ' ')
+end
+
+-- Writes the patched layout into the user folder when it is not there yet or differs (a game update, a newer mod). Takes effect when the game's UI loads the
+-- options page (restart the game the first time).
 function M.installOptions()
   local ok, err = pcall(function()
-    local text = readText(string.gsub(FS:getGamePath(), '\\', '/') .. LAYOUT_DIR .. 'layout.json')
-    if not text then log('W', 'slrr_graphics', 'options page: the game\'s layout file was not found, nothing added') return end
-    local data = jsonDecode(text)
-    local patched, why = M.patchLayout(data)
-    if not patched then log('W', 'slrr_graphics', 'options page: ' .. tostring(why) .. ', nothing added') return end
-    local encoded = jsonEncode(patched)
-    local mine = string.gsub(FS:getFileRealPath(LAYOUT_DIR .. 'layout.json') or '', '\\', '/')
-    local userPath = string.gsub(FS:getUserPath() or '', '\\', '/')
-    local current = (userPath ~= '' and string.sub(mine, 1, #userPath) == userPath) and readText(mine) or nil
-    if current == encoded then return end
+    local text, source = gameLayoutText()
+    if not text then log('W', 'slrr_graphics', 'options page: the game layout file was not found (' .. tostring(source) .. '), nothing added') return end
+    local patched, why = M.patchLayoutText(text)
+    if not patched then
+      log('W', 'slrr_graphics', 'options page: ' .. tostring(why) .. ' (read from ' .. tostring(source) .. '), nothing changed')
+      return
+    end
+    local mine = slash(FS:getFileRealPath(LAYOUT_DIR .. 'layout.json'))
+    local current = inUserFolder(mine) and readText(mine) or nil
+    if current == patched then return end
     extensions.load('ui_options')
-    if ui_options.saveLayout('', encoded) then
-      log('I', 'slrr_graphics', 'options page: anti-aliasing group added to Options > Graphics (restart the game to see it if the page was already open)')
+    if ui_options.saveLayout('', patched) then
+      log('I', 'slrr_graphics', 'options page: anti-aliasing group added to Options > Graphics, layout read from ' .. tostring(source) .. ' (restart the game to see it if the page was already open)')
     end
   end)
   if not ok then log('E', 'slrr_graphics', 'options page install failed: ' .. tostring(err)) end
@@ -646,6 +736,13 @@ function M.ensureDefaults()
 end
 
 local lastPreset
+-- picks a preset by id (balanced, smooth, max, custom), as the options page does
+function M.applyPreset(id)
+  if not (settings and settings.setValue) then return end
+  settings.setValue(M.KEYS.preset, id)
+  return M.onSettingsChanged()
+end
+
 -- the game says some setting changed: a new preset picks its values; any other change of ours makes the preset Custom (or the one it now equals); then the picture follows
 function M.onSettingsChanged()
   if not (settings and settings.getValue) then return end

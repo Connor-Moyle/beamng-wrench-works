@@ -103,3 +103,36 @@ check('the status works with no renderer', G.status().sharpener == 'off' and G.s
 print('graphics test passed')
 `;
 if (lauxlib.luaL_dostring(L, to_luastring(test)) !== lua.LUA_OK) { console.error(to_jsstring(lua.lua_tostring(L, -1))); process.exit(1); }
+
+// The text patch on a layout: the game's own file when it is installed (0.39), else a small one. The result must stay valid JSON with our group right
+// after the anti-aliasing type item and everything else byte for byte the same.
+{
+  const fs = require('fs');
+  const real = 'I:/SteamLibrary/steamapps/common/BeamNG.drive/ui/ui-vue/src/modules/options/runtime/layout.json';
+  const small = JSON.stringify({ items: [{ categoryId: 'graphics', items: [{ setting: 'GraphicAntialias' }, { setting: 'GraphicAntialiasType', options: [], note: 'a "quoted \ } { thing"' }, { setting: 'Other' }] }] });
+  const sources = [['small', small]];
+  if (fs.existsSync(real)) sources.push(['game layout', fs.readFileSync(real, 'utf8')]);
+  for (const [name, text] of sources) {
+    const L2 = lauxlib.luaL_newstate();
+    lualib.luaL_openlibs(L2);
+    lua.lua_pushstring(L2, to_luastring(text));
+    lua.lua_setglobal(L2, to_luastring('LAYOUT_TEXT'));
+    const code = `local G = dofile(${JSON.stringify(file)}); local out, why = G.patchLayoutText(LAYOUT_TEXT); if not out then error(tostring(why), 0) end; OUT = out; AGAIN = G.patchLayoutText(OUT)`;
+    if (lauxlib.luaL_dostring(L2, to_luastring(code)) !== lua.LUA_OK) { console.error(name + ': ' + to_jsstring(lua.lua_tostring(L2, -1))); process.exit(1); }
+    lua.lua_getglobal(L2, to_luastring('OUT'));
+    const out = Buffer.from(lua.lua_tostring(L2, -1)).toString('utf8');
+    lua.lua_getglobal(L2, to_luastring('AGAIN'));
+    if (!lua.lua_isnil(L2, -1)) { console.error(name + ': patching twice should be refused'); process.exit(1); }
+    const parsed = JSON.parse(out);
+    const graphics = parsed.items.find(i => i.categoryId === 'graphics' || i.label === 'ui.options.graphics');
+    const idx = graphics.items.findIndex(i => i.setting === 'GraphicAntialiasType');
+    const group = graphics.items[idx + 1];
+    if (!group || group.itemType !== 'group' || group.items.length < 8) { console.error(name + ': group missing after the anti-aliasing type'); process.exit(1); }
+    if (!group.items.every(i => i.component && i.itemType)) { console.error(name + ': an item without component'); process.exit(1); }
+    const orig = JSON.parse(text);
+    // everything else is the game's: dropping our group gives back the original structure
+    graphics.items.splice(idx + 1, 1);
+    if (JSON.stringify(parsed) !== JSON.stringify(orig)) { console.error(name + ': the rest of the layout changed'); process.exit(1); }
+    console.log('layout patch ok: ' + name);
+  }
+}
