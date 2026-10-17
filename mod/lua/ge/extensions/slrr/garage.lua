@@ -588,7 +588,8 @@ local function driverDoorJob(job)
 end
 
 -- The arrival scene (#36, with the SLRR Drivers mod): the car has parked, the driver's door opens, the driver (the driver chosen for the car) gets out
--- and walks round the car looking it over, the door shuts, then the garage appears. Skippable (the Skip button, or the slrrGarageSkip action).
+-- and walks round the car looking it over, the door shuts. It runs in the background while the garage is already up and usable (B5: it never blocks
+-- input); leaving the garage ends it.
 local SCENE_MAX = 22                -- s: the scene never runs longer than this
 
 -- where the driver walks: out of the door, round the nose and down the far side, across the back, home. Stops at the corners to look.
@@ -641,7 +642,7 @@ local function arrivalScene(job)
   drv.setDisplayMode('hidden', vehId)                  -- he is out of the seat
   local actor = ped.playActor(dir, pts)
   local t = 0
-  while actor and not ped.actorDone(actor) and t < SCENE_MAX and not scene.skip and phase == 'film' and veh() do
+  while actor and not ped.actorDone(actor) and t < SCENE_MAX and not scene.skip and phase ~= 'idle' and phase ~= 'leaving' and phase ~= 'shop' and veh() do
     job.sleep(0.05)
     t = t + 0.05
   end
@@ -759,14 +760,17 @@ local function enterJob(job)
     end
     job.sleep(0.35)
     v:queueLuaCommand('input.event("brake", 0, FILTER_DIRECT)')
-    local okScene, ran = pcall(arrivalScene, job)      -- (a failing scene must never stop the entry: the car rolled into the wall and the screen hung)
-    if not okScene then
-      log('E', 'slrr', 'arrival scene failed: ' .. tostring(ran))
-      scene.on, ran = false, false
-      if slrrDrivers and slrrDrivers.setDisplayMode then pcall(slrrDrivers.setDisplayMode, nil, vehId) end
-      sendState()
-    end
-    if not ran and settings.get('driverDoor') then core_jobsystem.create(driverDoorJob) end
+    -- the scene is eye candy in the background: the garage below is up the moment the car has stopped (a failing scene must never stop the entry)
+    core_jobsystem.create(function(sceneJob)
+      local okScene, ran = pcall(arrivalScene, sceneJob)
+      if not okScene then
+        log('E', 'slrr', 'arrival scene failed: ' .. tostring(ran))
+        scene.on, ran = false, false
+        if slrrDrivers and slrrDrivers.setDisplayMode then pcall(slrrDrivers.setDisplayMode, nil, vehId) end
+        sendState()
+      end
+      if not ran and settings.get('driverDoor') then core_jobsystem.create(driverDoorJob) end
+    end)
   else
     placeCarAt(sites.point(site, 0, 0, 0.05), route.parkDir)
     job.sleep(0.35)
