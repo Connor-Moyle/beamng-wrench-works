@@ -177,4 +177,9 @@ assert.ok($scope.paint.cur.roughness > 0.8 && $scope.paint.cur.clearcoat === 0, 
 luaCalls.length = 0;
 $scope.sprayAll();
 assert.deepStrictEqual(luaCalls.map((c) => c.slice(0, 26)), ['slrr_garage.setPaint(1,{"b', 'slrr_garage.setPaint(2,{"b', 'slrr_garage.setPaint(3,{"b'], 'all three colours are sprayed');
+// #32: the garage bar has Photo, Showcase and the game's photo mode
+luaCalls.length = 0;
+['Photo', 'Showcase', 'Photo mode'].forEach((t) => { const b = $scope.bar.find((x) => x.title === t); assert.ok(b, t + ' on the bar'); b.act(); });
+assert.deepStrictEqual(luaCalls, ['slrr_garage.photo()', 'slrr_garage.toggleShowcase()', 'slrr_garage.photoMode()']);
+
 console.log('ui self-check passed');
