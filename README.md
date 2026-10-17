@@ -156,7 +156,7 @@ Our group is made by writing a copy of the game's options layout into your BeamN
 
 Credits and licences (all MIT, kept in the shader headers): AMD FidelityFX CAS and FSR 1 RCAS (Copyright 2019-2021 Advanced Micro Devices, Inc.), NVIDIA Image Scaling NVSharpen (Copyright 2022 NVIDIA Corporation & Affiliates), SMAA (Jimenez et al., from the game's own copy), NVIDIA FXAA 3.11 (Timothy Lottes, from the game's own copy).
 
-Frame cost: SMAA Ultra runs the same three passes as the game's SMAA with a longer search in two of them (plus a depth read with predication); Temporal smoothing is two more full-screen passes and a history texture; CAS and RCAS are one pass, NIS one pass with 25 reads. The exact cost depends on your card and resolution: switch them on and watch the frame time (the game's own frame-time display).
+Frame cost: SMAA Ultra runs the same three passes as the game's SMAA with a longer search in two of them (plus a depth read with predication); Temporal smoothing is two more full-screen passes and a history texture; CAS and RCAS are one pass, NIS one pass with 25 reads. Measured once on one machine (Windows, parked car, orbit camera, 18 s per mode, about 0.5 ms of noise): game's own 15.0 ms per frame, Off 14.9, FXAA 15.7, FXAA HQ 14.7, SMAA Ultra 14.5, SMAA Ultra + Temporal 14.9 (14.8 with shimmer reduction at 0.7), and CAS, RCAS or NIS on top of SMAA Ultra 14.7 to 14.8. All of that is within noise of Off; plain SMAA High read 17.1 ms in that run, with a few long hitches that looked like first-use shader compilation. Your card and resolution will differ: switch them on and watch the frame time (the game's own frame-time display).
 
 ## Good to know
 
