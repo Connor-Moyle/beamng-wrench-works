@@ -43,7 +43,6 @@ M.TEXT = {
   ['tab.races'] = 'Races',
   ['tab.services'] = 'Services',
   ['p.0_on_the_shelf'] = ' 0">On the shelf ',
-  ['p.0px_1_px'] = '0px {1}px',
   ['p.a_damaged_part_to_repair'] = 'a damaged part to repair it',
   ['p.a_pale_glow'] = 'a pale glow',
   ['p.a_part_on_the_car'] = 'a part, on the car or the shelf, to sell it',
