@@ -644,10 +644,22 @@ function M.removePart(partPath)
   local d = M.describe(partPath)
   if not d then return nil, "Nothing there." end
   if not d.removable then return nil, d.reason end
+  -- no car attached: inventory() is then a throwaway table and the part would vanish from the car without reaching the shelf (B63)
+  if not model then
+    log('W', 'slrrGarageParts', 'removePart: no car is attached, nothing taken off')
+    return nil, "Not now."
+  end
   local node = partIndex[partPath]
   local item = newItem(node, d.slot)
   item.damage = damage.takePart(node.path)
-  table.insert(inventory(), item)
+  local shelf = inventory()
+  local before = #shelf
+  table.insert(shelf, item)
+  if #shelf ~= before + 1 or shelf[#shelf] ~= item then      -- (cannot happen: if it ever does, the part stays on the car)
+    log('E', 'slrrGarageParts', 'removePart: the part did not reach the shelf, left on the car')
+    damage.addPart(item.damage)
+    return nil, "The shelf would not take it."
+  end
   node.chosenPartName = ''
   node.partPath = nil
   node.children = nil
@@ -711,6 +723,7 @@ function M.installItem(itemId)
     local d = M.describe(slot.partPath)
     if slot.partPath == chassisPath then return false, "The chassis cannot be swapped here." end
     -- swap: the old part goes to the shelf
+    if not model then return false, "Not now." end            -- (no car attached: the old part would be lost)
     local old = newItem(slot, d and d.slot)
     old.damage = damage.takePart(slot.path)
     table.insert(inventory(), old)
