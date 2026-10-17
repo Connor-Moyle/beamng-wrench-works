@@ -838,7 +838,7 @@ var TEMPLATE = [
         var r = rects[i], x1 = Math.round(r.left - box.left), y1 = Math.round(r.top - box.top), x2 = Math.round(r.right - box.left), y2 = Math.round(r.bottom - box.top);
         pts.push(x1 + 'px ' + y1 + 'px', x2 + 'px ' + y1 + 'px', x2 + 'px ' + y2 + 'px', x1 + 'px ' + y2 + 'px', x1 + 'px ' + y1 + 'px', '0px 0px');
       }
-      value = $scope.t('p.polygon_evenodd_1', 'polygon(evenodd, {1})', pts.join(', '));
+      value = 'polygon(evenodd, ' + pts.join(', ') + ')';      // (CSS, not text: never through the strings table)
     }
     if (container.__punch !== value) {
       container.__punch = value;

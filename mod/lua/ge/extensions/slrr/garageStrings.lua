@@ -132,7 +132,6 @@ M.TEXT = {
   ['p.pearl'] = 'Pearl',
   ['p.pick_a_chapter_on_the'] = 'Pick a chapter on the left.',
   ['p.pin_this_run_as_the'] = 'Pin this run as the "before"',
-  ['p.polygon_evenodd_1'] = 'polygon(evenodd, {1})',
   ['p.prev'] = ' Prev',
   ['p.ready_to_be_fitted_with'] = 'ready to be fitted with one click.',
   ['p.red'] = 'Red',
