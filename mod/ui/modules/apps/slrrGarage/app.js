@@ -444,6 +444,7 @@ angular.module('beamng.apps')
     '        <div class="sg-badges" ng-if="slot">',
     '          <span class="sg-badge sg-new" ng-if="slot.new">NEW</span>',
     '          <span class="sg-badge sg-used" ng-if="slot.used">USED<span ng-if="slot.wear != null"> &middot; {{slot.wear}}% WORN</span></span>',
+    '          <span class="sg-badge" ng-if="slot.swap" title="{{slot.swapText}}">SWAP &middot; {{slot.swap}} LABOUR</span>',
     '          <span class="sg-badge sg-dmg" ng-if="slot.damaged">DAMAGED</span>',
     '          <span class="sg-badge sg-more" ng-if="slot.count > 1" ng-click="showContents(slot, $event)">+{{slot.count - 1}} parts &#9662;</span>',
     '        </div>',

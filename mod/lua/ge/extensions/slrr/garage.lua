@@ -168,6 +168,11 @@ end
 ----------------------------------------------------------------------------------------------
 -- UI
 
+local function swapOf(item)
+  local ok, q = pcall(parts.engineSwapQuote, item)
+  return ok and q or {}
+end
+
 local function inventoryForUi()
   local list = {}
   for _, item in ipairs(parts.getInventory()) do
@@ -177,6 +182,7 @@ local function inventoryForUi()
       damaged = parts.itemDamaged(item), repairCost = parts.itemRepairCost(item), sellValue = parts.sellValue(item),
       contents = (item.count or 1) > 1 and parts.itemContents(item) or nil,
       wear = item.wear and math.floor(item.wear * 100 + 0.5) or nil,     -- (market parts: worn this much, in %)
+      swap = swapOf(item).short, swapText = swapOf(item).text,      -- (an engine for the engine slot, in a career: the labour)
     }
   end
   return list

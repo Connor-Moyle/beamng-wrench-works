@@ -708,9 +708,32 @@ local function rebase(node, newPath)
   end
 end
 
+-- Engine swaps in a career (Street Legal's sl/core/engineswap, when it is there): the labour, and a quote shown on the shelf item. An engine of the
+-- car's own model only: stock engine slot types are per model.
+local function engineRules() local ok, r = pcall(require, 'sl/core/engineswap') return ok and r or nil end
+local function isEngineSlotId(id) return tostring(id or ''):match('engine$') ~= nil end
+
+function M.engineSwapQuote(item)
+  local es = provider and engineRules()
+  if not es or not item or not isEngineSlotId(item.slotId) then return nil end
+  local slot = findTargetSlot(item)
+  local oldName = slot and isChosen(slot) and partInfo(slot.chosenPartName).name or nil
+  local carried = {}
+  for id, child in pairs(item.tree and item.tree.children or {}) do if isChosen(child) then carried[id] = true end end
+  local needs = {}
+  for slotId, def in pairs(partInfo(item.part).slots) do
+    if (def.coreSlot or slotId:find('transmission', 1, true) or slotId:find('ecu', 1, true)) and not carried[slotId] then needs[#needs + 1] = prettify(slotId) end
+  end
+  local q = es.quote({ name = item.name, value = item.value, oldName = oldName, needs = needs })
+  q.short = '$' .. q.labour
+  q.text = q.text .. '. ' .. es.NO_CROSS_MODEL
+  return q
+end
+
 -- Bolt a shelf item onto the car. Returns ok, message, needsLoad
 --   needsLoad: the game has not got these meshes in memory, the caller must respawn.
 function M.installItem(itemId)
+  local labourPaid
   local item, idx = findItem(itemId)
   if not item then return false, "That part is gone." end
   if item.foreign and not foreign then return false, "That part belongs to the customer's car." end   -- (back onto a job car: fine)
@@ -722,6 +745,12 @@ function M.installItem(itemId)
   if isChosen(slot) then
     local d = M.describe(slot.partPath)
     if slot.partPath == chassisPath then return false, "The chassis cannot be swapped here." end
+    local es = provider and isEngineSlotId(slot.id) and engineRules()
+    if es then
+      local labour = es.labour(item.value)
+      if not spend(labour, 'Engine swap labour') then return false, string.format('The engine swap is $%d labour.', labour) end
+      labourPaid = labour
+    end
     -- swap: the old part goes to the shelf
     if not model then return false, "Not now." end            -- (no car attached: the old part would be lost)
     local old = newItem(slot, d and d.slot)
@@ -739,6 +768,7 @@ function M.installItem(itemId)
   table.remove(inventory(), idx)
   reindex()
   if M.needsLoad() and not deferStandins then loadStandins() end
+  if labourPaid then item.name = item.name .. string.format(' (engine swap labour $%d)', labourPaid) end
   walk(slot, function(node, parent) slotInfo(node, parent or parentOf[node]) end)
   applyVisibility()
   writeSave()
