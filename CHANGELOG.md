@@ -1,8 +1,8 @@
 # Changelog: BeamNG Wrench Works (garage)
 
-## 1.7.0
+## 1.8.0
 
-What is new since 1.6.0, for players.
+What is new since 1.7.0, for players.
 
 ### Graphics
 
@@ -10,6 +10,20 @@ What is new since 1.6.0, for players.
 - **Sharpening** (off by default): AMD CAS, AMD FSR 1 RCAS or NVIDIA NIS sharpen, with a strength slider.
 - **Temporal smoothing** now backs off on foliage, fences and wires (depth steps around the pixel, history from another surface, colour clamp) and there is an optional edge smoothing pass (the game's own, off by default).
 - **Presets:** Balanced, Smooth, Maximum. The settings also list what a mod cannot do (DLSS, DLAA, FSR 2/3/4, TAA, real supersampling) and why.
+
+### Garage and cars
+
+- **Car Surface FX** (optional mod): the car's info shows its **Dirt** and **Scratches** when the mod is installed, and a paint job or a repair in a Street Legal career cleans the paint and buffs the scratches out.
+- The garage screen stays smoother while you work: the part previews are measured every second frame instead of every frame.
+- **Recorded damage** is kept more faithfully on a respawn: only plain beams are re-measured or broken, and the nodes next to special beams, wheels and fixed nodes are left alone.
+
+### Names
+
+- The arrival-scene setting and the README's music example use the player-facing names (Wrench Works: Drivers & Pedestrians, Street Legal Racing Redline).
+
+## 1.7.0
+
+What is new since 1.6.0, for players.
 
 ### Garage
 
