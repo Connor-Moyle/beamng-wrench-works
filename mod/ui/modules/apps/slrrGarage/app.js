@@ -14,6 +14,8 @@ angular.module('beamng.apps')
   var SLOTS_PER_LINE = 5;
   var CATALOG_PER_PAGE = 6;
 
+  // a Lua table that is empty (or keyed) arrives as an object, not an array: lists from the game side go through this
+  function asArray(x) { return Array.isArray(x) ? x : (x && typeof x === 'object' ? Object.keys(x).map(function (k) { return x[k]; }) : []); }
   function svg(body) { return '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">' + body + '</svg>'; }
   var ICONS = {
     // SLRR's garage bar, redrawn as line icons
@@ -957,7 +959,7 @@ var TEMPLATE = [
       $scope.svcTabs = { services: { get title() { return $scope.t('tab.services', 'Services'); } }, races: { get title() { return $scope.t('tab.races', 'Races'); } }, drivers: { get title() { return $scope.t('tab.drivers', 'Drivers'); } } };
       $scope.serviceGroups = function (tab) {
         var groups = [], byName = {};
-        ($scope.s.services || []).forEach(function (sv) {
+        asArray($scope.s.services).forEach(function (sv) {
           if ((sv.tab || 'services') !== (tab || 'services')) return;
           var n = sv.group || $scope.t('p.services', 'Services');
           if (!byName[n]) { byName[n] = { name: n, items: [] }; groups.push(byName[n]); }
@@ -998,7 +1000,7 @@ var TEMPLATE = [
       };
 
       // ---- shelf
-      $scope.lineCount = function () { return Math.max(1, Math.ceil(($scope.s.inventory || []).length / SLOTS_PER_LINE)); };
+      $scope.lineCount = function () { return Math.max(1, Math.ceil(asArray($scope.s.inventory).length / SLOTS_PER_LINE)); };
       $scope.visibleSlots = function () {
         var inv = $scope.s.inventory || [], out = [], start = $scope.line * SLOTS_PER_LINE;
         for (var i = 0; i < SLOTS_PER_LINE; i++) out.push(inv[start + i] || null);

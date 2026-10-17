@@ -249,7 +249,7 @@ local function sendState()
     hints = settings.get('hints'),
     scene = scene.on,
     retro = settings.get('retroCatalog'),
-    services = (phase == 'garage') and servicesList() or {},
+    services = (phase == 'garage') and servicesList() or nil,      -- (never an empty table: it reaches the screen as an object, not a list)
     upgrades = (sl_upgrades ~= nil and parts.inCareer()) or nil,
     canStore = (phase == 'garage' and sl_fleet ~= nil and sl_fleet.carOfVehicle ~= nil and vehId ~= nil and sl_fleet.carOfVehicle(vehId) ~= nil) or nil,
     lifted = parts.getFeatures().lift, crane = parts.getFeatures().crane,
@@ -1077,6 +1077,7 @@ end
 
 -- Drive out. First the job sheet: what was done to the car this visit and what it cost.
 local function leave(confirmed)
+  if phase == 'catalog' then phase = 'garage' sendState() end      -- (Drive out from the catalog closes it first)
   if phase ~= 'garage' then return end
   if settings.get('jobSheet') and confirmed ~= true then
     local sheet = parts.visitSummary()

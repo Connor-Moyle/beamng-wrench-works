@@ -79,6 +79,13 @@ $scope.turn(-1); assert.strictEqual($scope.cur.page, 0); assert.strictEqual(luaC
 $scope.turn(1); assert.strictEqual($scope.cur.page, 1); assert.strictEqual($scope.pageItems().length, 2);
 $scope.turn(1); assert.strictEqual($scope.cur.page, 1); assert.strictEqual(luaCalls.length, 1);
 
+// without a career the game side's empty tables arrive as objects, not lists (the first play without Street Legal: forEach is not a function)
+handlers.slrrGarageState(null, { phase: 'garage', services: {}, inventory: {} });
+assert.deepStrictEqual($scope.serviceGroups('services'), []);
+assert.strictEqual($scope.lineCount(), 1);
+handlers.slrrGarageState(null, { phase: 'garage', services: { a: { id: 'x', label: 'X', tab: 'services' } }, inventory: [] });
+assert.strictEqual($scope.serviceGroups('services').length, 1);
+
 // shelf: parts that were bought and never fitted
 handlers.slrrGarageState(null, { phase: 'garage', mode: 'mechanic', tool: 'sell', inventory: [{ id: 1, new: true }, { id: 2, used: true }, { id: 3 }] });
 assert.strictEqual($scope.boughtCount(), 2);
