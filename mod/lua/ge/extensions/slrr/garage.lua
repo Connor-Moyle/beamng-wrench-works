@@ -1813,6 +1813,8 @@ local function shopClosedText()
   local ok, hours = pcall(require, 'sl/core/hours')
   local tod = core_environment and core_environment.getTimeOfDay and core_environment.getTimeOfDay()
   if not (career and ok and type(tod) == 'table' and tod.time) then return nil end
+  -- the career's night phase shuts the counter (D2) whatever the clock says
+  if sl_career and sl_career.phase and sl_career.phase() == 'night' then return 'Closed. Opens in the morning.' end
   return hours.closedText('shop', tod.time)
 end
 
