@@ -38,12 +38,14 @@
             <div v-for="g in groups" :key="g.name" class="mm-group">
               <h4 v-if="g.name" class="mm-gtitle">{{ g.name }}</h4>
               <template v-for="f in g.fields" :key="f.id">
-                <SettingRow v-if="shown(f)" :mod="mod" :field="f" :vertical="narrow" @reload="openTab(tab, true)" @toast="toast" />
+                <SettingRow v-if="shown(f)" :mod="mod" :field="f" :vertical="narrow" :panel="wide" @reload="openTab(tab, true)" @toast="toast" @info="t => (infoText = t || '')" />
               </template>
             </div>
           </div>
           <div v-if="toastText" class="mm-toast">{{ toastText }}</div>
         </div>
+        <!-- the help of the hovered or focused row, in a panel on the right like the one of Options -->
+        <div v-if="wide" class="mm-info"><span v-if="infoText">{{ infoText }}</span></div>
       </div>
     </template>
     <div v-else class="mm-note">Loading ...</div>
@@ -141,13 +143,15 @@ async function resetTab() {
 // the pause menu gives a mod page a narrow card (about 450 px at 1080p): below 700 px the tab list goes on top and the rows stack (label above its control)
 const root = ref(null)
 const narrow = ref(false)
+const wide = ref(false)
+const infoText = ref("")
 let watcher
 onMounted(() => {
   // opened as a card of the pause menu (a narrow card): open the same page as a screen of its own, like Options (the route host passes `full`). If that fails the card stays as the fallback.
   if (!props.full) openFull("mod", props.mod, props.startTab)
   load()
   if (root.value && window.ResizeObserver) {
-    watcher = new ResizeObserver(() => { narrow.value = root.value.clientWidth < 700 })
+    watcher = new ResizeObserver(() => { narrow.value = root.value.clientWidth < 700; wide.value = root.value.clientWidth >= 1000 })
     watcher.observe(root.value)
   }
 })
@@ -176,6 +180,7 @@ onBeforeUnmount(() => watcher && watcher.disconnect())
 .options-content-main { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden; }
 .options-head { flex: 0 0 auto; padding: 0.75em 0.75em 0.25em; }
 .options-content { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0.25em 0.75em 1em; }
+.mm-info { flex: 0 0 20em; padding: 0.5em; font-size: 1.2em; font-weight: 300; background: color-mix(in srgb, var(--bng-off-black) 80%, transparent); overflow-y: auto; }
 .mm-desc { margin: 0 0 0.5em; color: var(--bng-cool-gray-100, #cfcbd8); }
 // (left-aligned: the career HUD sits over the top right corner)
 .mm-bar { display: flex; flex-wrap: wrap; gap: 1em; align-items: center; }

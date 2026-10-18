@@ -3,7 +3,7 @@
   <h4 v-if="field.type === 'heading'" class="options-item-heading mm-sub">{{ field.label }}</h4>
   <p v-else-if="field.type === 'note'" class="mm-note">{{ field.label }}<template v-if="field.tooltip">: {{ field.tooltip }}</template></p>
   <div v-else class="options-item" :class="{ changed: field.changed }">
-    <BngRow class="options-item-row" :vertical="vertical">
+    <BngRow class="options-item-row" :vertical="vertical" :tooltip="field.tooltip" :tooltip-handler="panel ? showInfo : undefined">
       <template #label>
         <div class="options-item-label">
           <span class="options-item-label-text">{{ field.label }}</span>
@@ -11,7 +11,7 @@
           <span v-if="field.apply && field.apply !== 'live'" class="mm-tag mm-apply">{{ applyText(field.apply) }}</span>
           <span v-if="field.requires === 'career'" class="mm-tag mm-apply">changes only while a career is loaded</span>
         </div>
-        <small v-if="field.tooltip" class="mm-help">{{ field.tooltip }}</small>
+        <small v-if="field.tooltip && !panel" class="mm-help">{{ field.tooltip }}</small>
       </template>
 
       <BngSwitch v-if="field.type === 'bool'" :modelValue="field.value" @valueChanged="onSwitch" />
@@ -72,8 +72,10 @@ import { call } from "./settingsApi.js"
 import { BngSwitch, BngSlider, BngRow, BngButton, BngInput, BngSmartSelect } from "@/common/components/base"
 
 // One setting of a mod: its label, tooltip and the control for its type. The Mods menu pages and the search results both show it.
-const props = defineProps({ mod: String, field: Object, vertical: Boolean })
-const emit = defineEmits(["reload", "toast"])
+// panel: the page has an info panel beside it (like Options): the help shows there while the row is hovered or focused (the mouse and the controller); without one it stays under the title
+const props = defineProps({ mod: String, field: Object, vertical: Boolean, panel: Boolean })
+const emit = defineEmits(["reload", "toast", "info"])
+function showInfo(text) { emit("info", text) }
 const asking = ref(false)
 
 function scale() { return props.field.scale || 1 }
