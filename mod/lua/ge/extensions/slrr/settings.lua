@@ -110,6 +110,35 @@ function M.join(...)
   return out
 end
 
+-- ---- from the settings lists the mods already have ---------------------------------------------------------------------------------------------------------------
+
+-- The settings lists of Wrench Works and Street Legal are definitions { key, title, desc, type = bool | range | number | choice | info, default, min, max, step, unit, options,
+-- group, tab, advanced }. This turns such a list into schema fields, so those mods keep their own data model and the menu is generated from it.
+--   opts.tabOf(def) -> tab id (default: def.tab or def.group), opts.get(key), opts.set(key, value), opts.skip(def) -> true to leave a def out
+-- Returns fields, tabs (in the order they first appear).
+function M.fromDefs(defs, opts)
+  local fields, tabs, seenTab = {}, {}, {}
+  local function tabFor(d)
+    local t = opts.tabOf and opts.tabOf(d) or d.tab or d.group or 'Settings'
+    if not seenTab[t] then seenTab[t] = true tabs[#tabs + 1] = { id = t, title = t } end
+    return t
+  end
+  for _, d in ipairs(defs) do
+    if not (opts.skip and opts.skip(d)) and type(d.key) == 'string' then
+      local f = { id = d.key, tab = tabFor(d), group = d.sub, label = d.title or d.key, tooltip = d.desc, default = d.default, advanced = d.advanced, apply = d.apply }
+      f.store = { kind = 'custom', get = function() return opts.get(d.key) end, set = function(v) return opts.set(d.key, v) end }
+      if d.type == 'bool' then f.type = 'bool'
+      elseif d.type == 'range' or d.type == 'number' then
+        f.type, f.min, f.max, f.step, f.unit = 'slider', d.min, d.max, d.step, d.unit
+      elseif d.type == 'choice' then f.type, f.options = 'enum', d.options
+      elseif d.type == 'info' then f.type, f.store, f.default = 'note', nil, nil
+      end
+      if f.type then fields[#fields + 1] = f end
+    end
+  end
+  return fields, tabs
+end
+
 -- ---- stores ---------------------------------------------------------------------------------------------------------------------------------------------------
 
 local function splitPath(path)
@@ -320,15 +349,37 @@ end
 M.registerMenu = registerMenu
 M.onRegistered = function() registerMenu() end
 
+-- Wrench Works' own settings (its garage settings list: money, delivery, garage, radio, catalog), as the Mods menu's first mod
+local function registerWrenchWorks()
+  local g = rawget(_G, 'slrr_garage')
+  if not (g and g.ownSettingsDefs and g.setSetting) then return false end
+  local defs = g.ownSettingsDefs()
+  -- the driver, pedestrian and injury settings are Pedestrians & Drivers' (they register their own page)
+  local function skip(d) return d.needs == 'drivers' or d.needs == 'appearance' or d.needs == 'pedestrians' or d.needs == 'injury' or d.group == 'Driver look' or d.key == 'driverMode' or d.key == 'injuryMode' end
+  local function tabOf(d) return d.group == 'Radio' and 'Car radio' or d.group end
+  local byKey = {}
+  for _, d in ipairs(defs) do byKey[d.key] = d end
+  local fields, tabs = M.fromDefs(defs, {
+    tabOf = tabOf, skip = skip,
+    get = function(key) local cur = g.ownSettingsDefs() for _, d in ipairs(cur) do if d.key == key then return d.value end end end,
+    set = function(key, value) g.setSetting(key, value) return true end,
+  })
+  if #tabs == 0 then return false end
+  return M.register({ mod = 'wrench_works', title = 'Wrench Works', icon = 'wrench', order = 10, tabs = tabs, fields = fields })
+end
+M.registerWrenchWorks = registerWrenchWorks
+
 -- every extension of ours that wants to register is asked once the registry is there (a mod that loaded earlier is asked again)
 local function askForSchemas()
   if extensions and extensions.hook then extensions.hook('onSlrrSettingsReady') end
 end
 M.onExtensionLoaded = function()
   setExtensionUnloadMode(M, 'manual')
+  registerWrenchWorks()
   askForSchemas()
   registerMenu()
 end
-M.onClientStartMission = function() registerMenu() end
+M.onSlrrSettingsReady = function() registerWrenchWorks() end
+M.onClientStartMission = function() registerWrenchWorks() registerMenu() end
 
 return M

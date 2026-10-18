@@ -88,6 +88,28 @@ check('reset puts the defaults of the tab back, not another tab', S.get('test_mo
 local list = S.each({ 'dirt', 'sand' }, function(id) return { { id = id .. '_w', tab = 'one', type = 'heading', label = id }, { id = id .. '_x', tab = 'one', type = 'heading', label = id .. ' x' } } end)
 check('each expands a list of ids into fields', #list == 4 and list[3].id == 'sand_w' and #S.join(list, list) == 8)
 
+-- a settings list (the shape Wrench Works and Street Legal already have) turns into fields
+do
+  local vals = { a = true, b = 0.5, c = 'x', d = 7 }
+  local sets = {}
+  local defs = {
+    { key = 'a', group = 'Money', title = 'A', type = 'bool', default = false, desc = 'a tip' },
+    { key = 'b', group = 'Money', title = 'B', type = 'range', min = 0, max = 1, step = 0.05, default = 0.25, unit = 'x' },
+    { key = 'c', group = 'Garage', title = 'C', type = 'choice', default = 'x', options = { { id = 'x', label = 'X' } }, advanced = true },
+    { key = 'd', group = 'Garage', title = 'D', type = 'number', min = 0, max = 10, step = 1, default = 3 },
+    { key = 'i', group = 'Graphics', title = 'Info', type = 'info', default = '' },
+    { key = 's', group = 'Skip', title = 'S', type = 'bool', default = true },
+  }
+  local fields, tabs = S.fromDefs(defs, { skip = function(d) return d.key == 's' end, get = function(k) return vals[k] end, set = function(k, v) sets[k] = v vals[k] = v return true end })
+  check('fromDefs: a field per def, a tab per group in order, a skipped def left out', #fields == 5 and #tabs == 3 and tabs[1].id == 'Money' and tabs[3].id == 'Graphics')
+  check('fromDefs: types map (bool, range and number to slider, choice to enum, info to note)', fields[1].type == 'bool' and fields[2].type == 'slider' and fields[3].type == 'enum' and fields[4].type == 'slider' and fields[5].type == 'note')
+  S.register({ mod = 'from_defs', title = 'From defs', tabs = tabs, fields = fields })
+  local pg = S.page('from_defs', 'Money')
+  check('fromDefs: values come from the mod, writes go back to it', pg.fields[1].value == true and pg.fields[2].value == 0.5 and S.set('from_defs', 'b', 0.77).ok and sets.b == 0.75 and S.get('from_defs', 'b') == 0.75)
+  check('fromDefs: advanced and tooltip carry over', S.page('from_defs', 'Garage').fields[1].advanced == true and pg.fields[1].tooltip == 'a tip')
+  S.unregister('from_defs')
+end
+
 -- replace and unregister; the order of mods
 S.register({ mod = 'aaa', title = 'Early', order = 1, tabs = { { id = 't', title = 'T' } }, fields = {} })
 check('mods are sorted by order', S.mods()[1].mod == 'aaa' and S.mods()[2].mod == 'test_mod')
