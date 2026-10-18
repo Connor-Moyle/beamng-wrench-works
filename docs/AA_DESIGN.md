@@ -65,3 +65,36 @@ Findings (game files, 0.39):
 - Texture LOD bias: only a sampler-state field (`mipLODBias`) of material state blocks; no global setting reachable from Lua. MSAA / alpha-to-coverage: no setting or Lua call (only a Vulkan dynamic-state string in the exe). Not possible.
 - The game's `edgeAA` (EdgeDetectPostEffect + EdgeAAPostEffect, depth and normal edges, 9-tap blur): exists but left off; offered as an optional pass.
 - Specular shimmer: needs normal-variance filtering in the material shaders (core file override). The temporal pass is the post-fx substitute; a normal-variance-driven history boost (#prepass[RT0] holds normals and roughness) is the next idea if shimmer on paint and wet roads stays.
+
+## 7. Look: a light colour grade and vignette (design, before building)
+
+Asked for: an optional, subtle "Look" next to the anti-aliasing: filmic contrast, saturation, warm/cool, a light vignette, 3 presets (Natural, Cinematic, Vivid); off by default, live, and the game's own state restored exactly.
+
+Findings (game files, 0.39):
+- The game has a grade of its own: the HDR combine pass (`shaders/common/postFx/hdr/finalPassCombineP.hlsl`) applies tone mapping and a per-channel 1D colour ramp (`colorCorrectionRamp`, `colorCorrectionStrength`). That ramp is per channel only (no saturation, no vignette) and is part of the game's graphics settings, so changing it would have to be put back by hand. Not used.
+- The effects that run at `PFXAfterDiffuse` after the game's HDR combine see the finished, display-referred picture (the anti-aliasing and our sharpeners already work there). One more full-screen effect at a lower priority (after the sharpeners) can grade that picture and is removed by disabling it: nothing of the game's is touched, so "restore exactly" is the effect being off.
+- The UI is drawn by the browser layer on top, so a vignette/grade never touches menus or the HUD.
+- Sharper distant detail: not reachable (texture LOD bias is a material sampler-state field only, see round 2). The sharpeners already give the local-contrast part of it.
+
+Plan: one pass, shader `slrr_look*.hlsl`, in display space on the finished picture, in this order: split toning (teal shadows, warm highlights), warmth (cool to warm), filmic contrast (a smoothstep S-curve blended in), saturation, vignette (aspect-correct radial, smooth), then a 1-LSB triangular dither so the 8-bit picture does not band. Every control at its neutral value does nothing, and when all are neutral the effect is disabled (zero cost).
+- Settings (game settings keys `slrrLook*`, group "Wrench Works: look" in Options > Graphics, marker `look-v1`, own module `slrr/look.lua`): Preset (Off / Natural / Cinematic / Vivid / Custom), Contrast 0..1, Saturation -0.5..0.5, Warmth -1..1, Colour split 0..1, Vignette 0..1.
+- Presets: Natural (contrast 0.15, saturation +0.05, warmth +0.10, vignette 0.15), Cinematic (contrast 0.35, saturation -0.05, warmth +0.10, split 0.5, vignette 0.35), Vivid (contrast 0.25, saturation +0.25, vignette 0.10).
+- Same mechanics as the anti-aliasing options: a preset change fills the others, changing any one makes it Custom (or the preset it now equals); `tick` re-applies every 2 s and after a level load, `onModDeactivated`/unload switches it off.
+- Test: `tools/look_test.js` (plan, presets, neutral = off, option reading, group data); frame cost and before/after shots through the tester.
+
+## 8. Cinematic camera: motion blur, depth of field, letterbox (design, before building)
+
+Asked for: an option set for replays and photo mode: motion blur strength, depth of field focused on the car, letterbox; reusing the post-effect work.
+
+Findings (game files, 0.39):
+- The game already has all three effects as its own post effects, and its photo mode (`ui/photomode/effects.lua`) drives them: `PostFxMotionBlur` (`strength`, limits 0..2, `client/postFx/MotionBlurFx.lua`) and `DOFPostEffect` (`$DOFPostFx::*` registry values: BlurMin/BlurMax near/far blur, FocusRangeMin aperture, FocusRangeMax focus distance, EnableAutoFocus; applied with `client/postFx/dof.lua updateDOFSettings`). DOF autofocus follows the camera target (`calculateFocusDistance`), which in a replay or photo mode is the followed car.
+- So blur and DOF are not rebuilt: our module only sets the game's own values from simple options and puts the old values back afterwards. The photo mode's session code saves and restores the same values (`postFxPersistence.lua`); our restore must not fight it, so the options act only outside an open photo-mode session.
+- Letterbox is the one new pass: black bars at a chosen aspect (2.39, 2.0, 1.85), drawn as a full-screen effect after everything else (priority below the Look pass), same recipe as `slrr/look.lua`. The UI is drawn above it, so the HUD is not cut.
+- Not reachable: a bokeh shape or per-object focus other than the camera target; a motion-blur shutter angle (only the strength).
+
+Plan: module `slrr/camera.lua`, group "Wrench Works: cinematic camera" in Options > Graphics (marker `camera-v1`, after the Look group), settings `slrrCam*`: Preset (Off / Subtle / Film / Dramatic / Custom), Motion blur 0..2, Depth of field 0..1 (background blur amount, autofocus on the car), Letterbox (Off / 2.39 / 2.0 / 1.85). Off by default; "off" = nothing of the game's touched (the saved game values are put back exactly). Test: `tools/camera_test.js` (plan, presets, restore bookkeeping, group data), then proof shots and frame cost through the tester.
+Open question for the tester before building: whether the game's motion blur and DOF draw in the replay camera when set from Lua (they may be gated by the graphics quality setting).
+
+## 9. The settings moved to the Mods menu
+
+The Options > Graphics groups (layout.json patching) are gone: the three groups are now three tabs of one page in the pause-menu Mods menu, `slrr/gfxMenu.lua`, registered through `slrr_settings.register` (mod `wrench_works_gfx`, title "Wrench Works: graphics & camera"; fields name their store as the game settings keys the modules already read, so `slrr/graphics`, `look` and `camera` are unchanged). A preset is an enum option carrying `sets` (the registry writes the other fields); every field's `onChange` calls `graphics.onSettingsChanged`, which fills a preset, makes a changed one Custom and applies the picture. The groups earlier versions put into the user folder's copy of the options layout are taken out once at start (`gfxMenu.removeOldGroups`, using `slrr/optionsLayout.uninstall`, which stays for that reason). Test: `node tools/gfxmenu_test.js` (the real registry, stand-ins for the game). Sections 6 to 8 above describe the Options-page route as it was built; it is no longer used.

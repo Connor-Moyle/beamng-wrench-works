@@ -37,7 +37,7 @@ check('sharpening is independent of the mode', G.plan({ mode = 'game', sharpener
 for _, list in ipairs({ G.MODES, G.SHARPENERS, G.PRESETS }) do
   for _, o in ipairs(list) do check('note for ' .. o.id, type(o.note) == 'string' and #o.note > 10 and type(o.label) == 'string') end
 end
-local known = { mode = true, predication = true, temporal = true, edgeAA = true, sharpener = true, strength = true }
+local known = { mode = true, predication = true, temporal = true, edgeAA = true, spec = true, sharpener = true, strength = true }
 for _, pr in ipairs(G.PRESETS) do
   for k, v in pairs(pr.values or {}) do check('preset key ' .. k, known[k]) end
   if pr.values then
@@ -60,6 +60,8 @@ local store = {}
 local function get(key, default) local v = store[key]; if v == nil then return default end return v end
 local o = G.readOptions(get)
 check('defaults from empty settings', o.preset == 'custom' and o.mode == 'game' and o.predication == true and o.temporal == 0.7 and o.edgeAA == false and o.sharpener == 'off' and o.strength == 0.4)
+check('specular default off, clamped', o.spec == 0 and G.plan({ spec = 0.5 }).spec == 0.5 and G.plan({ spec = 9 }).spec == 1 and G.plan({}).spec == 0)
+check('presets: smooth 0.5, max 0.7, balanced 0', G.presetValues('smooth').spec == 0.5 and G.presetValues('max').spec == 0.7 and (G.presetValues('balanced').spec or 0) == 0)
 check('edge aa in the plan', G.plan({ edgeAA = true }).edgeAA == true and G.plan({}).edgeAA == false)
 store[G.KEYS.mode] = 'smaaUltra'; store[G.KEYS.sharpener] = 'cas'; store[G.KEYS.predication] = false
 o = G.readOptions(get)
@@ -78,61 +80,29 @@ for _, pr in ipairs(G.PRESETS) do
     check('each preset matches itself: ' .. pr.id, G.matchPreset(f) == pr.id)
   end
 end
--- the options page: our group goes right after the anti-aliasing type, once, and the game's own entries stay
-local function layout()
-  return { items = { { categoryId = 'gameplay', items = {} },
-    { categoryId = 'graphics', items = { { setting = 'GraphicAntialias' }, { setting = 'GraphicAntialiasType' }, { setting = 'PostFXSSAOGeneralEnabled' } } } } }
-end
-local L = G.patchLayout(layout())
-local items = L.items[2].items
-check('group after the type', #items == 4 and items[1].setting == 'GraphicAntialias' and items[2].setting == 'GraphicAntialiasType' and items[3].itemType == 'group' and items[4].setting == 'PostFXSSAOGeneralEnabled')
-check('gameplay untouched', #L.items[1].items == 0)
-L = G.patchLayout(L)
-check('patching again keeps one group', #L.items[2].items == 4)
-local group = items[3]
-local settingsFound = {}
-for _, it in ipairs(group.items) do
-  check('item has a component', type(it.component) == 'string' and type(it.itemType) == 'string')
-  if it.setting then settingsFound[it.setting] = it end
-end
-for name, key in pairs(G.KEYS) do check('control for ' .. name, settingsFound[key] ~= nil) end
-check('mode choices are all there', #settingsFound[G.KEYS.mode].options == #G.MODES and settingsFound[G.KEYS.mode].options[1].value == 'game')
-check('notes in the tooltip', settingsFound[G.KEYS.sharpener].tooltip:find('Contrast Adaptive') ~= nil)
-check('no anchor, no change', G.patchLayout({ items = { { categoryId = 'graphics', items = {} } } }) == nil and G.patchLayout(nil) == nil)
 check('the status works with no renderer', G.status().sharpener == 'off' and G.status().tsmOn == false)
 print('graphics test passed')
 `;
 if (lauxlib.luaL_dostring(L, to_luastring(test)) !== lua.LUA_OK) { console.error(to_jsstring(lua.lua_tostring(L, -1))); process.exit(1); }
 
-// The text patch on a layout: the game's own file when it is installed (0.39), else a small one. The result must stay valid JSON with our group right
-// after the anti-aliasing type item and everything else byte for byte the same.
+// two mods' groups side by side in one layout: each is replaced and removed by its own marker, and stripAll gives the game's text back
 {
-  const fs = require('fs');
-  const real = 'I:/SteamLibrary/steamapps/common/BeamNG.drive/ui/ui-vue/src/modules/options/runtime/layout.json';
-  const small = JSON.stringify({ items: [{ categoryId: 'graphics', items: [{ setting: 'GraphicAntialias' }, { setting: 'GraphicAntialiasType', options: [], note: 'a "quoted \ } { thing"' }, { setting: 'Other' }] }] });
-  const sources = [['small', small]];
-  if (fs.existsSync(real)) sources.push(['game layout', fs.readFileSync(real, 'utf8')]);
-  for (const [name, text] of sources) {
-    const L2 = lauxlib.luaL_newstate();
-    lualib.luaL_openlibs(L2);
-    lua.lua_pushstring(L2, to_luastring(text));
-    lua.lua_setglobal(L2, to_luastring('LAYOUT_TEXT'));
-    const code = `local G = dofile(${JSON.stringify(file)}); local out, why = G.patchLayoutText(LAYOUT_TEXT); if not out then error(tostring(why), 0) end; OUT = out; AGAIN = G.patchLayoutText(OUT)`;
-    if (lauxlib.luaL_dostring(L2, to_luastring(code)) !== lua.LUA_OK) { console.error(name + ': ' + to_jsstring(lua.lua_tostring(L2, -1))); process.exit(1); }
-    lua.lua_getglobal(L2, to_luastring('OUT'));
-    const out = Buffer.from(lua.lua_tostring(L2, -1)).toString('utf8');
-    lua.lua_getglobal(L2, to_luastring('AGAIN'));
-    if (!lua.lua_isnil(L2, -1)) { console.error(name + ': patching twice should be refused'); process.exit(1); }
-    const parsed = JSON.parse(out);
-    const graphics = parsed.items.find(i => i.categoryId === 'graphics' || i.label === 'ui.options.graphics');
-    const idx = graphics.items.findIndex(i => i.setting === 'GraphicAntialiasType');
-    const group = graphics.items[idx + 1];
-    if (!group || group.itemType !== 'group' || group.items.length < 8) { console.error(name + ': group missing after the anti-aliasing type'); process.exit(1); }
-    if (!group.items.every(i => i.component && i.itemType)) { console.error(name + ': an item without component'); process.exit(1); }
-    const orig = JSON.parse(text);
-    // everything else is the game's: dropping our group gives back the original structure
-    graphics.items.splice(idx + 1, 1);
-    if (JSON.stringify(parsed) !== JSON.stringify(orig)) { console.error(name + ': the rest of the layout changed'); process.exit(1); }
-    console.log('layout patch ok: ' + name);
-  }
+  const base = JSON.stringify({ items: [{ categoryId: 'graphics', items: [{ setting: 'GraphicAntialiasType', options: [] }, { setting: 'Other' }] }] });
+  const extDir = path.join(__dirname, '..', 'mod', 'lua', 'ge', 'extensions').split(path.sep).join('/');
+  const L4 = lauxlib.luaL_newstate();
+  lualib.luaL_openlibs(L4);
+  lua.lua_pushstring(L4, to_luastring(base));
+  lua.lua_setglobal(L4, to_luastring('BASE'));
+  const code = `package.path = ${JSON.stringify(extDir + '/?.lua;')} .. package.path
+    local L = require('slrr/optionsLayout')
+    local a = assert(L.patchText(BASE, 'a-v1', { label = 'A', items = {} }, 'GraphicAntialiasType'))
+    local ab = assert(L.patchText(a, 'b-v1', { label = 'B', items = {} }, 'GraphicAntialiasType'))
+    local ab2 = assert(L.patchText(ab, 'a-v1', { label = 'A2', items = {} }, 'GraphicAntialiasType'))
+    OK = (L.stripAll(ab) == BASE) and (L.strip(ab, 'a-v1') == L.patchText(BASE, 'b-v1', { label = 'B', items = {} }, 'GraphicAntialiasType')) and (L.stripAll(ab2) == BASE)
+      and select(2, ab2:gsub('"_slrr"', '')) == 2 and ab2:find('A2', 1, true) ~= nil and not ab2:find('"A"', 1, true)`;
+  if (lauxlib.luaL_dostring(L4, to_luastring(code)) !== lua.LUA_OK) { console.error('two groups: ' + to_jsstring(lua.lua_tostring(L4, -1))); process.exit(1); }
+  lua.lua_getglobal(L4, to_luastring('OK'));
+  if (!lua.lua_toboolean(L4, -1)) { console.error('two groups: groups did not coexist'); process.exit(1); }
+  JSON.parse(base);
+  console.log('layout groups coexist ok');
 }
