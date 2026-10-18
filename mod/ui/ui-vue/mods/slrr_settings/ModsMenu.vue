@@ -34,6 +34,7 @@
 
           <div class="options-content">
             <div v-if="busy" class="mm-note">Loading ...</div>
+            <div v-if="!busy && hiddenCount" class="mm-note">{{ hiddenCount }} more setting{{ hiddenCount > 1 ? "s" : "" }} on this tab: switch on "Show advanced settings" above.</div>
             <div v-for="g in groups" :key="g.name" class="mm-group">
               <h4 v-if="g.name" class="mm-gtitle">{{ g.name }}</h4>
               <template v-for="f in g.fields" :key="f.id">
@@ -83,6 +84,7 @@ const groups = computed(() => {
   return out
 })
 
+const hiddenCount = computed(() => (showAdvanced.value ? 0 : fields.value.filter(f => f.advanced).length))
 const byId = computed(() => Object.fromEntries(fields.value.map(f => [f.id, f])))
 function shown(f) {
   if (!f.visibleIf) return true
