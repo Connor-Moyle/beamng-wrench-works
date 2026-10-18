@@ -108,7 +108,7 @@ M.defs = {
     desc = 'More people where a city would have them.' },
   -- Graphics: moved into the game's own Options > Graphics page (slrr/graphics); this entry only says so
   { key = 'gfxInfo', group = 'Graphics', title = 'Anti-aliasing and sharpening', type = 'info', default = '',
-    desc = 'These now live in the game itself, in the Options > Graphics page, in the group "Wrench Works: anti-aliasing and sharpening" under the Anti-aliasing type (presets, modes, temporal smoothing, sharpeners, with a note on each). They are saved with the other game settings.' },
+    desc = 'These are in the Mods menu, under "Wrench Works: graphics & camera", Anti-aliasing & sharpening tab (presets, modes, temporal smoothing, sharpeners, with a note on each).' },
   { key = 'driverDoor', group = 'Garage', title = 'Driver\'s door opens on arrival', type = 'bool', default = true,
     desc = 'When the car has parked, the driver\'s door swings open and shut as if someone got out.' },
   { key = 'arrivalScene', group = 'Garage', title = 'The driver gets out on arrival', type = 'bool', default = true,
