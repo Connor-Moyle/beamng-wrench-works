@@ -172,4 +172,17 @@ do
   _G.slrr_settings = nil
 end
 
+-- an apply that fails after the value was saved is said in the log
+do
+  local logged
+  local oldLog = S.env.log
+  S.env.log = function(level, text) logged = (logged or '') .. level .. ':' .. text .. '|' end
+  S.register({ mod = 'applyfail', title = 'x', tabs = { { id = 't', title = 'T' } }, fields = { { id = 'f', tab = 't', type = 'bool', label = 'F', default = false, store = { kind = 'setting', key = 'applyFailKey' }, onChange = function() error('boom') end } } })
+  local r = S.set('applyfail', 'f', true)
+  assert(r.ok and S.get('applyfail', 'f') == true, 'the value is saved')
+  assert(logged and logged:find('saved but its apply failed', 1, true) and logged:find('boom', 1, true), 'the failed apply is in the log: ' .. tostring(logged))
+  S.env.log = oldLog
+  S.unregister('applyfail')
+end
+
 print('settings registry test passed')

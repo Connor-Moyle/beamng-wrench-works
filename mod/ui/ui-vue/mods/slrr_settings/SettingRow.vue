@@ -87,7 +87,8 @@ function applyText(a) { return a === "spawn" ? "applies to cars spawned afterwar
 
 async function change(value) {
   const f = props.field
-  const r = await call("set", props.mod, f.id, value)
+  let r
+  try { r = await call("set", props.mod, f.id, value) } catch (e) { emit("toast", "The game did not answer: " + e.message); return }
   if (r && r.ok) {
     f.value = r.value
     f.changed = JSON.stringify(r.value) !== JSON.stringify(f.default)
@@ -105,8 +106,10 @@ function items() { return (props.field.options || []).map(o => ({ value: o.id, l
 function changeChannel(key, v) { change({ ...props.field.value, [key]: Number(v) }) }
 
 async function press() {
-  const r = await call("press", props.mod, props.field.id)
-  emit("toast", r && (r.text || r.error))
+  try {
+    const r = await call("press", props.mod, props.field.id)
+    emit("toast", r && (r.text || r.error))
+  } catch (e) { emit("toast", "The game did not answer: " + e.message) }
 }
 </script>
 

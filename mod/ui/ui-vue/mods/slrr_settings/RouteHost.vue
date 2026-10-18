@@ -47,7 +47,7 @@ function show(p, m) {
   tab.value = ""
 }
 
-onMounted(async () => { mods.value = (await call("mods")) || [] })
+onMounted(async () => { try { mods.value = (await call("mods")) || [] } catch (e) { mods.value = [] } })
 </script>
 
 <style lang="scss" scoped>

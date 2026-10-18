@@ -5,7 +5,11 @@ import { useBridge } from "@/bridge"
 export function call(fn, ...args) {
   const { api } = useBridge()
   const code = `extensions.slrr_settings.${fn}(${args.map(a => api.serializeToLua(a)).join(",")})`
-  return new Promise(resolve => api.engineLua(code, resolve))
+  // a call the game never answers (the extension is gone, the Lua errored) rejects after 8 s, so a page shows an error instead of hanging
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`no answer from ${fn}`)), 8000)
+    api.engineLua(code, r => { clearTimeout(timer); resolve(r) })
+  })
 }
 
 // The pause menu gives a mod page a narrow card: open the page as a screen of its own (route menu.slrrMods, like Options). page: mod | find | quick

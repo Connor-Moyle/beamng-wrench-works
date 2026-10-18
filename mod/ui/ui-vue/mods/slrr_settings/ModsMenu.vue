@@ -118,6 +118,8 @@ async function openTab(id, force) {
   try {
     const page = await call("page", props.mod, id)
     fields.value = (page && page.fields) || []
+  } catch (e) {
+    error.value = "The settings could not be read: " + e.message
   } finally {
     busy.value = false
   }
@@ -125,9 +127,11 @@ async function openTab(id, force) {
 
 async function resetTab() {
   confirming.value = false
-  const page = await call("reset", props.mod, tab.value)
-  fields.value = (page && page.fields) || []
-  toast("This tab is back to its start values.")
+  try {
+    const page = await call("reset", props.mod, tab.value)
+    fields.value = (page && page.fields) || []
+    toast("This tab is back to its start values.")
+  } catch (e) { toast("The game did not answer: " + e.message) }
 }
 
 // the pause menu gives a mod page a narrow card (about 450 px at 1080p): below 700 px the tab list goes on top and the rows stack (label above its control)

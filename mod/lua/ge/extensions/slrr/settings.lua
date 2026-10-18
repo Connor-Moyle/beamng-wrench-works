@@ -294,6 +294,13 @@ function M.get(modId, fieldId)
   return currentValue(f)      -- (not `and ... or nil`: a false setting is a value)
 end
 
+-- the value is saved before its apply runs: an apply that fails is said in the log (the setting is saved but not in effect)
+local function runOnChange(f, value)
+  if not f.onChange then return end
+  local ok, err = pcall(f.onChange, value)
+  if not ok then warn('the setting ' .. tostring(f.id) .. ' was saved but its apply failed: ' .. tostring(err)) end
+end
+
 function M.set(modId, fieldId, value)
   local f = mods[modId] and mods[modId].byId[fieldId]
   if not f or not VALUE_TYPES[f.type] then return { ok = false, error = 'no such setting' } end
@@ -301,7 +308,7 @@ function M.set(modId, fieldId, value)
   if clean == nil then return { ok = false, error = why, value = currentValue(f) } end
   M.env.log('I', 'set ' .. tostring(modId) .. '.' .. tostring(fieldId) .. ' = ' .. (type(clean) == 'table' and 'table' or tostring(clean)))
   writeStore(f, clean)
-  if f.onChange then pcall(f.onChange, clean) end
+  runOnChange(f, clean)
   -- a preset: the chosen option of an enum can fill other fields of the mod (options[i].sets = { fieldId = value, ... })
   if f.type == 'enum' then
     for _, o in ipairs(f.options) do
@@ -310,7 +317,7 @@ function M.set(modId, fieldId, value)
           local other = mods[modId].byId[otherId]
           if other and other ~= f and VALUE_TYPES[other.type] then
             local c = coerce(other, v)
-            if c ~= nil then writeStore(other, c) if other.onChange then pcall(other.onChange, c) end end
+            if c ~= nil then writeStore(other, c) runOnChange(other, c) end
           end
         end
       end
@@ -327,7 +334,7 @@ function M.reset(modId, tabId)
       local clean = coerce(f, f.default)
       if clean ~= nil then
         writeStore(f, clean)
-        if f.onChange then pcall(f.onChange, clean) end
+        runOnChange(f, clean)
       end
     end
   end

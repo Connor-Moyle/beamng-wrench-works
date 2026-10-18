@@ -38,7 +38,7 @@ function search() {
   clearTimeout(timer)
   timer = setTimeout(async () => {
     if (!query.value.trim()) { hits.value = []; searched.value = false; return }
-    hits.value = (await call("search", query.value)) || []
+    try { hits.value = (await call("search", query.value)) || [] } catch (e) { hits.value = [] }
     searched.value = true
   }, 200)
 }

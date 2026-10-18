@@ -46,7 +46,8 @@ function take(r) {
 }
 
 async function apply(id) {
-  const r = await call("applyPreset", id)
+  let r
+  try { r = await call("applyPreset", id) } catch (e) { applied.value = "The game did not answer: " + e.message; return }
   if (r && r.ok) {
     take(r)
     applied.value = `${r.changed} ${r.changed === 1 ? "setting was" : "settings were"} set. Some apply to cars spawned afterwards or after a restart.`
@@ -57,7 +58,7 @@ async function apply(id) {
 
 onMounted(async () => {
   if (!props.full) openFull("quick")
-  take((await call("quickSetup")) || {})
+  try { take((await call("quickSetup")) || {}) } catch (e) { applied.value = "The settings could not be read: " + e.message }
 })
 </script>
 
