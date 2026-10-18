@@ -1,6 +1,6 @@
 <template>
   <!-- laid out like the game's Options screen: the tab list on the left (the category column), the settings on the right (rows with the label left, the control right) -->
-  <div class="options-container mm">
+  <div ref="root" class="options-container mm" :class="{ narrow }">
     <div v-if="error" class="mm-error">{{ error }}</div>
     <template v-else-if="info">
       <div class="options-subcategories" role="tablist">
@@ -37,7 +37,7 @@
             <div v-for="g in groups" :key="g.name" class="mm-group">
               <h4 v-if="g.name" class="mm-gtitle">{{ g.name }}</h4>
               <template v-for="f in g.fields" :key="f.id">
-                <SettingRow v-if="shown(f)" :mod="mod" :field="f" @reload="openTab(tab, true)" @toast="toast" />
+                <SettingRow v-if="shown(f)" :mod="mod" :field="f" :vertical="narrow" @reload="openTab(tab, true)" @toast="toast" />
               </template>
             </div>
           </div>
@@ -50,7 +50,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue"
+import { ref, computed, onMounted, onBeforeUnmount } from "vue"
 import { call } from "./settingsApi.js"
 import { BngButton, BngSwitch } from "@/common/components/base"
 import { Button } from "@/common/components/utility"
@@ -130,12 +130,27 @@ async function resetTab() {
   toast("This tab is back to its start values.")
 }
 
-onMounted(load)
+// the pause menu gives a mod page a narrow card (about 450 px at 1080p): below 700 px the tab list goes on top and the rows stack (label above its control)
+const root = ref(null)
+const narrow = ref(false)
+let watcher
+onMounted(() => {
+  load()
+  if (root.value && window.ResizeObserver) {
+    watcher = new ResizeObserver(() => { narrow.value = root.value.clientWidth < 700 })
+    watcher.observe(root.value)
+  }
+})
+onBeforeUnmount(() => watcher && watcher.disconnect())
 </script>
 
 <style lang="scss" scoped>
 // the look of the game's Options screen (OptionsBody.vue): a dark category column with an orange edge, an orange selected tab, a dark content column
-.options-container { display: flex; flex-direction: row; flex-wrap: nowrap; align-items: stretch; width: 55rem; min-width: min(55rem, 100%); max-width: 100%; height: 100%; overflow: hidden; font-family: "Overpass", var(--fnt-defs); }
+.options-container { display: flex; flex-direction: row; flex-wrap: nowrap; align-items: stretch; width: 100%; max-width: 100%; height: 100%; overflow: hidden; font-family: "Overpass", var(--fnt-defs); }
+.mm.narrow { flex-direction: column; }
+.narrow .options-subcategories { flex-direction: row; flex-wrap: wrap; align-items: center; width: 100%; max-height: 9em; padding: 0.5em; border-right: 0; border-bottom: 0.125em solid var(--bng-orange-550); }
+.narrow .mm-title { flex: 1 0 100%; margin: 0 0.2em 0.3em; }
+.narrow .options-category-side { margin: 0.1em; &.selected { --bng-bg-border-radius: var(--bng-corners-2); } &.selected :deep(.bng-background) { right: 0; } }
 .options-subcategories {
   flex: 0 0 auto; display: flex; flex-direction: column; width: 12em; padding: 1em 0.25em; overflow-y: auto;
   background: color-mix(in srgb, var(--bng-off-black) 90%, transparent); border-right: 0.125em solid var(--bng-orange-550);

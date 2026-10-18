@@ -3,7 +3,7 @@
   <h4 v-if="field.type === 'heading'" class="options-item-heading mm-sub">{{ field.label }}</h4>
   <p v-else-if="field.type === 'note'" class="mm-note">{{ field.label }}</p>
   <div v-else class="options-item" :class="{ changed: field.changed }">
-    <BngRow class="options-item-row">
+    <BngRow class="options-item-row" :vertical="vertical">
       <template #label>
         <div class="options-item-label">
           <span class="options-item-label-text">{{ field.label }}</span>
@@ -75,7 +75,7 @@ import { call } from "./settingsApi.js"
 import { BngSwitch, BngSlider, BngRow, BngButton, BngInput, BngSmartSelect } from "@/common/components/base"
 
 // One setting of a mod: its label, tooltip and the control for its type. The Mods menu pages and the search results both show it.
-const props = defineProps({ mod: String, field: Object })
+const props = defineProps({ mod: String, field: Object, vertical: Boolean })
 const emit = defineEmits(["reload", "toast"])
 const asking = ref(false)
 
