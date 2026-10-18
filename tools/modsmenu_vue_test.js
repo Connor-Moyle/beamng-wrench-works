@@ -7,6 +7,7 @@ const need = {
   'SettingRow.vue': ['slrr_settings.set', 'slrr_settings.press'],
   'FindSetting.vue': ['slrr_settings.search'],
   'QuickSetup.vue': ['slrr_settings.quickSetup', 'slrr_settings.applyPreset'],
+  'RouteHost.vue': [],
 };
 const files = fs.readdirSync(dir).filter((f) => f.endsWith('.vue'));
 for (const name of Object.keys(need)) if (!files.includes(name)) { console.error('missing page ' + name); process.exit(1); }
@@ -31,4 +32,8 @@ for (const name of files) {
     if (!script.includes(n)) { console.error(`${name} does not call ${n}`); process.exit(1); }
   }
 }
-console.log('mods menu pages ok (' + files.length + ' files)');
+// the entry point registers the route that the in-game check navigates to
+const entry = fs.readFileSync(path.join(dir, 'index.js'), 'utf8');
+require('acorn').parse(entry, { ecmaVersion: 2022, sourceType: 'module' });
+if (!entry.includes('menu.slrrMods') || !/export (async )?function onLoad/.test(entry) || !/export (async )?function onUnload/.test(entry)) { console.error('index.js: route name, onLoad or onUnload missing'); process.exit(1); }
+console.log('mods menu pages ok (' + files.length + ' files + entry)');

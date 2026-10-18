@@ -49,7 +49,7 @@ import { ref, computed, onMounted } from "vue"
 import { lua } from "@/bridge"
 import SettingRow from "./SettingRow.vue"
 
-const props = defineProps({ mod: String })
+const props = defineProps({ mod: String, startTab: String })
 
 const info = ref(null)
 const tab = ref("")
@@ -95,7 +95,8 @@ async function load() {
     const mods = await lua.extensions.slrr_settings.mods()
     info.value = (mods || []).find(m => m.mod === props.mod) || null
     if (!info.value) { error.value = "This mod has no settings page (is it installed?)."; return }
-    await openTab(info.value.tabs[0].id)
+    const wanted = info.value.tabs.find(t => t.id === props.startTab)
+    await openTab((wanted || info.value.tabs[0]).id)
   } catch (e) {
     error.value = "The settings could not be read: " + e
   }

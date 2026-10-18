@@ -144,4 +144,18 @@ check('mods are sorted by order', S.mods()[1].mod == 'aaa' and S.mods()[2].mod =
 S.register({ mod = 'aaa', title = 'Early again', order = 1, tabs = { { id = 't', title = 'T' } }, fields = {} })
 check('registering again replaces it', #S.mods() == 2 and S.mods()[1].title == 'Early again')
 check('unregister', S.unregister('aaa') and #S.mods() == 1 and S.unregister('aaa') == false)
+-- the in-game data check, run on the stand-in registry
+do
+  _G.slrr_settings = S
+  S.register({ mod = 'chk', title = 'Check mod', tabs = { { id = 'a', title = 'A' } }, fields = {
+    { id = 'on', tab = 'a', type = 'bool', label = 'On', default = true, store = { kind = 'setting', key = 'chkOn' }, presets = { performance = false, max = true } },
+    { id = 'n', tab = 'a', type = 'slider', label = 'N', min = 0, max = 10, step = 1, default = 5, store = { kind = 'setting', key = 'chkN' }, presets = { performance = 1, max = 9 } },
+  } })
+  local chk = require('slrr/settingsCheck')
+  local report = chk.run()
+  check('the in-game data check passes on the stand-in registry', report:sub(1, 4) == 'PASS' and report:find('chk/a', 1, true) and report:find('quick setup performance', 1, true), report)
+  S.unregister('chk')
+  _G.slrr_settings = nil
+end
+
 print('settings registry test passed')
