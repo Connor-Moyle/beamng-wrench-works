@@ -270,7 +270,8 @@ end
 local function publicField(f)
   local out = { id = f.id, tab = f.tab, group = f.group, type = f.type, label = f.label, tooltip = f.tooltip, default = f.default, apply = f.apply or 'live',
     min = f.min, max = f.max, step = f.step, unit = f.unit, scale = f.scale, options = f.options, alpha = f.alpha, none = f.none, thumbs = f.thumbs,
-    maxLength = f.maxLength, advanced = f.advanced, visibleIf = f.visibleIf, confirm = f.confirm, hasPresets = type(f.presets) == 'table' or nil, requires = f.requires }
+    maxLength = f.maxLength, advanced = f.advanced, visibleIf = f.visibleIf, confirm = f.confirm, hasPresets = type(f.presets) == 'table' or nil,
+    requires = f.requires == 'career' and not (rawget(_G, 'sl_career') and sl_career.isActive and sl_career.isActive()) and 'career' or nil }      -- (the note "only while a career is loaded" is for when none is)
   if VALUE_TYPES[f.type] then
     out.value = currentValue(f)
     out.changed = not same(out.value, f.default)
