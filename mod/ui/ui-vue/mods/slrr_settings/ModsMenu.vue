@@ -12,6 +12,7 @@
           :class="{ selected: t.id === tab }"
           role="tab"
           :aria-selected="t.id === tab"
+          @pointerdown="openTab(t.id)"
           @click="openTab(t.id)"
         >{{ t.title }}</Button>
       </div>
@@ -36,7 +37,7 @@
             <div v-for="g in groups" :key="g.name" class="mm-group">
               <h4 v-if="g.name" class="mm-gtitle">{{ g.name }}</h4>
               <template v-for="f in g.fields" :key="f.id">
-                <SettingRow v-if="shown(f)" :mod="mod" :field="f" @reload="openTab(tab)" @toast="toast" />
+                <SettingRow v-if="shown(f)" :mod="mod" :field="f" @reload="openTab(tab, true)" @toast="toast" />
               </template>
             </div>
           </div>
@@ -108,7 +109,9 @@ async function load() {
   }
 }
 
-async function openTab(id) {
+// (selects on the press and again on the click: a click that only moved the focus ring still selects; the second call is skipped)
+async function openTab(id, force) {
+  if (!force && id === tab.value && fields.value.length) return
   tab.value = id
   confirming.value = false
   busy.value = true
@@ -132,7 +135,7 @@ onMounted(load)
 
 <style lang="scss" scoped>
 // the look of the game's Options screen (OptionsBody.vue): a dark category column with an orange edge, an orange selected tab, a dark content column
-.options-container { display: flex; flex-direction: row; flex-wrap: nowrap; align-items: stretch; width: 100%; height: 100%; max-width: 100%; overflow: hidden; font-family: "Overpass", var(--fnt-defs); }
+.options-container { display: flex; flex-direction: row; flex-wrap: nowrap; align-items: stretch; width: 55rem; min-width: min(55rem, 100%); max-width: 100%; height: 100%; overflow: hidden; font-family: "Overpass", var(--fnt-defs); }
 .options-subcategories {
   flex: 0 0 auto; display: flex; flex-direction: column; width: 12em; padding: 1em 0.25em; overflow-y: auto;
   background: color-mix(in srgb, var(--bng-off-black) 90%, transparent); border-right: 0.125em solid var(--bng-orange-550);
