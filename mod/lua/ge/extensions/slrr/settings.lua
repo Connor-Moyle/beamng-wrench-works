@@ -128,7 +128,7 @@ function M.fromDefs(defs, opts)
   end
   for _, d in ipairs(defs) do
     if not (opts.skip and opts.skip(d)) and type(d.key) == 'string' then
-      local f = { id = d.key, tab = tabFor(d), group = d.sub, label = d.title or d.key, tooltip = d.desc, default = d.default, advanced = d.advanced, apply = d.apply }
+      local f = { id = d.key, tab = tabFor(d), group = d.sub, label = d.title or d.key, tooltip = d.desc, default = d.default, advanced = d.advanced, apply = d.apply, presets = d.presets }
       f.store = { kind = 'custom', get = function() return opts.get(d.key) end, set = function(v) return opts.set(d.key, v) end }
       if d.type == 'bool' then f.type = 'bool'
       elseif d.type == 'range' or d.type == 'number' then

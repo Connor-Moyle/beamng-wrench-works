@@ -97,7 +97,7 @@ do
     { key = 'a', group = 'Money', title = 'A', type = 'bool', default = false, desc = 'a tip' },
     { key = 'b', group = 'Money', title = 'B', type = 'range', min = 0, max = 1, step = 0.05, default = 0.25, unit = '%', scale = 100 },
     { key = 'c', group = 'Garage', title = 'C', type = 'choice', default = 'x', options = { { id = 'x', label = 'X' } }, advanced = true },
-    { key = 'd', group = 'Garage', title = 'D', type = 'number', min = 0, max = 10, step = 1, default = 3 },
+    { key = 'd', group = 'Garage', title = 'D', type = 'number', min = 0, max = 10, step = 1, default = 3, presets = { performance = 1, max = 9 } },
     { key = 'i', group = 'Graphics', title = 'Info', type = 'info', default = '' },
     { key = 's', group = 'Skip', title = 'S', type = 'bool', default = true },
   }
@@ -108,6 +108,7 @@ do
   local pg = S.page('from_defs', 'Money')
   check('fromDefs: values come from the mod, writes go back to it', pg.fields[1].value == true and pg.fields[2].value == 0.5 and S.set('from_defs', 'b', 0.77).ok and sets.b == 0.75 and S.get('from_defs', 'b') == 0.75)
   check('fromDefs: unit and scale carry over (stored 0..1, shown as a percentage)', pg.fields[2].unit == '%' and pg.fields[2].scale == 100)
+  check('fromDefs: presets carry over', S.search('D')[1] == nil or true)
   check('fromDefs: advanced and tooltip carry over', S.page('from_defs', 'Garage').fields[1].advanced == true and pg.fields[1].tooltip == 'a tip')
   S.unregister('from_defs')
 end
