@@ -581,10 +581,9 @@ function M.tick(dt)
 end
 
 ----------------------------------------------------------------------------------------------
--- the controls in the game's own Options > Graphics page
--- Their values live in the game's settings under the keys below (the options page reads and writes those); the game tells us when one changed
--- (onSettingsChanged, forwarded by the garage extension). The page itself is the game's options layout (ui/ui-vue/src/modules/options/runtime/layout.json)
--- with one more group in the Graphics category, written into the user folder by installOptions; the game's own copy is never changed.
+-- the settings of the Mods menu page (slrr/gfxMenu)
+-- Their values live in the game's settings under the keys below (the page reads and writes those through slrr_settings); the game tells us when one changed
+-- (onSettingsChanged, forwarded by the garage extension) and the page calls it too.
 
 M.KEYS = { preset = 'slrrGfxPreset', mode = 'slrrGfxMode', predication = 'slrrGfxPredication', temporal = 'slrrGfxTemporal',
            edgeAA = 'slrrGfxEdgeAA', spec = 'slrrGfxSpec', sharpener = 'slrrGfxSharpener', strength = 'slrrGfxStrength' }
@@ -623,113 +622,7 @@ function M.matchPreset(o)
   return 'custom'
 end
 
--- the settings screen's controls: a group for the Graphics category. Plain texts (not translation keys); the notes of every choice sit in its tooltip.
-local function common(extra)
-  local item = {
-    version = '0.39', tooltip = '', interactive = true, condition_always_off = false, condition_not_shipping = false,
-    condition_simplemenu = '', condition_visible = '', condition_enabled = '', separateLabel = true, manualApply = false, manualLua = '',
-    lua = '', basic_interaction = false, slrr = true,
-  }
-  for k, v in pairs(extra) do item[k] = v end
-  return item
-end
-
-local function choiceItem(label, setting, list, tooltip)
-  local options = {}
-  for _, o in ipairs(list) do options[#options + 1] = { value = o.id, label = o.label } end
-  local notes = {}
-  for _, o in ipairs(list) do notes[#notes + 1] = o.label .. ': ' .. o.note end
-  return common({ label = label, setting = setting, tooltip = (tooltip and (tooltip .. '\n\n') or '') .. table.concat(notes, '\n\n'),
-                  itemType = 'options', component = 'BngSmartSelect', optionsSource = '', options = options, search = { 'label', 'caption', 'tooltip', 'setting', 'options' } })
-end
-
-local function checkItem(label, setting, tooltip)
-  return common({ label = label, setting = setting, tooltip = tooltip, itemType = 'checkbox', component = 'OptionsCheckbox', luaOff = '',
-                  valueOn = true, valueOff = false, search = { 'label', 'caption', 'tooltip', 'setting' } })
-end
-
-local function sliderItem(label, setting, tooltip, min, max, step)
-  return common({ label = label, setting = setting, tooltip = tooltip, itemType = 'slider', component = 'BngSlider', min = min or 0, max = max or 1, step = step or 0.05,
-                  compact = false, valueMultiplier = 1, unit = '', inputMin = nil, inputMax = nil, inputStep = nil, search = { 'label', 'caption', 'tooltip', 'setting' } })
-end
-
--- (the item builders, for the second group, slrr/look.lua)
-local builders = { common = common, choiceItem = choiceItem, sliderItem = sliderItem }
-M.builders = builders
-
-function M.optionsGroup()
-  local k = M.KEYS
-  return common({
-    interactive = false, itemType = 'group', component = 'OptionsGroup', layout = 'column', firstAsTitle = true, separateLabel = nil, _slrr = 'group-v2',
-    items = {
-      common({ label = 'Wrench Works: anti-aliasing and sharpening', interactive = false, itemType = 'heading', component = 'OptionsHeading', icon = '_empty', variant = 'h4', search = { 'label' }, separateLabel = nil }),
-      choiceItem('Preset', k.preset, M.PRESETS, 'Picks the settings below in one go. Changing any of them afterwards makes it Custom.'),
-      choiceItem('Anti-aliasing mode', k.mode, M.MODES, 'Anything but Game\'s own takes over the Anti-aliasing and Anti-aliasing type settings above while it is picked.'),
-      checkItem('Depth predication (SMAA Ultra)', k.predication, 'Lets SMAA Ultra use the depth: edges of objects are caught at full sensitivity and fine texture detail is not mistaken for edges.'),
-      sliderItem('Temporal smoothing amount', k.temporal, 'For the Temporal smoothing mode: how much of the previous frame is kept. More calms shimmer more but can soften the picture while moving.'),
-      checkItem('Edge smoothing pass (game\'s own)', k.edgeAA, 'The game\'s own depth and normal edge blur (a cheap extra pass that smooths creases and silhouettes SMAA sees little of). Its vertex shader fails to compile in BeamNG 0.39, so it does nothing there (kept for other versions).'),
-      sliderItem('Specular shimmer reduction', k.spec, 'Calms bright sparkle on glossy, bumpy surfaces (car paint, rain-wet roads): the sparkle pixel is held to what it was last frame and blended towards its neighbours on the same surface. 0 is off; too much dulls real highlights. Works with Temporal smoothing best, and alone as a light blur.'),
-      choiceItem('Sharpening', k.sharpener, M.SHARPENERS, 'Brings back the detail anti-aliasing softens. Runs after the anti-aliasing.'),
-      sliderItem('Sharpening strength', k.strength, 'How much sharpening. 0.4 is gentle; above 0.7 thin lines start to look etched. 0 is the same as off.'),
-      common({ label = '', caption = M.unavailableText(), interactive = false, itemType = 'text', component = 'OptionsText', variant = '', innerCaption = true,
-               optionsSource = '', options = {}, search = { 'caption' }, separateLabel = true }),
-    },
-  })
-end
-
--- puts the group into a copy of the game's layout (right after the anti-aliasing type); any earlier copy of ours is taken out first. nil + reason when the page is not found.
-function M.patchLayout(layout)
-  if type(layout) ~= 'table' or type(layout.items) ~= 'table' then return nil, 'no layout' end
-  local function strip(items)
-    for i = #items, 1, -1 do
-      local it = items[i]
-      if it.slrr == true then table.remove(items, i)
-      elseif type(it.items) == 'table' then strip(it.items) end
-    end
-  end
-  strip(layout.items)
-  for _, category in ipairs(layout.items) do
-    if category.categoryId == 'graphics' and type(category.items) == 'table' then
-      for i, it in ipairs(category.items) do
-        if it.setting == 'GraphicAntialiasType' then
-          table.insert(category.items, i + 1, M.optionsGroup())
-          return layout
-        end
-      end
-    end
-  end
-  return nil, 'the Graphics page has no anti-aliasing type to put the group after'
-end
-
--- the group goes into the game's layout through the shared helper (slrr/optionsLayout.lua), which also keeps other mods' groups in the same file
-local MARKER = 'group-v2'
-local LEGACY = { ',{"basic_interaction":false,"component":"OptionsGroup"' }       -- the first version of the group had no marker
-local ANCHOR = 'GraphicAntialiasType'
-
-M.encodeJson = function(v) return require('slrr/optionsLayout').encodeJson(v) end
-
--- The group put into the game's layout text right after the anti-aliasing type item, the rest of the text untouched (byte for byte). nil + reason if it cannot.
-function M.patchLayoutText(text)
-  return require('slrr/optionsLayout').patchText(text, MARKER, M.optionsGroup(), ANCHOR, LEGACY)
-end
-
--- Writes the patched layout into the user folder when it is not there yet or differs (a game update, a newer mod). Takes effect when the game's UI loads the
--- options page (restart the game the first time).
-function M.installOptions()
-  require('slrr/camera').installOptions(builders)
-  require('slrr/look').installOptions(builders)          -- first: each group goes right after the anti-aliasing type, so the later one shows first
-  require('slrr/optionsLayout').install({ marker = MARKER, group = M.optionsGroup(), after = ANCHOR, legacy = LEGACY,
-                                          log = function(level, msg) log(level, 'slrr_graphics', msg) end })
-end
-
--- takes our group away again (the game's own page shows)
-function M.uninstallOptions()
-  require('slrr/camera').uninstallOptions()
-  require('slrr/look').uninstallOptions()
-  require('slrr/optionsLayout').uninstall(MARKER, LEGACY)
-end
-
--- the settings the options page keeps: start values for those not there yet
+-- the settings the Mods menu page keeps (slrr/gfxMenu): start values for those not there yet
 function M.ensureDefaults()
   if not (settings and settings.getValue and settings.setValue) then return end
   require('slrr/look').ensureDefaults()

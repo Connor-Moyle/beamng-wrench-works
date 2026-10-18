@@ -1,4 +1,4 @@
-// Tests slrr/look.lua (the colour grade's plan, presets, option handling and options-page group) outside the game. Needs fengari:  node tools/look_test.js
+// Tests slrr/look.lua (the colour grade's plan, presets and option handling) outside the game. Needs fengari:  node tools/look_test.js
 const path = require('path');
 const { lua, lauxlib, lualib, to_luastring, to_jsstring } = require('fengari');
 const L = lauxlib.luaL_newstate();
@@ -62,23 +62,6 @@ store.slrrLookPreset = 'off'
 K.onSettingsChanged()
 check('off clears the settings', store.slrrLookContrast == 0 and store.slrrLookVignette == 0 and store.slrrLookSplit == 0)
 
--- the options group: data in the game's item format, keyed by our marker, the settings keys in it
-local G = dofile(${JSON.stringify(ext + '/slrr/graphics.lua')})
-local text = require('slrr/optionsLayout').encodeJson(K.optionsGroup({ common = function(x) return x end, choiceItem = function(label, setting) return { label = label, setting = setting } end, sliderItem = function(label, setting) return { label = label, setting = setting } end }))
-for _, key in pairs(K.KEYS) do check('setting in group: ' .. key, text:find(key, 1, true) ~= nil) end
-check('marker', text:find('"_slrr":"look-v1"', 1, true) ~= nil)
--- both groups into a layout, then the look group again (replaced, not doubled), and the AA group stays
-local LO = require('slrr/optionsLayout')
-local base = '{"items":[{"categoryId":"graphics","items":[{"setting":"GraphicAntialiasType","options":[]},{"setting":"Other"}]}]}'
-local t1 = assert(LO.patchText(base, 'look-v1', K.optionsGroup(G.builders), 'GraphicAntialiasType'))
-local t2 = assert(G.patchLayoutText(t1))
-local t3 = assert(LO.patchText(t2, 'look-v1', K.optionsGroup(G.builders), 'GraphicAntialiasType'))
-OUT = t3
-check('both groups there once', select(2, t3:gsub('"_slrr"', '')) == 2 and t3:find('Wrench Works: look', 1, true) ~= nil and t3:find('anti-aliasing and sharpening', 1, true) ~= nil)
-check('stripAll gives the base back', LO.stripAll(t3) == base)
 print('look test passed')
 `;
 if (lauxlib.luaL_dostring(L, to_luastring(test)) !== lua.LUA_OK) { console.error(to_jsstring(lua.lua_tostring(L, -1))); process.exit(1); }
-lua.lua_getglobal(L, to_luastring('OUT'));
-JSON.parse(Buffer.from(lua.lua_tostring(L, -1)).toString('utf8'));   // valid JSON with both groups
-console.log('look test: layout with both groups is valid JSON');

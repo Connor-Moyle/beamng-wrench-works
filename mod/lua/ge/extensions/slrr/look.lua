@@ -161,34 +161,7 @@ function M.tick(dt)
 end
 
 ----------------------------------------------------------------------------------------------
--- the options page group
-
-local MARKER, ANCHOR = 'look-v1', 'GraphicAntialiasType'
-
--- h: the item builders of slrr/graphics.lua (common, choiceItem, sliderItem)
-function M.optionsGroup(h)
-  local k = M.KEYS
-  return h.common({
-    interactive = false, itemType = 'group', component = 'OptionsGroup', layout = 'column', firstAsTitle = true, separateLabel = nil, _slrr = MARKER,
-    items = {
-      h.common({ label = 'Wrench Works: look', interactive = false, itemType = 'heading', component = 'OptionsHeading', icon = '_empty', variant = 'h4', search = { 'label' }, separateLabel = nil }),
-      h.choiceItem('Look', k.preset, M.PRESETS, 'A light colour grade on the finished picture. Off changes nothing. Changing any control below afterwards makes it Custom.'),
-      h.sliderItem('Contrast', k.contrast, 'A gentle S-curve: deeper shadows, brighter highlights.', 0, 1, 0.05),
-      h.sliderItem('Saturation', k.saturation, 'Colour strength. 0 is as the game draws it, below it is more muted, above it is stronger.', -0.5, 0.5, 0.05),
-      h.sliderItem('Warmth', k.warmth, 'Cool (blue) to warm (orange) tint. 0 is neutral.', -1, 1, 0.1),
-      h.sliderItem('Colour split', k.split, 'Cool shadows and warm highlights, a film look.', 0, 1, 0.05),
-      h.sliderItem('Vignette', k.vignette, 'Darkens the corners of the picture. The menus and the HUD are not touched.', 0, 1, 0.05),
-    },
-  })
-end
-
-function M.installOptions(h)
-  require('slrr/optionsLayout').install({ marker = MARKER, group = M.optionsGroup(h), after = ANCHOR, log = function(level, msg) log(level, 'slrr_look', msg) end })
-end
-
-function M.uninstallOptions()
-  require('slrr/optionsLayout').uninstall(MARKER)
-end
+-- the settings (the Mods menu page is slrr/gfxMenu)
 
 function M.ensureDefaults()
   if not (settings and settings.getValue and settings.setValue) then return end

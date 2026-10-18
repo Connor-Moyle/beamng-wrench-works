@@ -2312,7 +2312,8 @@ local function onExtensionLoaded()
   if current then current:queueLuaCommand('extensions.load("slrrGarageVeh")') end
   applyDriverAnimation()
   require('slrr/graphics').ensureDefaults()
-  require('slrr/graphics').installOptions()
+  require('slrr/gfxMenu').removeOldGroups()      -- (earlier versions put groups into the game's Options page: taken out of the user-folder layout once)
+  require('slrr/gfxMenu').register()
   M.applyGraphics()
   log('I', logTag, 'Wrench Works loaded')
 end
@@ -2342,11 +2343,13 @@ end
 
 M.onUpdate = onUpdate
 M.onClientPostStartMission = function() M.applyGraphics() end
-M.onModDeactivated = function(modData)       -- (the game: a mod was switched off) ours: take our group out of the Options page again
+M.onModDeactivated = function(modData)       -- (the game: a mod was switched off) ours: our page leaves the Mods menu
   local name = type(modData) == 'table' and tostring(modData.modname or modData.modID or '') or ''
-  if name:find('slrr_garage', 1, true) then require('slrr/graphics').uninstallOptions() end
+  local S = rawget(_G, 'slrr_settings')
+  if name:find('slrr_garage', 1, true) and S and S.unregister then S.unregister(require('slrr/gfxMenu').MOD) end
 end
-M.onSettingsChanged = function() M.applyGraphics() end            -- (the game's: some setting changed, the Graphics group of Options is ours too)
+M.onSettingsChanged = function() M.applyGraphics() end            -- (the game's: some setting changed; the graphics package reads its own)
+M.onSlrrSettingsReady = function() require('slrr/gfxMenu').register() end      -- (the Mods menu registry is up: our page goes in)
 M.onPreRender = onPreRender
 M.onVehicleSpawned = onVehicleSpawned
 M.onVehicleSwitched = onVehicleSwitched

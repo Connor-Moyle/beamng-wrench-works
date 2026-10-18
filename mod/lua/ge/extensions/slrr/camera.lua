@@ -248,31 +248,7 @@ function M.unload()
 end
 
 ----------------------------------------------------------------------------------------------
--- the options page group
-
-local MARKER, ANCHOR = 'camera-v1', 'GraphicAntialiasType'
-
-function M.optionsGroup(h)
-  local k = M.KEYS
-  return h.common({
-    interactive = false, itemType = 'group', component = 'OptionsGroup', layout = 'column', firstAsTitle = true, separateLabel = nil, _slrr = MARKER,
-    items = {
-      h.common({ label = 'Wrench Works: cinematic camera', interactive = false, itemType = 'heading', component = 'OptionsHeading', icon = '_empty', variant = 'h4', search = { 'label' }, separateLabel = nil }),
-      h.choiceItem('Cinematic camera', k.preset, M.PRESETS, 'Motion blur, depth of field and letterbox bars for replays and photos. Off leaves the game\'s own settings alone. Changing any control below afterwards makes it Custom. Not applied while photo mode is open (it has its own).'),
-      h.sliderItem('Motion blur', k.blur, 'Strength of the game\'s motion blur. 0 leaves the game\'s own setting.', 0, 2, 0.1),
-      h.sliderItem('Depth of field', k.dof, 'Blurs the background, focus follows the car (the camera\'s target). 0 leaves the game\'s own setting.', 0, 1, 0.05),
-      h.choiceItem('Letterbox', k.letterbox, M.LETTERBOX, 'Black bars top and bottom for a wide cinema picture (a 16:9 screen at 2.39:1). A screen already that wide or wider gets none. The menus and the HUD are not cut.'),
-    },
-  })
-end
-
-function M.installOptions(h)
-  require('slrr/optionsLayout').install({ marker = MARKER, group = M.optionsGroup(h), after = ANCHOR, log = function(level, msg) log(level, 'slrr_camera', msg) end })
-end
-
-function M.uninstallOptions()
-  require('slrr/optionsLayout').uninstall(MARKER)
-end
+-- the settings (the Mods menu page is slrr/gfxMenu)
 
 function M.ensureDefaults()
   if not (settings and settings.getValue and settings.setValue) then return end

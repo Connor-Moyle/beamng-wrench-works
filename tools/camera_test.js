@@ -91,19 +91,6 @@ check('blur only', mb.strength == 1 and reg['$DOFPostFx::BlurMax'] == 0.25)
 K.unload()
 check('unload restores', mb.strength == 0.7 and not K.status().holding)
 
--- the options group
-local G = dofile(${JSON.stringify(ext + '/slrr/graphics.lua')})
-local LO = require('slrr/optionsLayout')
-local text = LO.encodeJson(K.optionsGroup(G.builders))
-for _, key in pairs(K.KEYS) do check('setting in group: ' .. key, text:find(key, 1, true) ~= nil) end
-local base = '{"items":[{"categoryId":"graphics","items":[{"setting":"GraphicAntialiasType","options":[]},{"setting":"Other"}]}]}'
-local t1 = assert(LO.patchText(base, 'camera-v1', K.optionsGroup(G.builders), 'GraphicAntialiasType'))
-local t2 = assert(LO.patchText(t1, 'camera-v1', K.optionsGroup(G.builders), 'GraphicAntialiasType'))
-OUT = t2
-check('group once', select(2, t2:gsub('"_slrr"', '')) == 1 and LO.stripAll(t2) == base)
 print('camera test passed')
 `;
 if (lauxlib.luaL_dostring(L, to_luastring(test)) !== lua.LUA_OK) { console.error(to_jsstring(lua.lua_tostring(L, -1))); process.exit(1); }
-lua.lua_getglobal(L, to_luastring('OUT'));
-JSON.parse(Buffer.from(lua.lua_tostring(L, -1)).toString('utf8'));
-console.log('camera test: layout is valid JSON');
