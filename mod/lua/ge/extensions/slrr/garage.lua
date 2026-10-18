@@ -718,7 +718,7 @@ local function enterJob(job)
       job.sleep(0.02)
       t = clock:stop() / 1000
       v = veh()
-      if not v then break end
+      if not v or not site then break end      -- (the garage was left or the car deleted while it drove in: site is gone)
       local along, side = sites.toAxis(site, carCenter())
       local arrived = viaSide and (along < 0.5 and math.abs(side) < 1.5) or (not viaSide and along > -0.5)
       if t < 1.2 then arrived = false end      -- it starts in the doorway, give it time to get going
@@ -726,7 +726,7 @@ local function enterJob(job)
     end
 
     v = veh()
-    if not v then phase = 'idle' setFade(0) return end
+    if not v or not site then phase = 'idle' setFade(0) return end
     v:queueLuaCommand('ai.scriptStop(true, true) ai.setMode("disabled") input.event("throttle", 0, FILTER_DIRECT) input.event("brake", 1, FILTER_DIRECT)')
     -- the camera starts its swing to the working view while the car settles on its springs
     camera.startOrbit(true)
