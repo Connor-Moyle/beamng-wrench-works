@@ -30,7 +30,7 @@
 
 <script setup>
 import { ref, onMounted } from "vue"
-import { lua } from "@/bridge"
+import { call } from "./settingsApi.js"
 
 const presets = ref([])
 const mods = ref([])
@@ -44,7 +44,7 @@ function take(r) {
 }
 
 async function apply(id) {
-  const r = await lua.extensions.slrr_settings.applyPreset(id)
+  const r = await call("applyPreset", id)
   if (r && r.ok) {
     take(r)
     applied.value = `${r.changed} ${r.changed === 1 ? "setting was" : "settings were"} set. Some apply to cars spawned afterwards or after a restart.`
@@ -53,7 +53,7 @@ async function apply(id) {
   }
 }
 
-onMounted(async () => take((await lua.extensions.slrr_settings.quickSetup()) || {}))
+onMounted(async () => take((await call("quickSetup")) || {}))
 </script>
 
 <style lang="scss" scoped>

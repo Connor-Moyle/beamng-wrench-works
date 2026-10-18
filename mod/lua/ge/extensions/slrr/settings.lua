@@ -298,6 +298,7 @@ function M.set(modId, fieldId, value)
   if not f or not VALUE_TYPES[f.type] then return { ok = false, error = 'no such setting' } end
   local clean, why = coerce(f, value)
   if clean == nil then return { ok = false, error = why, value = currentValue(f) } end
+  M.env.log('I', 'set ' .. tostring(modId) .. '.' .. tostring(fieldId) .. ' = ' .. (type(clean) == 'table' and 'table' or tostring(clean)))
   writeStore(f, clean)
   if f.onChange then pcall(f.onChange, clean) end
   -- a preset: the chosen option of an enum can fill other fields of the mod (options[i].sets = { fieldId = value, ... })

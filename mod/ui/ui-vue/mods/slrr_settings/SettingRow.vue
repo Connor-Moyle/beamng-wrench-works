@@ -81,7 +81,7 @@
 
 <script setup>
 import { ref } from "vue"
-import { lua } from "@/bridge"
+import { call } from "./settingsApi.js"
 import { BngSwitch, BngSlider } from "@/common/components/base"
 
 // One setting of a mod: its label, tooltip and the control for its type. The Mods menu pages and the search results both show it.
@@ -97,7 +97,7 @@ function applyText(a) { return a === "spawn" ? "applies to cars spawned afterwar
 
 async function change(value) {
   const f = props.field
-  const r = await lua.extensions.slrr_settings.set(props.mod, f.id, value)
+  const r = await call("set", props.mod, f.id, value)
   if (r && r.ok) {
     f.value = r.value
     f.changed = JSON.stringify(r.value) !== JSON.stringify(f.default)
@@ -112,7 +112,7 @@ function onSlider(v) { change(v / scale()) }
 function changeChannel(key, v) { change({ ...props.field.value, [key]: Number(v) }) }
 
 async function press() {
-  const r = await lua.extensions.slrr_settings.press(props.mod, props.field.id)
+  const r = await call("press", props.mod, props.field.id)
   emit("toast", r && (r.text || r.error))
 }
 </script>

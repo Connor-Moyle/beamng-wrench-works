@@ -22,7 +22,7 @@
 
 <script setup>
 import { ref } from "vue"
-import { lua } from "@/bridge"
+import { call } from "./settingsApi.js"
 import SettingRow from "./SettingRow.vue"
 
 const query = ref("")
@@ -35,7 +35,7 @@ function search() {
   clearTimeout(timer)
   timer = setTimeout(async () => {
     if (!query.value.trim()) { hits.value = []; searched.value = false; return }
-    hits.value = (await lua.extensions.slrr_settings.search(query.value)) || []
+    hits.value = (await call("search", query.value)) || []
     searched.value = true
   }, 200)
 }

@@ -3,10 +3,10 @@
 const fs = require('fs'), path = require('path');
 const dir = path.join(__dirname, '..', 'mod', 'ui', 'ui-vue', 'mods', 'slrr_settings');
 const need = {
-  'ModsMenu.vue': ['slrr_settings.mods', 'slrr_settings.page', 'slrr_settings.reset'],
-  'SettingRow.vue': ['slrr_settings.set', 'slrr_settings.press'],
-  'FindSetting.vue': ['slrr_settings.search'],
-  'QuickSetup.vue': ['slrr_settings.quickSetup', 'slrr_settings.applyPreset'],
+  'ModsMenu.vue': ['call("mods"', 'call("page"', 'call("reset"'],
+  'SettingRow.vue': ['call("set"', 'call("press"'],
+  'FindSetting.vue': ['call("search"'],
+  'QuickSetup.vue': ['call("quickSetup"', 'call("applyPreset"'],
   'RouteHost.vue': [],
 };
 const files = fs.readdirSync(dir).filter((f) => f.endsWith('.vue'));
@@ -28,6 +28,7 @@ for (const name of files) {
   if (stack.length) { console.error(`${name}: unclosed ` + JSON.stringify(stack)); process.exit(1); }
   const script = src.slice(src.indexOf('<script setup>') + 14, src.indexOf('</script>'));
   require('acorn').parse(script, { ecmaVersion: 2022, sourceType: 'module' });
+  if (/lua\.extensions\.slrr_/.test(src)) { console.error(`${name}: lua.extensions.slrr_* does not exist in the page bridge (only the game's own signature table is there): use call() from settingsApi.js`); process.exit(1); }
   for (const n of need[name] || []) {
     if (!script.includes(n)) { console.error(`${name} does not call ${n}`); process.exit(1); }
   }

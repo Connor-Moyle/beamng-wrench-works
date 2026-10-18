@@ -46,7 +46,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from "vue"
-import { lua } from "@/bridge"
+import { call } from "./settingsApi.js"
 import SettingRow from "./SettingRow.vue"
 
 const props = defineProps({ mod: String, startTab: String })
@@ -92,7 +92,7 @@ function toast(text) {
 
 async function load() {
   try {
-    const mods = await lua.extensions.slrr_settings.mods()
+    const mods = await call("mods")
     info.value = (mods || []).find(m => m.mod === props.mod) || null
     if (!info.value) { error.value = "This mod has no settings page (is it installed?)."; return }
     const wanted = info.value.tabs.find(t => t.id === props.startTab)
@@ -107,7 +107,7 @@ async function openTab(id) {
   confirming.value = false
   busy.value = true
   try {
-    const page = await lua.extensions.slrr_settings.page(props.mod, id)
+    const page = await call("page", props.mod, id)
     fields.value = (page && page.fields) || []
   } finally {
     busy.value = false
@@ -116,7 +116,7 @@ async function openTab(id) {
 
 async function resetTab() {
   confirming.value = false
-  const page = await lua.extensions.slrr_settings.reset(props.mod, tab.value)
+  const page = await call("reset", props.mod, tab.value)
   fields.value = (page && page.fields) || []
   toast("This tab is back to its start values.")
 }
