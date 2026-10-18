@@ -30,7 +30,9 @@
 
 <script setup>
 import { ref, onMounted } from "vue"
-import { call } from "./settingsApi.js"
+import { call, openFull } from "./settingsApi.js"
+
+const props = defineProps({ full: Boolean })
 
 const presets = ref([])
 const mods = ref([])
@@ -53,7 +55,10 @@ async function apply(id) {
   }
 }
 
-onMounted(async () => take((await call("quickSetup")) || {}))
+onMounted(async () => {
+  if (!props.full) openFull("quick")
+  take((await call("quickSetup")) || {})
+})
 </script>
 
 <style lang="scss" scoped>

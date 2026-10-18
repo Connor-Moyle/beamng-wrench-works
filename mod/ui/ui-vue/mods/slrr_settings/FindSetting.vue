@@ -21,8 +21,11 @@
 </template>
 
 <script setup>
-import { ref } from "vue"
-import { call } from "./settingsApi.js"
+import { ref, onMounted } from "vue"
+import { call, openFull } from "./settingsApi.js"
+
+const props = defineProps({ full: Boolean })
+onMounted(() => { if (!props.full) openFull("find") })
 import SettingRow from "./SettingRow.vue"
 
 const query = ref("")

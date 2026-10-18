@@ -37,4 +37,5 @@ for (const name of files) {
 const entry = fs.readFileSync(path.join(dir, 'index.js'), 'utf8');
 require('acorn').parse(entry, { ecmaVersion: 2022, sourceType: 'module' });
 if (!entry.includes('menu.slrrMods') || !/export (async )?function onLoad/.test(entry) || !/export (async )?function onUnload/.test(entry)) { console.error('index.js: route name, onLoad or onUnload missing'); process.exit(1); }
+if (!/ModsMenu[^>]*full/.test(fs.readFileSync(path.join(dir, 'RouteHost.vue'), 'utf8')) || !fs.readFileSync(path.join(dir, 'settingsApi.js'), 'utf8').includes("navigate('menu.slrrMods'") || !entry.includes('backTarget: "pause"')) { console.error('the pause card must open the full-screen route (settingsApi openFull, RouteHost full, back to pause)'); process.exit(1); }
 console.log('mods menu pages ok (' + files.length + ' files + entry)');

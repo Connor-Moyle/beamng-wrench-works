@@ -9,7 +9,7 @@ const routes = [
     path: "/slrr-mods/:page/:mod?/:tab?",
     name: "menu.slrrMods",
     component: RouteHost,
-    meta: { luaRoute: { title: "Mods menu", backTarget: "menu" } },
+    meta: { luaRoute: { title: "Mods menu", backTarget: "pause" } },
   },
 ]
 

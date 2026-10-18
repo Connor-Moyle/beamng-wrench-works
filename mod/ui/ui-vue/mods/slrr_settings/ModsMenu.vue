@@ -51,12 +51,12 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from "vue"
-import { call } from "./settingsApi.js"
+import { call, openFull } from "./settingsApi.js"
 import { BngButton, BngSwitch } from "@/common/components/base"
 import { Button } from "@/common/components/utility"
 import SettingRow from "./SettingRow.vue"
 
-const props = defineProps({ mod: String, startTab: String })
+const props = defineProps({ mod: String, startTab: String, full: Boolean })
 
 const info = ref(null)
 const tab = ref("")
@@ -135,6 +135,8 @@ const root = ref(null)
 const narrow = ref(false)
 let watcher
 onMounted(() => {
+  // opened as a card of the pause menu (a narrow card): open the same page as a screen of its own, like Options (the route host passes `full`). If that fails the card stays as the fallback.
+  if (!props.full) openFull("mod", props.mod, props.startTab)
   load()
   if (root.value && window.ResizeObserver) {
     watcher = new ResizeObserver(() => { narrow.value = root.value.clientWidth < 700 })
