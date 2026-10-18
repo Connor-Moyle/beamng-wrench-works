@@ -143,3 +143,13 @@ end
 M.onExtensionLoaded = M.onSlrrSettingsReady
 return M
 ```
+
+## Find a setting and Quick setup (on top of the mod pages)
+
+- **Find a setting** (a button in the Mods menu tab): `slrr_settings.search(query)` finds a setting of any mod when every word of the query is in its label, tooltip, group, tab or mod name. The result is shown with its mod and tab and can be changed right there (the page uses the same `SettingRow` component as the mod pages).
+- **Quick setup:** a field of any value type may declare `presets = { performance = v, balanced = v, quality = v, max = v }` (any of the four; a preset a field does not declare leaves it alone). `slrr_settings.applyPreset(id)` writes every declared value through the field's store; `currentPreset()` is the preset whose declared values all match, otherwise `custom` (so changing any one setting afterwards shows Custom). The preset ids are fixed: performance, balanced, quality, max. Declare values that cost frames at Performance and look best at Max: CSFX drop counts and draw distances, traffic budgets, grass distance, driver LOD, AA level.
+
+```lua
+{ id = 'grassDist', tab = 'world', type = 'slider', label = 'Grass distance', min = 20, max = 200, step = 10, default = 80,
+  store = { kind = 'setting', key = 'csfxGrassDist' }, presets = { performance = 30, balanced = 80, quality = 120, max = 180 } }
+```

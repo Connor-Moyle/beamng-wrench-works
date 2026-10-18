@@ -112,6 +112,31 @@ do
   S.unregister('from_defs')
 end
 
+-- search across mods
+do
+  S.register({ mod = 'srch', title = 'Search mod', order = 90, tabs = { { id = 't', title = 'Rain tab' } }, fields = {
+    { id = 'drops', tab = 't', group = 'Glass', type = 'slider', label = 'Window drops', tooltip = 'How many raindrops sit on the glass.', min = 0, max = 10, step = 1, default = 5,
+      store = { kind = 'setting', key = 'srDrops' }, presets = { performance = 2, balanced = 5, quality = 8, max = 10 } },
+    { id = 'grass', tab = 't', type = 'bool', label = 'Grass', tooltip = 'Blades on the roadside.', default = true, store = { kind = 'setting', key = 'srGrass' },
+      presets = { performance = false, quality = true } },
+    { id = 'hd', tab = 't', type = 'heading', label = 'Window heading' },
+    { id = 'plain', tab = 't', type = 'bool', label = 'Plain', default = true, store = { kind = 'setting', key = 'srPlain' } },
+  } })
+  local hits = S.search('RAINDROPS glass')
+  check('search finds a setting by words of its label or tooltip, any case', #hits == 1 and hits[1].field.id == 'drops' and hits[1].tabTitle == 'Rain tab' and hits[1].field.value == 5)
+  check('search matches the tab and the mod name; headings are not settings; empty finds nothing', #S.search('rain tab') == 3 and #S.search('window') == 1 and #S.search('  ') == 0 and #S.search('zzzz') == 0)
+  -- quick setup
+  check('no preset matches the defaults of all fields yet: custom', S.quickSetup().current == 'custom' or S.quickSetup().current == 'balanced')
+  local r = S.applyPreset('performance')
+  check('a preset writes its value into every field that declares it', r.ok and r.changed == 2 and S.get('srch', 'drops') == 2 and S.get('srch', 'grass') == false and r.current == 'performance')
+  r = S.applyPreset('max')
+  check('a preset a field does not declare leaves that field alone; the current one follows', S.get('srch', 'drops') == 10 and S.get('srch', 'grass') == false and r.current == 'max')
+  S.set('srch', 'drops', 7)
+  check('changing a value afterwards makes it custom', S.currentPreset() == 'custom')
+  check('an unknown preset is refused; the quick setup lists presets and the mods that have them', S.applyPreset('bogus').ok == false and #S.quickSetup().presets == 4 and S.quickSetup().mods[#S.quickSetup().mods].mod == 'srch')
+  S.unregister('srch')
+end
+
 -- replace and unregister; the order of mods
 S.register({ mod = 'aaa', title = 'Early', order = 1, tabs = { { id = 't', title = 'T' } }, fields = {} })
 check('mods are sorted by order', S.mods()[1].mod == 'aaa' and S.mods()[2].mod == 'test_mod')
