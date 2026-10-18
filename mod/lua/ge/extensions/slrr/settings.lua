@@ -153,7 +153,11 @@ end
 local function readStore(f)
   local s = f.store
   if s.kind == 'setting' then return M.env.getSetting(s.key) end
-  if s.kind == 'custom' then local ok, v = pcall(s.get) return ok and v or nil end
+  if s.kind == 'custom' then
+    local ok, v = pcall(s.get)
+    if ok then return v end      -- (not `ok and v or nil`: a false setting is a value, and that turned every false into nil, then into the default)
+    return nil
+  end
   local d = M.env.readJson(s.file)
   for _, k in ipairs(splitPath(s.path)) do
     if type(d) ~= 'table' then return nil end

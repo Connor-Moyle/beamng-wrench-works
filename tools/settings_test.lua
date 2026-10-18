@@ -113,6 +113,19 @@ do
   S.unregister('from_defs')
 end
 
+-- a custom store that holds false (the garage's and the career's switches are custom stores): false is a value, not "nothing"
+do
+  local held = true
+  S.register({ mod = 'cust', title = 'Custom store', tabs = { { id = 't', title = 'T' } }, fields = {
+    { id = 'flag', tab = 't', type = 'bool', label = 'Flag', default = true, store = { kind = 'custom', get = function() return held end, set = function(v) held = v end } },
+    { id = 'num', tab = 't', type = 'slider', label = 'Num', min = 0, max = 10, step = 1, default = 5, store = { kind = 'custom', get = function() return 0 end, set = function() end } },
+  } })
+  local r = S.set('cust', 'flag', false)
+  check('a custom store keeps false (it read back as the default before)', r.ok and r.value == false and held == false and S.get('cust', 'flag') == false and S.page('cust', 't').fields[1].value == false)
+  check('and zero stays zero', S.get('cust', 'num') == 0)
+  S.unregister('cust')
+end
+
 -- search across mods
 do
   S.register({ mod = 'srch', title = 'Search mod', order = 90, tabs = { { id = 't', title = 'Rain tab' } }, fields = {
