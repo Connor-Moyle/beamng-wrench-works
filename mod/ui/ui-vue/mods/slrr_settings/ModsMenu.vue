@@ -99,7 +99,12 @@
                   </div>
                 </template>
                 <template v-else-if="f.type === 'button'">
-                  <button class="mm-btn" bng-nav-item @click="press(f)">{{ f.label }}</button>
+                  <span v-if="confirmField === f.id" class="mm-confirm">
+                    {{ f.confirm }}
+                    <button class="mm-btn danger" bng-nav-item @click="confirmField = ''; press(f)">Yes, do it</button>
+                    <button class="mm-btn" bng-nav-item @click="confirmField = ''">Cancel</button>
+                  </span>
+                  <button v-else class="mm-btn" bng-nav-item @click="f.confirm ? (confirmField = f.id) : press(f)">{{ f.label }}</button>
                 </template>
                 <template v-else-if="f.type === 'text'">
                   <input class="mm-text" type="text" :value="f.value" :maxlength="f.maxLength || 80" @change="e => change(f, e.target.value)" />
@@ -129,6 +134,7 @@ const busy = ref(false)
 const error = ref("")
 const showAdvanced = ref(false)
 const confirming = ref(false)
+const confirmField = ref("")      // a button that asks first (a field's `confirm` text)
 const toastText = ref("")
 let toastTimer
 

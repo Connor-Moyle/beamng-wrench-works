@@ -86,7 +86,6 @@ angular.module('beamng.apps')
     "p.finish": "Finish",
     "p.fit": "Fit",
     "p.garage": "Garage",
-    "p.garage_settings": "Garage settings",
     "p.in_hand": "In hand",
     "p.in_the_garage": "In the garage",
     "p.job_sheet": "Job sheet",
@@ -117,7 +116,6 @@ angular.module('beamng.apps')
     "p.pin_this_run_as_the": "Pin this run as the \"before\"",
     "p.prev": " Prev",
     "p.ready_to_be_fitted_with": "ready to be fitted with one click.",
-    "p.reset_to_defaults": "Reset to defaults",
     "p.resprayed": "Resprayed",
     "p.save_the_car_as_it": "Save the car as it stands",
     "p.saved_builds": "Saved builds",
@@ -139,7 +137,6 @@ angular.module('beamng.apps')
     "p.used_2": "Used ",
     "p.value_of_fitted_parts": "Value of fitted parts",
     "p.wheel": "Wheel",
-    "p.you_are_in_career_mode": "You are in career mode: money comes from your career account, not the freeroam budget.",
     "p.you_came_on_foot_so": "You came on foot, so the lift is empty. Pick the bare body shell of any car and it is put on the lift for you to build up: everything else comes from the catalog."
   };
 
@@ -724,26 +721,6 @@ var TEMPLATE = [
     /* work in progress */
     '<div class="sg-work" ng-if="work">{{work.what}}<div class="sg-workbar"><i ng-style="{\'transition-duration\': work.seconds + \'s\', width: work.go ? \'100%\' : \'0%\'}"></i></div></div>',
 
-    /* settings */
-    '<div class="sg-veil" ng-if="panel === \'settings\' && s.phase === \'garage\'" ng-mouseenter="overUi(true)">',
-    '  <div class="sg-modal sg-wide">',
-    ('    ' + '<div class="sg-dhead"><div class="sg-h">{{t(\'p.garage_settings\')}}</div><div class="sg-x" ng-click="closePanel()" ng-bind-html="icon(\'close\')"></div></div>'),
-    '    <div class="sg-scrolly">',
-    '      <div ng-repeat="g in settingGroups">',
-    '        <div class="sg-grp">{{g.name}}</div>',
-    '        <div class="sg-set" ng-repeat="d in g.defs track by d.key">',
-    '          <div class="sg-st"><b>{{d.title}}</b><span>{{d.desc}}</span><span class="sg-opnote" ng-repeat="o in d.options track by o.id" ng-if="o.note && d.value === o.id">{{o.label}}: {{o.note}}</span></div>',
-    '          <div class="sg-sc" ng-if="d.type === \'bool\'"><div class="sg-tog" ng-class="{\'sg-on\': d.value}" ng-click="setSetting(d, !d.value)"></div></div>',
-    '          <div class="sg-sc" ng-if="d.type === \'range\'"><input type="range" min="{{d.min}}" max="{{d.max}}" step="{{d.step}}" ng-model="d.value" ng-change="setSetting(d, d.value)"><div class="sg-sv">{{fix(d.value)}}{{d.unit}}</div></div>',
-    '          <div class="sg-sc sg-choice" ng-if="d.type === \'choice\'"><div class="sg-chopt" ng-repeat="o in d.options track by o.id" ng-class="{\'sg-on\': d.value === o.id}" ng-click="setSetting(d, o.id)">{{o.label}}</div></div>',
-    '          <div class="sg-sc" ng-if="d.type === \'number\'"><input type="number" min="{{d.min}}" max="{{d.max}}" step="{{d.step}}" ng-model="d.value" ng-change="setSetting(d, d.value)" ng-model-options="{debounce: 350}"></div>',
-    '        </div>',
-    '      </div>',
-    '    </div>',
-    ('    ' + '<div class="sg-foot2"><div class="sg-note" style="flex:1" ng-if="setCareer">{{t(\'p.you_are_in_career_mode\')}}</div><div class="sg-note" style="flex:1" ng-if="!setCareer"></div><div class="sg-btn" ng-click="lua(\'setSetting(\\\'__reset\\\')\')">{{t(\'p.reset_to_defaults\')}}</div></div>'),
-    '  </div>',
-    '</div>',
-
     /* catalog */
     '<div class="sg-cat" ng-class="{\'sg-retro\': s.retro}" ng-if="s.phase === \'catalog\' || s.phase === \'shop\'">',
     '  <div class="sg-book">',
@@ -919,7 +896,6 @@ var TEMPLATE = [
         if (name === 'tune') $scope.lua('requestTuning()');
         if (name === 'paint') $scope.lua('requestPaint()');
         if (name === 'info') $scope.lua('requestInfo()');
-        if (name === 'settings') $scope.lua('requestSettings()');
         if (name === 'upgrades') $scope.lua('requestUpgrades()');
       };
       $scope.closePanel = function () { $scope.panel = null; };
@@ -953,7 +929,6 @@ var TEMPLATE = [
         { icon: 'key', get title() { return $scope.t('bar.testengine.title', 'Test engine'); }, get desc() { return $scope.t('bar.testengine.desc', 'start or stop it where it stands'); }, act: function () { $scope.lua('toggleEngine()'); }, on: function () { return $scope.s.engineOn; } },
         { icon: 'clock', get title() { return $scope.t('bar.advancetime.title', 'Advance time'); }, get desc() { return $scope.t('bar.advancetime.desc', 'move the clock on three hours'); }, act: function () { $scope.lua('advanceTime()'); } },
         { icon: 'target', get title() { return $scope.t('bar.wholecar.title', 'Whole car'); }, get desc() { return $scope.t('bar.wholecar.desc', 'reset the camera'); }, act: function () { $scope.lua('resetView()'); }, on: function () { return $scope.s.focused; } },
-        { icon: 'gear', get title() { return $scope.t('bar.settings.title', 'Settings'); }, get desc() { return $scope.t('bar.settings.desc', 'money, prices, damage and more'); }, act: function () { $scope.openPanel('settings'); }, on: function () { return $scope.panel === 'settings'; } }
       ];
       $scope.barVisible = function (b) { return !b.when || b.when(); };
       // the entries other mods offer, one list per top tab (an entry says which with `tab`; none: car servicing), grouped as their mod said
@@ -1581,24 +1556,6 @@ var TEMPLATE = [
           window.setTimeout(function () { $scope.$evalAsync(function () { if ($scope.work) $scope.work.go = true; }); }, 40);
         });
       });
-      $scope.$on('slrrGarageSettings', function (ev, data) {
-        $scope.$evalAsync(function () {
-          var defs = (data && Array.isArray(data.defs)) ? data.defs : [], groups = [], byName = {};
-          defs.forEach(function (d) {
-            if (!byName[d.group]) { byName[d.group] = { name: d.group, defs: [] }; groups.push(byName[d.group]); }
-            byName[d.group].defs.push(d);
-          });
-          $scope.settingGroups = groups;
-          $scope.setCareer = !!(data && data.career);
-        });
-      });
-      $scope.setSetting = function (d, value) {
-        if (d.type !== 'bool' && d.type !== 'choice') { value = parseFloat(value); if (isNaN(value)) return; }
-        d.value = value;
-        var lua = d.type === 'bool' ? (value ? 'true' : 'false') : d.type === 'choice' ? JSON.stringify(String(value)) : value;
-        bngApi.engineLua('slrr_garage.setSetting(' + JSON.stringify(d.key) + ',' + lua + ')');
-      };
-
       // ---- 3D view input: left click acts, right drag orbits, wheel zooms, middle click focuses
       $scope.overUi = function (over) { $scope.lua('setMouseOverUi(' + (over ? 'true' : 'false') + ')'); };
       var down = null;

@@ -26,7 +26,7 @@ local ok = S.register({
       options = { { id = 'a', label = 'A' }, { id = 'b', label = 'B', sets = { on = false, amount = 1.5 } } } },
     { id = 'tint', tab = 'two', type = 'color', label = 'Tint', default = { r = 1, g = 0.5, b = 0 }, store = { kind = 'setting', key = 'tmTint' } },
     { id = 'tex', tab = 'two', type = 'texture', label = 'Texture', folder = '/art/x/', exts = { 'png', 'dds' }, none = true, default = '', store = { kind = 'setting', key = 'tmTex' } },
-    { id = 'go', tab = 'two', type = 'button', label = 'Go', action = function() pressed = pressed + 1 return 'done' end },
+    { id = 'go', tab = 'two', type = 'button', label = 'Go', action = function() pressed = pressed + 1 return 'done' end, confirm = 'Sure?' },
     { id = 'bad1', tab = 'nope', type = 'bool', label = 'Bad tab', default = true, store = { kind = 'setting', key = 'x' } },
     { id = 'bad2', tab = 'one', type = 'slider', label = 'Bad slider', default = 1, store = { kind = 'setting', key = 'x' } },
     { id = 'bad3', tab = 'one', type = 'bool', label = 'No store', default = true },
@@ -76,6 +76,7 @@ local tex
 for _, f in ipairs(S.page('test_mod', 'two').fields) do if f.id == 'tex' then tex = f end end
 check('a texture field carries the folder listing', #tex.files == 2 and tex.files[1] == '/art/x/a.png')
 local p = S.press('test_mod', 'go')
+check('a button can carry a confirm text for the page', (function() for _, f in ipairs(S.page('test_mod', 'two').fields) do if f.id == 'go' then return f.confirm == 'Sure?' end end end)())
 check('a button runs and returns its text', p.ok and p.text == 'done' and pressed == 1 and S.press('test_mod', 'on').ok == false)
 
 -- reset one tab

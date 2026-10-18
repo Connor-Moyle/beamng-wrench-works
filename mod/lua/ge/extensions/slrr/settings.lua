@@ -263,7 +263,7 @@ end
 local function publicField(f)
   local out = { id = f.id, tab = f.tab, group = f.group, type = f.type, label = f.label, tooltip = f.tooltip, default = f.default, apply = f.apply or 'live',
     min = f.min, max = f.max, step = f.step, unit = f.unit, scale = f.scale, options = f.options, alpha = f.alpha, none = f.none, thumbs = f.thumbs,
-    maxLength = f.maxLength, advanced = f.advanced, visibleIf = f.visibleIf }
+    maxLength = f.maxLength, advanced = f.advanced, visibleIf = f.visibleIf, confirm = f.confirm }
   if VALUE_TYPES[f.type] then
     out.value = currentValue(f)
     out.changed = not same(out.value, f.default)
