@@ -57,12 +57,9 @@
         </div>
       </template>
       <template v-else-if="field.type === 'button'">
-        <span v-if="asking" class="mm-confirm">
-          {{ field.confirm }}
-          <BngButton @click="asking = false; press()">Yes, do it</BngButton>
-          <BngButton @click="asking = false">Cancel</BngButton>
-        </span>
-        <BngButton v-else @click="field.confirm ? (asking = true) : press()">{{ field.label }}</BngButton>
+        <!-- one button, asked twice: the first click asks, the second does it (no inline Yes/Cancel pair to hide in a narrow control column) -->
+        <BngButton @click="onButton">{{ asking ? "Sure? Click again" : field.label }}</BngButton>
+        <span v-if="asking" class="mm-confirm">{{ field.confirm }} <BngButton @click="asking = false">Cancel</BngButton></span>
       </template>
       <BngInput v-else-if="field.type === 'text'" :modelValue="field.value" :maxlength="field.maxLength || 80" @change="change" />
     </BngRow>
@@ -105,6 +102,7 @@ function onSlider(v) { clearTimeout(sliderTimer); sliderTimer = setTimeout(() =>
 function items() { return (props.field.options || []).map(o => ({ value: o.id, label: o.label })) }
 function changeChannel(key, v) { change({ ...props.field.value, [key]: Number(v) }) }
 
+function onButton() { if (props.field.confirm && !asking.value) asking.value = true; else { asking.value = false; press() } }
 async function press() {
   try {
     const r = await call("press", props.mod, props.field.id)
