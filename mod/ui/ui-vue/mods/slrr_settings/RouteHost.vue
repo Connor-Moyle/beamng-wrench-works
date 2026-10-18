@@ -24,10 +24,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue"
+import { ref, onMounted, onBeforeUnmount } from "vue"
 import { useRoute } from "vue-router"
 import { Button } from "@/common/components/utility"
-import { call } from "./settingsApi.js"
+import { call, holdPause } from "./settingsApi.js"
 import ModsMenu from "./ModsMenu.vue"
 import FindSetting from "./FindSetting.vue"
 import QuickSetup from "./QuickSetup.vue"
@@ -47,6 +47,8 @@ function show(p, m) {
   tab.value = ""
 }
 
+onMounted(() => holdPause(true))
+onBeforeUnmount(() => holdPause(false))
 onMounted(async () => { try { mods.value = (await call("mods")) || [] } catch (e) { mods.value = [] } })
 </script>
 

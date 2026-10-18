@@ -18,3 +18,9 @@ export function openFull(page, mod, tab) {
   const arg = api.serializeToLua({ page, mod: mod || "", tab: tab || "" })
   api.engineLua(`extensions.ui_router.navigate('menu.slrrMods', ${arg})`)
 }
+
+// The full-screen page leaves the pause menu's route, which drops its pause of the world: hold our own while the page is up (released when it closes)
+export function holdPause(on) {
+  const { api } = useBridge()
+  api.engineLua(`if simTimeAuthority then simTimeAuthority.${on ? "pushPauseRequest" : "popPauseRequest"}("slrr_mods_menu") end`)
+}
