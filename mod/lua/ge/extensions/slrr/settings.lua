@@ -345,6 +345,7 @@ function M.press(modId, fieldId)
   local f = mods[modId] and mods[modId].byId[fieldId]
   if not f or f.type ~= 'button' then return { ok = false, error = 'no such button' } end
   local ok, text = pcall(f.action)
+  M.env.log('I', 'press ' .. modId .. '.' .. fieldId .. ' -> ' .. tostring(text))
   if not ok then warn('button ' .. fieldId .. ': ' .. tostring(text)) return { ok = false, error = tostring(text) } end
   return { ok = true, text = type(text) == 'string' and text or nil }
 end
