@@ -129,7 +129,7 @@ function M.fromDefs(defs, opts)
       f.store = { kind = 'custom', get = function() return opts.get(d.key) end, set = function(v) return opts.set(d.key, v) end }
       if d.type == 'bool' then f.type = 'bool'
       elseif d.type == 'range' or d.type == 'number' then
-        f.type, f.min, f.max, f.step, f.unit = 'slider', d.min, d.max, d.step, d.unit
+        f.type, f.min, f.max, f.step, f.unit, f.scale = 'slider', d.min, d.max, d.step, d.unit, d.scale
       elseif d.type == 'choice' then f.type, f.options = 'enum', d.options
       elseif d.type == 'info' then f.type, f.store, f.default = 'note', nil, nil
       end
