@@ -7,6 +7,7 @@
         <b>{{ field.label }}</b>
         <span v-if="field.changed" class="mm-dot" title="Different from the start value">changed</span>
         <span v-if="field.apply && field.apply !== 'live'" class="mm-apply">{{ applyText(field.apply) }}</span>
+        <span v-if="field.requires === 'career'" class="mm-apply">changes only while a career is loaded</span>
         <small v-if="field.tooltip">{{ field.tooltip }}</small>
       </div>
       <div class="mm-control">

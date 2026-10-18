@@ -128,7 +128,7 @@ function M.fromDefs(defs, opts)
   end
   for _, d in ipairs(defs) do
     if not (opts.skip and opts.skip(d)) and type(d.key) == 'string' then
-      local f = { id = d.key, tab = tabFor(d), group = d.sub, label = d.title or d.key, tooltip = d.desc, default = d.default, advanced = d.advanced, apply = d.apply, presets = d.presets }
+      local f = { id = d.key, tab = tabFor(d), group = d.sub, label = d.title or d.key, tooltip = d.desc, default = d.default, advanced = d.advanced, apply = d.apply, presets = d.presets, requires = d.career and 'career' or nil }
       f.store = { kind = 'custom', get = function() return opts.get(d.key) end, set = function(v) return opts.set(d.key, v) end }
       if d.type == 'bool' then f.type = 'bool'
       elseif d.type == 'range' or d.type == 'number' then
@@ -270,7 +270,7 @@ end
 local function publicField(f)
   local out = { id = f.id, tab = f.tab, group = f.group, type = f.type, label = f.label, tooltip = f.tooltip, default = f.default, apply = f.apply or 'live',
     min = f.min, max = f.max, step = f.step, unit = f.unit, scale = f.scale, options = f.options, alpha = f.alpha, none = f.none, thumbs = f.thumbs,
-    maxLength = f.maxLength, advanced = f.advanced, visibleIf = f.visibleIf, confirm = f.confirm, hasPresets = type(f.presets) == 'table' or nil }
+    maxLength = f.maxLength, advanced = f.advanced, visibleIf = f.visibleIf, confirm = f.confirm, hasPresets = type(f.presets) == 'table' or nil, requires = f.requires }
   if VALUE_TYPES[f.type] then
     out.value = currentValue(f)
     out.changed = not same(out.value, f.default)

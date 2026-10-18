@@ -109,6 +109,7 @@ do
   check('fromDefs: values come from the mod, writes go back to it', pg.fields[1].value == true and pg.fields[2].value == 0.5 and S.set('from_defs', 'b', 0.77).ok and sets.b == 0.75 and S.get('from_defs', 'b') == 0.75)
   check('fromDefs: unit and scale carry over (stored 0..1, shown as a percentage)', pg.fields[2].unit == '%' and pg.fields[2].scale == 100)
   check('fromDefs: presets carry over', S.search('D')[1] == nil or true)
+  check('fromDefs: a career setting says so', S.page('from_defs', 'Garage').fields[2] ~= nil)
   check('fromDefs: advanced and tooltip carry over', S.page('from_defs', 'Garage').fields[1].advanced == true and pg.fields[1].tooltip == 'a tip')
   S.unregister('from_defs')
 end

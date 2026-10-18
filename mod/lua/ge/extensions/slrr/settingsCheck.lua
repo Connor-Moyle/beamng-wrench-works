@@ -38,7 +38,8 @@ function M.run()
       local page = S.page(m.mod, t.id)
       local tested
       for _, f in ipairs(page.fields) do
-        if not tested and f.value ~= nil and not f.advanced and f.type ~= 'button' and f.type ~= 'text' and f.type ~= 'color' and f.type ~= 'texture' then
+        local needsCareer = f.requires == 'career' and not (rawget(_G, 'sl_career') and sl_career.isActive and sl_career.isActive())      -- (a career's own setting takes no change without a career: not a failure)
+        if not tested and f.value ~= nil and not f.advanced and not needsCareer and f.type ~= 'button' and f.type ~= 'text' and f.type ~= 'color' and f.type ~= 'texture' then
           local want = otherValue(f)
           if want ~= nil then
             local old = S.get(m.mod, f.id)
