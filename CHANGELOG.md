@@ -4,6 +4,12 @@
 
 What is new since 1.7.0, for players.
 
+### Built, not yet tested in game
+Built, with offline tests, but not yet seen working in the game. An item leaves this list only when the tester posts a pass.
+- **The Mods menu (ESC > Mods menu)** with the settings registry other mods use; Wrench Works' own settings are on it (money, delivery, garage, radio, catalog). The garage screen no longer has a Settings panel (the values are the same).
+- **Graphics and camera on the Mods menu:** anti-aliasing, sharpening, Look and the cinematic camera (the Options > Graphics groups are removed).
+- **Latch logging:** a door or boot latch that breaks is logged with its force and speed (to find why the pessima's rear latches break).
+
 ### Graphics
 
 - **Look** (a tab of the Mods menu page "Wrench Works: graphics & camera", off by default): a light colour grade and vignette on the finished picture; presets Natural, Cinematic, Vivid, or your own Contrast, Saturation, Warmth, Colour split and Vignette. Off puts the game's picture back exactly.

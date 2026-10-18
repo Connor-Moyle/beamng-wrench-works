@@ -8,6 +8,8 @@ local M = {}
 local TAG = 'slrr_settings'
 M.TAB = 'slrr_mods'                    -- the pause-menu tab that holds one button per mod
 M.COMPONENT = '/ui/ui-vue/mods/slrr_settings/ModsMenu.vue'
+M.QUICK_COMPONENT = '/ui/ui-vue/mods/slrr_settings/QuickSetup.vue'
+M.FIND_COMPONENT = '/ui/ui-vue/mods/slrr_settings/FindSetting.vue'
 
 local TYPES = { heading = true, note = true, bool = true, slider = true, int = true, enum = true, color = true, texture = true, button = true, text = true }
 local VALUE_TYPES = { bool = true, slider = true, int = true, enum = true, color = true, texture = true, text = true }
@@ -56,6 +58,7 @@ local function validField(mod, tabs, f, seen)
   if f.type == 'enum' and not (type(f.options) == 'table' and #f.options > 0) then return false, f.id .. ': an enum needs options' end
   if f.type == 'texture' and not (type(f.folder) == 'string' and type(f.exts) == 'table' and #f.exts > 0) then return false, f.id .. ': a texture field needs folder and exts' end
   if f.type == 'button' and not (type(f.action) == 'function') then return false, f.id .. ': a button needs an action function' end
+  if f.presets ~= nil and (type(f.presets) ~= 'table' or not VALUE_TYPES[f.type]) then return false, f.id .. ': presets must be a table on a setting' end
   return true
 end
 
@@ -108,6 +111,35 @@ function M.join(...)
   local out = {}
   for _, list in ipairs({ ... }) do for _, f in ipairs(list) do out[#out + 1] = f end end
   return out
+end
+
+-- ---- from the settings lists the mods already have ---------------------------------------------------------------------------------------------------------------
+
+-- The settings lists of Wrench Works and Street Legal are definitions { key, title, desc, type = bool | range | number | choice | info, default, min, max, step, unit, options,
+-- group, tab, advanced }. This turns such a list into schema fields, so those mods keep their own data model and the menu is generated from it.
+--   opts.tabOf(def) -> tab id (default: def.tab or def.group), opts.get(key), opts.set(key, value), opts.skip(def) -> true to leave a def out
+-- Returns fields, tabs (in the order they first appear).
+function M.fromDefs(defs, opts)
+  local fields, tabs, seenTab = {}, {}, {}
+  local function tabFor(d)
+    local t = opts.tabOf and opts.tabOf(d) or d.tab or d.group or 'Settings'
+    if not seenTab[t] then seenTab[t] = true tabs[#tabs + 1] = { id = t, title = t } end
+    return t
+  end
+  for _, d in ipairs(defs) do
+    if not (opts.skip and opts.skip(d)) and type(d.key) == 'string' then
+      local f = { id = d.key, tab = tabFor(d), group = d.sub, label = d.title or d.key, tooltip = d.desc, default = d.default, advanced = d.advanced, apply = d.apply, presets = d.presets }
+      f.store = { kind = 'custom', get = function() return opts.get(d.key) end, set = function(v) return opts.set(d.key, v) end }
+      if d.type == 'bool' then f.type = 'bool'
+      elseif d.type == 'range' or d.type == 'number' then
+        f.type, f.min, f.max, f.step, f.unit, f.scale = 'slider', d.min, d.max, d.step, d.unit, d.scale
+      elseif d.type == 'choice' then f.type, f.options = 'enum', d.options
+      elseif d.type == 'info' then f.type, f.store, f.default = 'note', nil, nil
+      end
+      if f.type then fields[#fields + 1] = f end
+    end
+  end
+  return fields, tabs
 end
 
 -- ---- stores ---------------------------------------------------------------------------------------------------------------------------------------------------
@@ -234,7 +266,7 @@ end
 local function publicField(f)
   local out = { id = f.id, tab = f.tab, group = f.group, type = f.type, label = f.label, tooltip = f.tooltip, default = f.default, apply = f.apply or 'live',
     min = f.min, max = f.max, step = f.step, unit = f.unit, scale = f.scale, options = f.options, alpha = f.alpha, none = f.none, thumbs = f.thumbs,
-    maxLength = f.maxLength, advanced = f.advanced, visibleIf = f.visibleIf }
+    maxLength = f.maxLength, advanced = f.advanced, visibleIf = f.visibleIf, confirm = f.confirm, hasPresets = type(f.presets) == 'table' or nil }
   if VALUE_TYPES[f.type] then
     out.value = currentValue(f)
     out.changed = not same(out.value, f.default)
@@ -304,6 +336,93 @@ function M.press(modId, fieldId)
   return { ok = true, text = type(text) == 'string' and text or nil }
 end
 
+-- ---- find a setting, and the whole-pack presets ---------------------------------------------------------------------------------------------------------------
+
+-- every word of the query must be in the label, the tooltip, the group, the tab or the mod's name (case does not matter); headings and notes are not settings
+function M.search(query)
+  local words = {}
+  for w in tostring(query or ''):lower():gmatch('%S+') do words[#words + 1] = w end
+  if #words == 0 then return {} end
+  local out = {}
+  for _, id in ipairs(order) do
+    local m = mods[id]
+    local tabTitle = {}
+    for _, t in ipairs(m.tabs) do tabTitle[t.id] = t.title end
+    for _, f in ipairs(m.fields) do
+      if f.type ~= 'heading' and f.type ~= 'note' then
+        local hay = (tostring(f.label) .. ' ' .. tostring(f.tooltip or '') .. ' ' .. tostring(f.group or '') .. ' ' .. tostring(tabTitle[f.tab] or '') .. ' ' .. m.title):lower()
+        local all = true
+        for _, w in ipairs(words) do if not hay:find(w, 1, true) then all = false break end end
+        if all then
+          out[#out + 1] = { mod = id, modTitle = m.title, tab = f.tab, tabTitle = tabTitle[f.tab], field = publicField(f) }
+          if #out >= 40 then return out end
+        end
+      end
+    end
+  end
+  return out
+end
+
+-- Quick setup: a field may declare presets = { performance = v, balanced = v, quality = v, max = v } (any of them). A preset writes its value into every field that declares it;
+-- the current preset is the one whose values all match, else 'custom'.
+M.PRESETS = { { id = 'performance', title = 'Performance' }, { id = 'balanced', title = 'Balanced' }, { id = 'quality', title = 'Quality' }, { id = 'max', title = 'Max' } }
+
+local function presetFields(presetId)
+  local out = {}
+  for _, id in ipairs(order) do
+    for _, f in ipairs(mods[id].fields) do
+      if VALUE_TYPES[f.type] and type(f.presets) == 'table' and f.presets[presetId] ~= nil then out[#out + 1] = { mod = id, field = f } end
+    end
+  end
+  return out
+end
+
+function M.currentPreset()
+  local any
+  for _, p in ipairs(M.PRESETS) do
+    local list = presetFields(p.id)
+    if #list > 0 then
+      any = true
+      local match = true
+      for _, e in ipairs(list) do
+        local want = coerce(e.field, e.field.presets[p.id])
+        if want == nil or not same(currentValue(e.field), want) then match = false break end
+      end
+      if match then return p.id end
+    end
+  end
+  return any and 'custom' or 'none'
+end
+
+function M.quickSetup()
+  local out = { presets = {}, current = M.currentPreset(), mods = {} }
+  for _, p in ipairs(M.PRESETS) do out.presets[#out.presets + 1] = { id = p.id, title = p.title, fields = #presetFields(p.id) } end
+  for _, id in ipairs(order) do
+    local n = 0
+    for _, f in ipairs(mods[id].fields) do if VALUE_TYPES[f.type] and type(f.presets) == 'table' then n = n + 1 end end
+    if n > 0 then out.mods[#out.mods + 1] = { mod = id, title = mods[id].title, fields = n } end
+  end
+  return out
+end
+
+function M.applyPreset(presetId)
+  local known
+  for _, p in ipairs(M.PRESETS) do if p.id == presetId then known = true end end
+  if not known then return { ok = false, error = 'no such preset' } end
+  local n = 0
+  for _, e in ipairs(presetFields(presetId)) do
+    local clean = coerce(e.field, e.field.presets[presetId])
+    if clean ~= nil then
+      writeStore(e.field, clean)
+      if e.field.onChange then pcall(e.field.onChange, clean) end
+      n = n + 1
+    end
+  end
+  local r = M.quickSetup()
+  r.ok, r.changed = true, n
+  return r
+end
+
 -- ---- the pause menu ---------------------------------------------------------------------------------------------------------------------------------------------
 
 local function registerMenu()
@@ -312,6 +431,8 @@ local function registerMenu()
   if not (a and a.registerModTab and a.registerModButton) then return false end
   local ok = pcall(a.registerModTab, { id = M.TAB, label = 'Mods menu', icon = 'wrench' })
   if not ok then return false end
+  pcall(a.registerModButton, { id = 'slrr_settings_quick', tabId = M.TAB, label = 'Quick setup', icon = 'wrench', componentName = M.QUICK_COMPONENT })
+  pcall(a.registerModButton, { id = 'slrr_settings_find', tabId = M.TAB, label = 'Find a setting', icon = 'wrench', componentName = M.FIND_COMPONENT })
   for _, id in ipairs(order) do
     pcall(a.registerModButton, { id = 'slrr_settings_' .. id, tabId = M.TAB, label = mods[id].title, icon = mods[id].icon, componentName = M.COMPONENT, props = { mod = id } })
   end
@@ -320,15 +441,37 @@ end
 M.registerMenu = registerMenu
 M.onRegistered = function() registerMenu() end
 
+-- Wrench Works' own settings (its garage settings list: money, delivery, garage, radio, catalog), as the Mods menu's first mod
+local function registerWrenchWorks()
+  local g = rawget(_G, 'slrr_garage')
+  if not (g and g.ownSettingsDefs and g.setSetting) then return false end
+  local defs = g.ownSettingsDefs()
+  -- the driver, pedestrian and injury settings are Pedestrians & Drivers' (they register their own page)
+  local function skip(d) return d.needs == 'drivers' or d.needs == 'appearance' or d.needs == 'pedestrians' or d.needs == 'injury' or d.group == 'Driver look' or d.key == 'driverMode' or d.key == 'injuryMode' end
+  local function tabOf(d) return d.group == 'Radio' and 'Car radio' or d.group end
+  local byKey = {}
+  for _, d in ipairs(defs) do byKey[d.key] = d end
+  local fields, tabs = M.fromDefs(defs, {
+    tabOf = tabOf, skip = skip,
+    get = function(key) local cur = g.ownSettingsDefs() for _, d in ipairs(cur) do if d.key == key then return d.value end end end,
+    set = function(key, value) g.setSetting(key, value) return true end,
+  })
+  if #tabs == 0 then return false end
+  return M.register({ mod = 'wrench_works', title = 'Wrench Works', icon = 'wrench', order = 10, tabs = tabs, fields = fields })
+end
+M.registerWrenchWorks = registerWrenchWorks
+
 -- every extension of ours that wants to register is asked once the registry is there (a mod that loaded earlier is asked again)
 local function askForSchemas()
   if extensions and extensions.hook then extensions.hook('onSlrrSettingsReady') end
 end
 M.onExtensionLoaded = function()
   setExtensionUnloadMode(M, 'manual')
+  registerWrenchWorks()
   askForSchemas()
   registerMenu()
 end
-M.onClientStartMission = function() registerMenu() end
+M.onSlrrSettingsReady = function() registerWrenchWorks() end
+M.onClientStartMission = function() registerWrenchWorks() registerMenu() end
 
 return M

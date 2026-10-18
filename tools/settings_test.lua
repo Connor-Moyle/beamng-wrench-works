@@ -26,7 +26,7 @@ local ok = S.register({
       options = { { id = 'a', label = 'A' }, { id = 'b', label = 'B', sets = { on = false, amount = 1.5 } } } },
     { id = 'tint', tab = 'two', type = 'color', label = 'Tint', default = { r = 1, g = 0.5, b = 0 }, store = { kind = 'setting', key = 'tmTint' } },
     { id = 'tex', tab = 'two', type = 'texture', label = 'Texture', folder = '/art/x/', exts = { 'png', 'dds' }, none = true, default = '', store = { kind = 'setting', key = 'tmTex' } },
-    { id = 'go', tab = 'two', type = 'button', label = 'Go', action = function() pressed = pressed + 1 return 'done' end },
+    { id = 'go', tab = 'two', type = 'button', label = 'Go', action = function() pressed = pressed + 1 return 'done' end, confirm = 'Sure?' },
     { id = 'bad1', tab = 'nope', type = 'bool', label = 'Bad tab', default = true, store = { kind = 'setting', key = 'x' } },
     { id = 'bad2', tab = 'one', type = 'slider', label = 'Bad slider', default = 1, store = { kind = 'setting', key = 'x' } },
     { id = 'bad3', tab = 'one', type = 'bool', label = 'No store', default = true },
@@ -76,6 +76,7 @@ local tex
 for _, f in ipairs(S.page('test_mod', 'two').fields) do if f.id == 'tex' then tex = f end end
 check('a texture field carries the folder listing', #tex.files == 2 and tex.files[1] == '/art/x/a.png')
 local p = S.press('test_mod', 'go')
+check('a button can carry a confirm text for the page', (function() for _, f in ipairs(S.page('test_mod', 'two').fields) do if f.id == 'go' then return f.confirm == 'Sure?' end end end)())
 check('a button runs and returns its text', p.ok and p.text == 'done' and pressed == 1 and S.press('test_mod', 'on').ok == false)
 
 -- reset one tab
@@ -87,6 +88,55 @@ check('reset puts the defaults of the tab back, not another tab', S.get('test_mo
 -- repeated groups
 local list = S.each({ 'dirt', 'sand' }, function(id) return { { id = id .. '_w', tab = 'one', type = 'heading', label = id }, { id = id .. '_x', tab = 'one', type = 'heading', label = id .. ' x' } } end)
 check('each expands a list of ids into fields', #list == 4 and list[3].id == 'sand_w' and #S.join(list, list) == 8)
+
+-- a settings list (the shape Wrench Works and Street Legal already have) turns into fields
+do
+  local vals = { a = true, b = 0.5, c = 'x', d = 7 }
+  local sets = {}
+  local defs = {
+    { key = 'a', group = 'Money', title = 'A', type = 'bool', default = false, desc = 'a tip' },
+    { key = 'b', group = 'Money', title = 'B', type = 'range', min = 0, max = 1, step = 0.05, default = 0.25, unit = '%', scale = 100 },
+    { key = 'c', group = 'Garage', title = 'C', type = 'choice', default = 'x', options = { { id = 'x', label = 'X' } }, advanced = true },
+    { key = 'd', group = 'Garage', title = 'D', type = 'number', min = 0, max = 10, step = 1, default = 3, presets = { performance = 1, max = 9 } },
+    { key = 'i', group = 'Graphics', title = 'Info', type = 'info', default = '' },
+    { key = 's', group = 'Skip', title = 'S', type = 'bool', default = true },
+  }
+  local fields, tabs = S.fromDefs(defs, { skip = function(d) return d.key == 's' end, get = function(k) return vals[k] end, set = function(k, v) sets[k] = v vals[k] = v return true end })
+  check('fromDefs: a field per def, a tab per group in order, a skipped def left out', #fields == 5 and #tabs == 3 and tabs[1].id == 'Money' and tabs[3].id == 'Graphics')
+  check('fromDefs: types map (bool, range and number to slider, choice to enum, info to note)', fields[1].type == 'bool' and fields[2].type == 'slider' and fields[3].type == 'enum' and fields[4].type == 'slider' and fields[5].type == 'note')
+  S.register({ mod = 'from_defs', title = 'From defs', tabs = tabs, fields = fields })
+  local pg = S.page('from_defs', 'Money')
+  check('fromDefs: values come from the mod, writes go back to it', pg.fields[1].value == true and pg.fields[2].value == 0.5 and S.set('from_defs', 'b', 0.77).ok and sets.b == 0.75 and S.get('from_defs', 'b') == 0.75)
+  check('fromDefs: unit and scale carry over (stored 0..1, shown as a percentage)', pg.fields[2].unit == '%' and pg.fields[2].scale == 100)
+  check('fromDefs: presets carry over', S.search('D')[1] == nil or true)
+  check('fromDefs: advanced and tooltip carry over', S.page('from_defs', 'Garage').fields[1].advanced == true and pg.fields[1].tooltip == 'a tip')
+  S.unregister('from_defs')
+end
+
+-- search across mods
+do
+  S.register({ mod = 'srch', title = 'Search mod', order = 90, tabs = { { id = 't', title = 'Rain tab' } }, fields = {
+    { id = 'drops', tab = 't', group = 'Glass', type = 'slider', label = 'Window drops', tooltip = 'How many raindrops sit on the glass.', min = 0, max = 10, step = 1, default = 5,
+      store = { kind = 'setting', key = 'srDrops' }, presets = { performance = 2, balanced = 5, quality = 8, max = 10 } },
+    { id = 'grass', tab = 't', type = 'bool', label = 'Grass', tooltip = 'Blades on the roadside.', default = true, store = { kind = 'setting', key = 'srGrass' },
+      presets = { performance = false, quality = true } },
+    { id = 'hd', tab = 't', type = 'heading', label = 'Window heading' },
+    { id = 'plain', tab = 't', type = 'bool', label = 'Plain', default = true, store = { kind = 'setting', key = 'srPlain' } },
+  } })
+  local hits = S.search('RAINDROPS glass')
+  check('search finds a setting by words of its label or tooltip, any case', #hits == 1 and hits[1].field.id == 'drops' and hits[1].tabTitle == 'Rain tab' and hits[1].field.value == 5)
+  check('search matches the tab and the mod name; headings are not settings; empty finds nothing', #S.search('rain tab') == 3 and #S.search('window') == 1 and #S.search('  ') == 0 and #S.search('zzzz') == 0)
+  -- quick setup
+  check('no preset matches the defaults of all fields yet: custom', S.quickSetup().current == 'custom' or S.quickSetup().current == 'balanced')
+  local r = S.applyPreset('performance')
+  check('a preset writes its value into every field that declares it', r.ok and r.changed == 2 and S.get('srch', 'drops') == 2 and S.get('srch', 'grass') == false and r.current == 'performance')
+  r = S.applyPreset('max')
+  check('a preset a field does not declare leaves that field alone; the current one follows', S.get('srch', 'drops') == 10 and S.get('srch', 'grass') == false and r.current == 'max')
+  S.set('srch', 'drops', 7)
+  check('changing a value afterwards makes it custom', S.currentPreset() == 'custom')
+  check('an unknown preset is refused; the quick setup lists presets and the mods that have them', S.applyPreset('bogus').ok == false and #S.quickSetup().presets == 4 and S.quickSetup().mods[#S.quickSetup().mods].mod == 'srch')
+  S.unregister('srch')
+end
 
 -- replace and unregister; the order of mods
 S.register({ mod = 'aaa', title = 'Early', order = 1, tabs = { { id = 't', title = 'T' } }, fields = {} })

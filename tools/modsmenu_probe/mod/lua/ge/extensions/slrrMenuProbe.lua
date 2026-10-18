@@ -6,9 +6,9 @@ local function register()
   if not a then pcall(extensions.load, 'ui_pause_actions') a = rawget(_G, 'ui_pause_actions') end
   if not a then answers = { 'ui_pause_actions is not loaded' } return end
   answers = {
-    dump(a.registerModTab({ id = 'slrr_probe', label = 'SLRR probe', icon = 'wrench' })),
-    dump(a.registerModButton({ id = 'slrr_probe_one', tabId = 'slrr_probe', label = 'Probe card', icon = 'wrench', componentName = '/ui/ui-vue/mods/slrr_menu_probe/Probe.vue' })),
-    dump(a.registerModButton({ id = 'slrr_probe_shared', tabId = 'mods', label = 'SLRR probe (shared Mods tab)', icon = 'wrench', componentName = '/ui/ui-vue/mods/slrr_menu_probe/Probe.vue' })),
+    dumps(a.registerModTab({ id = 'slrr_probe', label = 'SLRR probe', icon = 'wrench' })),
+    dumps(a.registerModButton({ id = 'slrr_probe_one', tabId = 'slrr_probe', label = 'Probe card', icon = 'wrench', componentName = '/ui/ui-vue/mods/slrr_menu_probe/Probe.vue' })),
+    dumps(a.registerModButton({ id = 'slrr_probe_shared', tabId = 'mods', label = 'SLRR probe (shared Mods tab)', icon = 'wrench', componentName = '/ui/ui-vue/mods/slrr_menu_probe/Probe.vue' })),
   }
 end
 M.register = register
