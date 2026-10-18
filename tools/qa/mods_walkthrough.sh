@@ -41,8 +41,8 @@ shotpage() {   # shotpage <name> <lua params>
   out="$(R "local r = extensions.ui_router.navigate('menu.slrrMods', $params) return dumps(r)" | tr -d '\r' | head -c 300)"
   case "$out" in *success*false*|*error*|*fail*) rec "open $name" FAIL "$out"; return;; esac
   nap 2.5
-  local f; f="$(SHOT "$name")"
-  cp -f "$f" "$OUT/$name.jpg" 2>/dev/null
+  # the MCP screenshot does not include the pause menu or the router screens drawn by the UI: the whole desktop is copied instead (the game window must be in front)
+  powershell -NoProfile -Command "Add-Type -AssemblyName System.Windows.Forms,System.Drawing; $b=[System.Windows.Forms.SystemInformation]::VirtualScreen; $bmp=New-Object System.Drawing.Bitmap $b.Width,$b.Height; $g=[System.Drawing.Graphics]::FromImage($bmp); $g.CopyFromScreen($b.Location,[System.Drawing.Point]::Empty,$b.Size); $bmp.Save('$(cygpath -w "$OUT/$name.jpg")',[System.Drawing.Imaging.ImageFormat]::Jpeg)" > /dev/null 2>&1
   rec "screen $name" INFO "$OUT/$name.jpg ($out)"
 }
 
