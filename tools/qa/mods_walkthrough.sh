@@ -16,6 +16,23 @@ source "$QA_LIB"
 PROBES="$HERE"                      # (the probes of this folder: mods_data.lua)
 OUT="${QA_SHOT_DIR:-./mods_shots}"; mkdir -p "$OUT"
 
+# The display is changed only with --res; its original resolution and window mode are read first, written to a file and always put back at the end (also when the script fails or
+# is stopped). By hand: bash tools/qa/mods_restore_display.sh   (or the line it prints).
+ORIG_FILE="$OUT/original_display.txt"
+restore_display() {
+  [ -n "$RES" ] || return 0
+  local res mode
+  res="$(cut -d'|' -f1 "$ORIG_FILE" 2>/dev/null)"; mode="$(cut -d'|' -f2 "$ORIG_FILE" 2>/dev/null)"
+  [ -n "$res" ] || return 0
+  R "settings.setValue('GraphicDisplayResolutions', '$res') if '$mode' ~= '' then settings.setValue('GraphicDisplayModes', '$mode') end if core_settings_graphic and core_settings_graphic.applyGraphicsState then core_settings_graphic.applyGraphicsState() end return 1" > /dev/null
+  echo "display restored to: $res $mode"
+}
+if [ -n "$RES" ]; then
+  R "return tostring(settings.getValue('GraphicDisplayResolutions')) .. '|' .. tostring(settings.getValue('GraphicDisplayModes'))" | tr -d '' | head -1 > "$ORIG_FILE"
+  echo "original display: $(cat "$ORIG_FILE")  (saved in $ORIG_FILE; to restore by hand: bash tools/qa/mods_restore_display.sh \"$ORIG_FILE\")"
+  trap restore_display EXIT INT TERM
+fi
+
 echo "== data level"
 check "mods menu: data check" mods_data.lua
 
