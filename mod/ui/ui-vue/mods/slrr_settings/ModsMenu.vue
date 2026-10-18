@@ -1,44 +1,48 @@
 <template>
-  <div class="mm">
+  <!-- laid out like the game's Options screen: the tab list on the left (the category column), the settings on the right (rows with the label left, the control right) -->
+  <div class="options-container mm">
     <div v-if="error" class="mm-error">{{ error }}</div>
     <template v-else-if="info">
-      <h2 class="mm-title">{{ info.title }}</h2>
-
-      <div class="mm-tabs" role="tablist">
-        <button
+      <div class="options-subcategories" role="tablist">
+        <h3 class="mm-title">{{ info.title }}</h3>
+        <Button
           v-for="t in info.tabs"
           :key="t.id"
-          class="mm-tab"
-          :class="{ on: t.id === tab }"
+          class="options-category-side"
+          :class="{ selected: t.id === tab }"
           role="tab"
           :aria-selected="t.id === tab"
-          bng-nav-item
           @click="openTab(t.id)"
-        >{{ t.title }}</button>
+        >{{ t.title }}</Button>
       </div>
 
-      <p v-if="tabInfo && tabInfo.description" class="mm-desc">{{ tabInfo.description }}</p>
+      <div class="options-content-wrapper">
+        <div class="options-content-main">
+          <div class="options-head">
+            <p v-if="tabInfo && tabInfo.description" class="mm-desc">{{ tabInfo.description }}</p>
+            <div class="mm-bar">
+              <BngSwitch v-model="showAdvanced" label="Show advanced settings" labelBefore />
+              <BngButton v-if="!confirming" @click="confirming = true">Reset this tab to defaults</BngButton>
+              <span v-else class="mm-confirm">
+                Put every setting of this tab back to its start value?
+                <BngButton @click="resetTab">Yes, reset</BngButton>
+                <BngButton @click="confirming = false">Cancel</BngButton>
+              </span>
+            </div>
+          </div>
 
-      <div class="mm-bar">
-        <label class="mm-adv">
-          <input type="checkbox" v-model="showAdvanced" bng-nav-item /> Show advanced settings
-        </label>
-        <button v-if="!confirming" class="mm-btn" bng-nav-item @click="confirming = true">Reset this tab to defaults</button>
-        <span v-else class="mm-confirm">
-          Put every setting of this tab back to its start value?
-          <button class="mm-btn danger" bng-nav-item @click="resetTab">Yes, reset</button>
-          <button class="mm-btn" bng-nav-item @click="confirming = false">Cancel</button>
-        </span>
+          <div class="options-content">
+            <div v-if="busy" class="mm-note">Loading ...</div>
+            <div v-for="g in groups" :key="g.name" class="mm-group">
+              <h4 v-if="g.name" class="mm-gtitle">{{ g.name }}</h4>
+              <template v-for="f in g.fields" :key="f.id">
+                <SettingRow v-if="shown(f)" :mod="mod" :field="f" @reload="openTab(tab)" @toast="toast" />
+              </template>
+            </div>
+          </div>
+          <div v-if="toastText" class="mm-toast">{{ toastText }}</div>
+        </div>
       </div>
-
-      <div v-if="busy" class="mm-note">Loading ...</div>
-      <div v-for="g in groups" :key="g.name" class="mm-group">
-        <h3 v-if="g.name" class="mm-gtitle">{{ g.name }}</h3>
-        <template v-for="f in g.fields" :key="f.id">
-          <SettingRow v-if="shown(f)" :mod="mod" :field="f" @reload="openTab(tab)" @toast="toast" />
-        </template>
-      </div>
-      <div v-if="toastText" class="mm-toast">{{ toastText }}</div>
     </template>
     <div v-else class="mm-note">Loading ...</div>
   </div>
@@ -47,6 +51,8 @@
 <script setup>
 import { ref, computed, onMounted } from "vue"
 import { call } from "./settingsApi.js"
+import { BngButton, BngSwitch } from "@/common/components/base"
+import { Button } from "@/common/components/utility"
 import SettingRow from "./SettingRow.vue"
 
 const props = defineProps({ mod: String, startTab: String })
@@ -125,22 +131,29 @@ onMounted(load)
 </script>
 
 <style lang="scss" scoped>
-// dark card colours; text on them is at least 7:1 (WCAG AAA) and state is never only a colour
-.mm { padding: 1rem 1.25rem; color: #ece9f1; max-width: 62rem; margin: 0 auto; font-size: 1rem; line-height: 1.4; }
-.mm-title { margin: 0 0 0.75rem; font-size: 1.5rem; font-weight: 600; }
-.mm-error { padding: 1rem; border: 2px solid #ffb4ab; border-radius: 0.5rem; color: #ffdad6; }
-.mm-tabs { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.75rem; }
-.mm-tab, .mm-btn { background: #2c2a33; color: #ece9f1; border: 2px solid #4a4753; border-radius: 0.5rem; padding: 0.45rem 0.9rem; font: inherit; cursor: pointer; }
-.mm-tab.on { background: #a8c7fa; color: #062e6f; border-color: #a8c7fa; font-weight: 600; }
-.mm-tab.on::before { content: "\2713\00a0"; }
-.mm-btn.danger { background: #ffb4ab; color: #410002; border-color: #ffb4ab; }
-button:focus-visible, input:focus-visible, [bng-nav-item]:focus { outline: 3px solid #ffd54f; outline-offset: 2px; }
-.mm-desc { margin: 0 0 0.75rem; color: #cfcbd8; }
-.mm-bar { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
-.mm-adv { color: #cfcbd8; }
-.mm-confirm { display: inline-flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
-.mm-group { margin-bottom: 1.25rem; }
-.mm-gtitle { margin: 0 0 0.5rem; padding-bottom: 0.25rem; border-bottom: 2px solid #4a4753; font-size: 1.15rem; }
-.mm-note { color: #cfcbd8; margin: 0.4rem 0; }
-.mm-toast { position: sticky; bottom: 0.5rem; margin-top: 1rem; padding: 0.6rem 1rem; background: #a8c7fa; color: #062e6f; border-radius: 0.5rem; font-weight: 600; }
+// the look of the game's Options screen (OptionsBody.vue): a dark category column with an orange edge, an orange selected tab, a dark content column
+.options-container { display: flex; flex-direction: row; flex-wrap: nowrap; align-items: stretch; width: 100%; height: 100%; max-width: 100%; overflow: hidden; font-family: "Overpass", var(--fnt-defs); }
+.options-subcategories {
+  flex: 0 0 auto; display: flex; flex-direction: column; width: 12em; padding: 1em 0.25em; overflow-y: auto;
+  background: color-mix(in srgb, var(--bng-off-black) 90%, transparent); border-right: 0.125em solid var(--bng-orange-550);
+}
+.mm-title { margin: 0 0.4em 0.6em; font-size: 1.15em; font-weight: 600; color: var(--bng-off-white); }
+.options-category-side {
+  position: relative; display: flex; align-items: flex-start; justify-content: flex-start; text-align: left; padding: 0.25em 0.5em; max-width: 20em; margin-bottom: 0.1em;
+  --bng-bg-enabled: transparent; --bng-bg-hover: var(--bng-orange-500); --bng-bg-active: var(--bng-orange-600); --bng-bg-border-radius: var(--bng-corners-2); --bng-bg-border-width: 0.125em;
+  &.selected { --bng-bg-enabled: var(--bng-orange-550); --bng-bg-hover: var(--bng-orange-400); --bng-bg-border-radius: var(--bng-corners-2) 0 0 var(--bng-corners-2); }
+  &.selected :deep(.bng-background) { right: -0.5em; }
+}
+.options-content-wrapper { flex: 1 1 auto; display: flex; min-width: 0; background: color-mix(in srgb, var(--bng-off-black) 90%, transparent); }
+.options-content-main { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden; }
+.options-head { flex: 0 0 auto; padding: 0.75em 0.75em 0.25em; }
+.options-content { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0.25em 0.75em 1em; }
+.mm-desc { margin: 0 0 0.5em; color: var(--bng-cool-gray-100, #cfcbd8); }
+.mm-bar { display: flex; flex-wrap: wrap; gap: 1em; align-items: center; justify-content: space-between; }
+.mm-confirm { display: inline-flex; gap: 0.5em; align-items: center; flex-wrap: wrap; }
+.mm-group { margin-bottom: 0.75em; }
+.mm-gtitle { margin: 0.25em 0 0.5em; font-family: "Overpass", var(--fnt-defs); color: var(--bng-off-white); }
+.mm-note { color: var(--bng-cool-gray-100, #cfcbd8); margin: 0.4em 0; }
+.mm-error { padding: 1em; border: 2px solid #ffb4ab; border-radius: 0.5em; color: #ffdad6; }
+.mm-toast { flex: 0 0 auto; margin: 0.5em 0.75em; padding: 0.5em 1em; background: var(--bng-orange-550); color: var(--bng-off-white); border-radius: var(--bng-corners-2); font-weight: 600; }
 </style>
