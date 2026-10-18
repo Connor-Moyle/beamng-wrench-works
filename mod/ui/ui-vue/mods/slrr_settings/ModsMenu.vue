@@ -75,7 +75,7 @@ const tabInfo = computed(() => (info.value ? info.value.tabs.find(t => t.id === 
 const groups = computed(() => {
   const out = []
   for (const f of fields.value) {
-    if (f.advanced && !showAdvanced.value) continue
+    if (f.advanced && !showAdvanced.value && !onlyAdvanced.value) continue
     const name = f.group || ""
     let g = out.find(x => x.name === name)
     if (!g) { g = { name, fields: [] }; out.push(g) }
@@ -84,7 +84,9 @@ const groups = computed(() => {
   return out
 })
 
-const hiddenCount = computed(() => (showAdvanced.value ? 0 : fields.value.filter(f => f.advanced).length))
+// a tab whose settings are all advanced would show an empty page: it shows them
+const onlyAdvanced = computed(() => fields.value.length > 0 && fields.value.every(f => f.advanced || f.type === "heading" || f.type === "note"))
+const hiddenCount = computed(() => (showAdvanced.value || onlyAdvanced.value ? 0 : fields.value.filter(f => f.advanced).length))
 const byId = computed(() => Object.fromEntries(fields.value.map(f => [f.id, f])))
 function shown(f) {
   if (!f.visibleIf) return true
@@ -175,7 +177,8 @@ onBeforeUnmount(() => watcher && watcher.disconnect())
 .options-head { flex: 0 0 auto; padding: 0.75em 0.75em 0.25em; }
 .options-content { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0.25em 0.75em 1em; }
 .mm-desc { margin: 0 0 0.5em; color: var(--bng-cool-gray-100, #cfcbd8); }
-.mm-bar { display: flex; flex-wrap: wrap; gap: 1em; align-items: center; justify-content: space-between; }
+// (left-aligned: the career HUD sits over the top right corner)
+.mm-bar { display: flex; flex-wrap: wrap; gap: 1em; align-items: center; }
 .mm-confirm { display: inline-flex; gap: 0.5em; align-items: center; flex-wrap: wrap; }
 .mm-group { margin-bottom: 0.75em; }
 .mm-gtitle { margin: 0.25em 0 0.5em; font-family: "Overpass", var(--fnt-defs); color: var(--bng-off-white); }

@@ -1,7 +1,7 @@
 <template>
   <!-- one setting laid out like a row of the game's Options screen: the label (and its note) on the left, the control on the right -->
   <h4 v-if="field.type === 'heading'" class="options-item-heading mm-sub">{{ field.label }}</h4>
-  <p v-else-if="field.type === 'note'" class="mm-note">{{ field.label }}</p>
+  <p v-else-if="field.type === 'note'" class="mm-note">{{ field.label }}<template v-if="field.tooltip">: {{ field.tooltip }}</template></p>
   <div v-else class="options-item" :class="{ changed: field.changed }">
     <BngRow class="options-item-row" :vertical="vertical">
       <template #label>
