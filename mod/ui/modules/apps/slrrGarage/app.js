@@ -1311,8 +1311,11 @@ var TEMPLATE = [
         }
         return null;
       }
+      var frameFlip = false;
       function frame() {
         rafId = window.requestAnimationFrame(frame);
+        // the holes for the 3D parts are measured every second frame (a layout read per preview per frame is the garage screen's biggest cost); a held camera drag still counts every frame
+        if (!heldDrag) { frameFlip = !frameFlip; if (frameFlip) return; }
         var phase = $scope.s.phase, on = $scope.s.previews && (phase === 'garage' || phase === 'catalog' || phase === 'busy' || phase === 'shop');
         var els = on ? rootEl.querySelectorAll('.sg-prev') : [];
         var W = window.innerWidth || 1, H = window.innerHeight || 1;

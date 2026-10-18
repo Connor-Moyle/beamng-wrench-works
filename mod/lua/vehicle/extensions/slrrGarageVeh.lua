@@ -281,7 +281,12 @@ end
 -- push every door and lid shut (the car is about to drive out through a doorway)
 local function shutLatches()
   relatch, relatchTimer = {}, 0
-  for name in pairs(latchStates()) do relatch[name] = 'attached' end
+  local stuck = {}
+  for name, state in pairs(latchStates()) do
+    relatch[name] = 'attached'
+    if state == 'broken' then stuck[#stuck + 1] = name end      -- (a coupler that broke under force is never closed again; this says which)
+  end
+  if #stuck > 0 then log('W', 'slrrGarageVeh', 'shutLatches: broken before the garage could shut them: ' .. table.concat(stuck, ', ')) end
 end
 
 -- The lift. The car is held up by forces: every node that is not part of a wheel is steered towards a spot a set height above where it stood, with a force strong

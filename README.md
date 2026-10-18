@@ -58,7 +58,7 @@ No music comes with the mod. Bring your own:
 
 `add_music.ps1` makes the tracks mono, which the game needs to place a sound in the room, and gives them the narrow tone of a small speaker. `-Clean` keeps them as they are, in stereo; those play as plain music.
 
-**In the car**: the same music plays on the car radio while you drive. Every subfolder of the music folder is a station (`music\Rock`, `music\SLRR`...); the tracks lying loose in it are "Wrench Works FM". Bind a key to "Wrench Works: radio on/off" and "Wrench Works: next radio station" under Options > Controls. Each car keeps its station; the radio holds while the game is paused and makes way for the garage's radio.
+**In the car**: the same music plays on the car radio while you drive. Every subfolder of the music folder is a station (`music\Rock`, `music\Garage`...); the tracks lying loose in it are "Wrench Works FM". Bind a key to "Wrench Works: radio on/off" and "Wrench Works: next radio station" under Options > Controls. Each car keeps its station; the radio holds while the game is paused and makes way for the garage's radio.
 
 Settings has a switch for the music, one for the radio effect, and a volume, and the car radio's switch and volume. Streaming services such as YouTube Music are not supported: the game can only play sound files.
 
@@ -130,6 +130,7 @@ The parts in the catalog and on the shelf are the real 3D models, with the game'
 ## Damage and money
 
 - Parts keep their damage. Take a bent bumper off and it is still bent when you refit it, and the car leaves as damaged as it arrived, visit after visit, unless you pay to repair it.
+- With the optional **Car Surface FX** mod installed, the car info shows the car's **Dirt** and **Scratches**; a repair buffs the scratches out and a paint job (in a Street Legal career) leaves the car clean.
 - In career mode the garage spends and earns your career money. Outside it you have a wallet of your own that goes down when you buy and up when you sell, and is remembered between sessions. Settings has the starting amount and an unlimited-money switch.
 - The Settings screen covers prices, sell-back value and repair cost, delivery times and charges, the entry speed, how fast the car drives itself in, the lift height, whether the driver's door opens on arrival, markers, shops, the controls reminder, camera direction and sensitivity, and preview speed and direction.
 

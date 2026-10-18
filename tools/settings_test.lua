@@ -1,0 +1,97 @@
+-- The Mods menu registry (slrr/settings.lua) with stand-ins for the game. Run: node tools/settings_test.js
+local S = require('slrr/settings')
+local function check(name, ok, detail) if not ok then error('FAILED: ' .. name .. (detail and (' ' .. tostring(detail)) or ''), 0) end end
+
+local settingsStore, jsonFiles, jsonWrites, logs = {}, {}, 0, {}
+S.env.getSetting = function(k) return settingsStore[k] end
+S.env.setSetting = function(k, v) settingsStore[k] = v end
+S.env.readJson = function(f) return jsonFiles[f] end
+S.env.writeJson = function(f, d) jsonFiles[f] = d jsonWrites = jsonWrites + 1 end
+S.env.listFiles = function(folder, exts) return { folder .. 'a.png', folder .. 'b.dds' } end
+S.env.log = function(l, t) logs[#logs + 1] = t end
+
+local custom = { v = 3 }
+local pressed = 0
+local changed = {}
+local ok = S.register({
+  mod = 'test_mod', title = 'Test mod', order = 5,
+  tabs = { { id = 'one', title = 'One', description = 'First' }, { id = 'two', title = 'Two' } },
+  fields = {
+    { id = 'h', tab = 'one', type = 'heading', label = 'Group' },
+    { id = 'on', tab = 'one', type = 'bool', label = 'On', default = true, store = { kind = 'setting', key = 'tmOn' } },
+    { id = 'amount', tab = 'one', type = 'slider', label = 'Amount', min = 0, max = 2, step = 0.1, default = 1, store = { kind = 'json', file = '/settings/tm.json', path = 'a.b.amount' },
+      onChange = function(v) changed[#changed + 1] = v end },
+    { id = 'count', tab = 'one', type = 'int', label = 'Count', min = 1, max = 5, default = 2, store = { kind = 'custom', get = function() return custom.v end, set = function(v) custom.v = v end } },
+    { id = 'mode', tab = 'two', type = 'enum', label = 'Mode', default = 'a', store = { kind = 'setting', key = 'tmMode' },
+      options = { { id = 'a', label = 'A' }, { id = 'b', label = 'B', sets = { on = false, amount = 1.5 } } } },
+    { id = 'tint', tab = 'two', type = 'color', label = 'Tint', default = { r = 1, g = 0.5, b = 0 }, store = { kind = 'setting', key = 'tmTint' } },
+    { id = 'tex', tab = 'two', type = 'texture', label = 'Texture', folder = '/art/x/', exts = { 'png', 'dds' }, none = true, default = '', store = { kind = 'setting', key = 'tmTex' } },
+    { id = 'go', tab = 'two', type = 'button', label = 'Go', action = function() pressed = pressed + 1 return 'done' end },
+    { id = 'bad1', tab = 'nope', type = 'bool', label = 'Bad tab', default = true, store = { kind = 'setting', key = 'x' } },
+    { id = 'bad2', tab = 'one', type = 'slider', label = 'Bad slider', default = 1, store = { kind = 'setting', key = 'x' } },
+    { id = 'bad3', tab = 'one', type = 'bool', label = 'No store', default = true },
+    { id = 'on', tab = 'one', type = 'bool', label = 'Twice', default = true, store = { kind = 'setting', key = 'y' } },
+  },
+})
+check('registers', ok == true)
+check('bad fields are dropped and logged, good ones stay', #logs == 4 and #S.page('test_mod', 'one').fields == 4 and #S.page('test_mod', 'two').fields == 4, #logs)
+check('a schema without a valid mod id is refused', S.register({ mod = 'Bad Id', tabs = {} }) == false and S.register({ mod = 'x', tabs = {} }) == false)
+
+local m = S.mods()
+check('mods() lists it with its tabs', #m == 1 and m[1].mod == 'test_mod' and #m[1].tabs == 2 and m[1].tabs[1].description == 'First')
+
+local page = S.page('test_mod', 'one')
+local by = {}
+for _, f in ipairs(page.fields) do by[f.id] = f end
+check('values come from the stores or the defaults, changed marks a difference', by.on.value == true and by.on.changed == false and by.amount.value == 1 and by.count.value == 3 and by.count.changed == true)
+
+-- set: validation and clamping per type
+local r = S.set('test_mod', 'on', 'false')
+check('bool from text', r.ok and r.value == false and settingsStore.tmOn == false)
+check('bool junk refused', S.set('test_mod', 'on', 'maybe').ok == false)
+r = S.set('test_mod', 'amount', 9)
+check('slider clamps', r.ok and r.value == 2 and jsonFiles['/settings/tm.json'].a.b.amount == 2 and changed[#changed] == 2)
+r = S.set('test_mod', 'amount', 0.34)
+check('slider snaps to the step', r.value == 0.3, r.value)
+local writes = jsonWrites
+S.set('test_mod', 'amount', 0.3)
+check('a json value that did not change is not written again', jsonWrites == writes)
+check('slider junk refused', S.set('test_mod', 'amount', 'abc').ok == false and S.set('test_mod', 'amount', 0 / 0).ok == false)
+check('int rounds and clamps', S.set('test_mod', 'count', 7.4).value == 5 and S.set('test_mod', 'count', 0).value == 1 and custom.v == 1)
+check('enum only takes its options', S.set('test_mod', 'mode', 'zzz').ok == false and S.set('test_mod', 'mode', 'a').ok)
+r = S.set('test_mod', 'tint', { r = 2, g = -1, b = 0.5 })
+check('colour is clamped', r.ok and r.value.r == 1 and r.value.g == 0 and r.value.b == 0.5 and r.value.a == nil)
+check('colour junk refused', S.set('test_mod', 'tint', 'red').ok == false)
+check('texture must be a file of the folder or none', S.set('test_mod', 'tex', '/art/x/a.png').ok and S.set('test_mod', 'tex', '/etc/passwd').ok == false and S.set('test_mod', 'tex', '').ok)
+check('unknown mod or field', S.set('nope', 'on', true).ok == false and S.set('test_mod', 'nope', true).ok == false and S.set('test_mod', 'h', true).ok == false)
+
+-- a preset fills other fields
+S.set('test_mod', 'on', true)
+S.set('test_mod', 'amount', 1)
+r = S.set('test_mod', 'mode', 'b')
+check('an enum option can fill other fields', r.ok and S.get('test_mod', 'on') == false and S.get('test_mod', 'amount') == 1.5)
+
+-- the texture field lists the folder; button press
+local tex
+for _, f in ipairs(S.page('test_mod', 'two').fields) do if f.id == 'tex' then tex = f end end
+check('a texture field carries the folder listing', #tex.files == 2 and tex.files[1] == '/art/x/a.png')
+local p = S.press('test_mod', 'go')
+check('a button runs and returns its text', p.ok and p.text == 'done' and pressed == 1 and S.press('test_mod', 'on').ok == false)
+
+-- reset one tab
+S.set('test_mod', 'count', 4)
+S.set('test_mod', 'amount', 2)
+S.reset('test_mod', 'one')
+check('reset puts the defaults of the tab back, not another tab', S.get('test_mod', 'amount') == 1 and S.get('test_mod', 'count') == 2 and S.get('test_mod', 'on') == true and S.get('test_mod', 'mode') == 'b')
+
+-- repeated groups
+local list = S.each({ 'dirt', 'sand' }, function(id) return { { id = id .. '_w', tab = 'one', type = 'heading', label = id }, { id = id .. '_x', tab = 'one', type = 'heading', label = id .. ' x' } } end)
+check('each expands a list of ids into fields', #list == 4 and list[3].id == 'sand_w' and #S.join(list, list) == 8)
+
+-- replace and unregister; the order of mods
+S.register({ mod = 'aaa', title = 'Early', order = 1, tabs = { { id = 't', title = 'T' } }, fields = {} })
+check('mods are sorted by order', S.mods()[1].mod == 'aaa' and S.mods()[2].mod == 'test_mod')
+S.register({ mod = 'aaa', title = 'Early again', order = 1, tabs = { { id = 't', title = 'T' } }, fields = {} })
+check('registering again replaces it', #S.mods() == 2 and S.mods()[1].title == 'Early again')
+check('unregister', S.unregister('aaa') and #S.mods() == 1 and S.unregister('aaa') == false)
+print('settings registry test passed')

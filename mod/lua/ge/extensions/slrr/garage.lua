@@ -975,6 +975,7 @@ end
 local function leaveJob(job)
   local store, vid = M.storeOnLeave, vehId      -- (B9: 'store' or 'walk': the car is put away once it stands outside, and you are on foot)
   M.storeOnLeave = nil
+  local painted = parts.paintsDirty()           -- (a paint job this visit: other mods are told once the car is out: onWrenchWorksPainted)
   local missing = parts.missingEssentials()
   local v = veh()
   local half = v and v:getInitialLength() * 0.5 or 2.2
@@ -1010,6 +1011,7 @@ local function leaveJob(job)
   -- repair ticket is checked here
   local vd = core_vehicle_manager.getVehicleData(vehId)
   extensions.hook('onWrenchWorksDriveOut', vehId, { partsTree = vd and vd.config and vd.config.partsTree, dents = damage.countAll() })
+  if painted then extensions.hook('onWrenchWorksPainted', vid) end
   parts.detach()
   picker.clear()
   freezeCar(false)
@@ -1718,6 +1720,16 @@ local function sendInfo()
   row('Weight', cfg.Weight and math.floor(cfg.Weight + 0.5), ' kg')
   row('Top speed', cfg['Top Speed'] and math.floor(cfg['Top Speed'] * 3.6 + 0.5), ' km/h')
   row('0-100 km/h', cfg['0-100 km/h'] and string.format('%.1f', cfg['0-100 km/h']), ' s')
+  -- how dirty and scratched the car is, when Car Surface FX is installed (apiVersion 2: level(id))
+  local fx = rawget(_G, 'carSurfaceFx')
+  if fx and (tonumber(fx.apiVersion) or 1) >= 2 and type(fx.level) == 'function' and vehId then
+    local okFx, lv = pcall(fx.level, vehId)
+    if okFx and type(lv) == 'table' then
+      local function cap(t) return t and (tostring(t):gsub('^%l', string.upper)) or nil end
+      row('Dirt', cap(lv.dirtName))
+      row('Scratches', lv.scratchName)
+    end
+  end
   info.rows = rows
   local v = veh()
   if v then v:queueLuaCommand('extensions.load("slrrGarageVeh") slrrGarageVeh.dyno()') end   -- the power curve follows
