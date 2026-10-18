@@ -44,6 +44,18 @@ check('camera preset filled', r.ok and store[C.KEYS.letterbox] == '2.39' and sto
 r = S.set(M.MOD, 'cam_letterbox', 'off')
 check('letterbox off makes it custom', r.ok and store[C.KEYS.preset] == 'custom')
 
+-- Quick setup: the whole-pack presets write the fields' declared values through their stores
+S.applyPreset('performance')
+check('performance: FXAA, no sharpening, no blur or depth of field', store[G.KEYS.mode] == 'fxaa' and store[G.KEYS.sharpener] == 'off' and store[C.KEYS.blur] == 0 and store[C.KEYS.dof] == 0)
+check('performance is the current preset', S.currentPreset() == 'performance', S.currentPreset())
+S.applyPreset('quality')
+check('quality: SMAA Ultra with CAS', store[G.KEYS.mode] == 'smaaUltra' and store[G.KEYS.sharpener] == 'cas' and store[G.KEYS.strength] == 0.4)
+S.applyPreset('max')
+check('max: SMAA Ultra + Temporal with CAS', store[G.KEYS.mode] == 'smaaUltraTemporal' and store[G.KEYS.sharpener] == 'cas' and math.abs(store[G.KEYS.temporal] - 0.7) < 1e-6)
+check('our own preset field follows (onChange ran)', store[G.KEYS.preset] ~= nil)
+S.applyPreset('balanced')
+check('balanced: SMAA High, no sharpening', store[G.KEYS.mode] == 'smaa' and store[G.KEYS.sharpener] == 'off')
+
 -- reset puts the defaults back on a tab
 S.reset(M.MOD, 'look')
 check('reset', store[Lk.KEYS.preset] == 'off' and store[Lk.KEYS.contrast] == 0 and store[Lk.KEYS.vignette] == 0)
