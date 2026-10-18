@@ -113,3 +113,33 @@ Values from the page are always validated and clamped by the registry (never tru
 4. Provide a `description` per tab and a `tooltip` per field in plain words.
 
 Car Surface FX (ba): the existing Options group becomes the first tabs (Rain & glass, Dirt & wear, Weather extras); the ported Surface FX modules get Skid marks & terrain, Leaks & debris, Textures (`texture` fields for the folders of decals).
+
+## Status and one worked example (feca8f8 and later)
+
+Built: `slrr/settings.lua` (registry; `node tools/settings_test.js`), `ui/ui-vue/mods/slrr_settings/ModsMenu.vue` (page; `node tools/modsmenu_vue_test.js`), loaded by Wrench Works' modScript. Not yet seen in the game (the pause-menu probe in tools/modsmenu_probe comes first).
+
+Helpers: `slrr_settings.each(ids, function(id) return { fields... } end)` expands a list of ids into one flat field list (eight surfaces with the same settings); `slrr_settings.join(listA, listB, ...)` joins field lists. An enum option can carry `sets = { fieldId = value }` to fill other fields (presets). A changed value reaches the owner by its store (read it with the same settings key or json path as before) and by the optional `onChange(value)` callback.
+
+```lua
+local M = {}
+function M.onSlrrSettingsReady()
+  local S = rawget(_G, 'slrr_settings')
+  if not S then return end                      -- Wrench Works not installed: this mod runs on its defaults or its json file
+  S.register({
+    mod = 'my_mod', title = 'My mod', order = 50,
+    tabs = { { id = 'look', title = 'Look', description = 'How things look.' } },
+    fields = S.join(
+      { { id = 'quality', tab = 'look', group = 'Quality', type = 'enum', label = 'Quality preset', tooltip = 'Fills the settings below.',
+          default = 'balanced', store = { kind = 'setting', key = 'myQuality' },
+          options = { { id = 'balanced', label = 'Balanced', sets = { sharp = 0.3, blur = false } }, { id = 'max', label = 'Maximum', sets = { sharp = 0.8, blur = true } } } },
+        { id = 'sharp', tab = 'look', group = 'Quality', type = 'slider', label = 'Sharpening', tooltip = '0 is off.', min = 0, max = 1, step = 0.05, default = 0.3,
+          store = { kind = 'json', file = '/settings/my_mod.json', path = 'look.sharp' }, apply = 'live', onChange = function(v) M.applySharp(v) end },
+        { id = 'blur', tab = 'look', group = 'Quality', type = 'bool', label = 'Motion blur', default = false, store = { kind = 'setting', key = 'myBlur' } } },
+      S.each({ 'dirt', 'sand' }, function(id) return {
+        { id = id .. '_w', tab = 'look', group = 'Skid marks: ' .. id, type = 'slider', label = 'Width', min = 0.1, max = 1, step = 0.05, default = 0.4,
+          store = { kind = 'json', file = '/settings/my_marks.json', path = 'mats.' .. id .. '.width' } } } end)),
+  })
+end
+M.onExtensionLoaded = M.onSlrrSettingsReady
+return M
+```
