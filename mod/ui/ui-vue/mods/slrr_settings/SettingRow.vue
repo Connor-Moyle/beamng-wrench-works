@@ -2,7 +2,7 @@
   <!-- one setting laid out like a row of the game's Options screen: the label (and its note) on the left, the control on the right -->
   <h4 v-if="field.type === 'heading'" class="options-item-heading mm-sub">{{ field.label }}</h4>
   <p v-else-if="field.type === 'note'" class="mm-note">{{ field.label }}<template v-if="field.tooltip">: {{ field.tooltip }}</template></p>
-  <div v-else class="options-item" :class="{ changed: field.changed }">
+  <div v-else class="options-item" :class="{ changed: field.changed, ['mm-toggle']: field.type === 'bool' }">
     <BngRow class="options-item-row" :vertical="vertical" :tooltip="field.tooltip" :tooltip-handler="panel ? showInfo : undefined">
       <template #label>
         <div class="options-item-label">
@@ -75,7 +75,7 @@ import { BngSwitch, BngSlider, BngRow, BngButton, BngInput, BngSmartSelect } fro
 // panel: the page has an info panel beside it (like Options): the help shows there while the row is hovered or focused (the mouse and the controller); without one it stays under the title
 const props = defineProps({ mod: String, field: Object, vertical: Boolean, panel: Boolean })
 const emit = defineEmits(["reload", "toast", "info"])
-function showInfo(text) { emit("info", text) }
+function showInfo(text) { emit("info", text, props.field.label) }
 const asking = ref(false)
 
 function scale() { return props.field.scale || 1 }
@@ -116,6 +116,9 @@ async function press() {
 <style lang="scss" scoped>
 // the Options look comes from BngRow and the base controls; only what they lack is here
 .options-item { position: relative; display: block; padding: 0.125em; }
+// one row height for every control (a toggle a little shorter, as in Options)
+.options-item :deep(.options-item-row) { min-height: 2.9em; align-items: center; }
+.options-item.mm-toggle :deep(.options-item-row) { min-height: 2.5em; }
 .options-item.changed :deep(.bng-row-label) { border-left: 3px solid var(--bng-orange-500); }
 .options-item-label { display: flex; align-items: center; flex-wrap: wrap; gap: 0.4em; width: 100%; }
 .mm-help { display: block; margin-top: 0.1em; font-size: 0.85em; color: var(--bng-cool-gray-100, #cfcbd8); }

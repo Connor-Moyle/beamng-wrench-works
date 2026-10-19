@@ -38,14 +38,14 @@
             <div v-for="g in groups" :key="g.name" class="mm-group">
               <h4 v-if="g.name" class="mm-gtitle">{{ g.name }}</h4>
               <template v-for="f in g.fields" :key="f.id">
-                <SettingRow v-if="shown(f)" :mod="mod" :field="f" :vertical="narrow" :panel="wide" @reload="openTab(tab, true)" @toast="toast" @info="t => (infoText = t || '')" />
+                <SettingRow v-if="shown(f)" :mod="mod" :field="f" :vertical="narrow" :panel="wide" @reload="openTab(tab, true)" @toast="toast" @info="(t, title) => (info2 = t ? { title, text: t } : null)" />
               </template>
             </div>
           </div>
           <div v-if="toastText" class="mm-toast">{{ toastText }}</div>
         </div>
         <!-- the help of the hovered or focused row, in a panel on the right like the one of Options -->
-        <div v-if="wide" class="mm-info"><span v-if="infoText">{{ infoText }}</span></div>
+        <div v-if="wide" class="mm-info"><template v-if="info2"><h4 class="mm-info-title">{{ info2.title }}</h4><span>{{ info2.text }}</span></template></div>
       </div>
     </template>
     <div v-else class="mm-note">Loading ...</div>
@@ -144,7 +144,7 @@ async function resetTab() {
 const root = ref(null)
 const narrow = ref(false)
 const wide = ref(false)
-const infoText = ref("")
+const info2 = ref(null)
 let watcher
 onMounted(() => {
   // opened as a card of the pause menu (a narrow card): open the same page as a screen of its own, like Options (the route host passes `full`). If that fails the card stays as the fallback.
@@ -176,17 +176,20 @@ onBeforeUnmount(() => watcher && watcher.disconnect())
   &.selected { --bng-bg-enabled: var(--bng-orange-550); --bng-bg-hover: var(--bng-orange-400); --bng-bg-border-radius: var(--bng-corners-2) 0 0 var(--bng-corners-2); }
   &.selected :deep(.bng-background) { right: -0.5em; }
 }
-.options-content-wrapper { flex: 1 1 auto; display: flex; min-width: 0; background: color-mix(in srgb, var(--bng-off-black) 90%, transparent); }
+.options-content-wrapper { flex: 1 1 auto; display: flex; min-width: 0; min-height: 0; background: color-mix(in srgb, var(--bng-off-black) 90%, transparent); }
 .options-content-main { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden; }
 .options-head { flex: 0 0 auto; padding: 0.75em 0.75em 0.25em; }
 .options-content { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0.25em 0.75em 1em; }
-.mm-info { flex: 0 0 20em; padding: 0.5em; font-size: 1.2em; font-weight: 300; background: color-mix(in srgb, var(--bng-off-black) 80%, transparent); overflow-y: auto; }
+// the help panel: clear of the career HUD at the top (about 3.5 em), its own scroll for a long help, a title and a frame
+.mm-info { flex: 0 0 20em; align-self: stretch; min-height: 0; max-height: 100%; box-sizing: border-box; margin: 3.5em 0.5em 1em 0; padding: 0.6em 0.75em; font-size: 1.05em; font-weight: 300; line-height: 1.35; background: color-mix(in srgb, var(--bng-off-black) 70%, transparent); border: 1px solid var(--bng-orange-600); border-radius: var(--bng-corners-2); overflow-y: auto; }
+.mm-info-title { margin: 0 0 0.4em; font-weight: 600; color: var(--bng-off-white); }
 .mm-desc { margin: 0 0 0.5em; color: var(--bng-cool-gray-100, #cfcbd8); }
 // (left-aligned: the career HUD sits over the top right corner)
 .mm-bar { display: flex; flex-wrap: wrap; gap: 1em; align-items: center; }
 .mm-confirm { display: inline-flex; gap: 0.5em; align-items: center; flex-wrap: wrap; }
-.mm-group { margin-bottom: 0.75em; }
-.mm-gtitle { margin: 0.25em 0 0.5em; font-family: "Overpass", var(--fnt-defs); color: var(--bng-off-white); }
+// a group is a card with its heading above it, like the groups of Options
+.mm-group { margin-bottom: 0.9em; padding: 0.25em 0.4em 0.35em; background: color-mix(in srgb, var(--bng-off-black) 55%, transparent); border-radius: var(--bng-corners-2); }
+.mm-gtitle { margin: 0.2em 0 0.4em 0.2em; font-size: 1em; font-family: "Overpass", var(--fnt-defs); color: var(--bng-off-white); }
 .mm-note { color: var(--bng-cool-gray-100, #cfcbd8); margin: 0.4em 0; }
 .mm-error { padding: 1em; border: 2px solid #ffb4ab; border-radius: 0.5em; color: #ffdad6; }
 .mm-toast { flex: 0 0 auto; margin: 0.5em 0.75em; padding: 0.5em 1em; background: var(--bng-orange-550); color: var(--bng-off-white); border-radius: var(--bng-corners-2); font-weight: 600; }
