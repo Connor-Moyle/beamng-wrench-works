@@ -46,10 +46,16 @@ end
 -- of them names (an engine without the call lists them all, as the game does)
 M.UPSCALER_MODES = { { 'fxaa', 'FXAA', 8 }, { 'smaa', 'SMAA', 8 }, { 'smaaT2x', 'SMAA T2x', 7 }, { 'dlss', 'NVIDIA DLSS', 1 }, { 'fsr3', 'AMD FSR 3', 2 }, { 'fsr4', 'AMD FSR 4', 3 },
                      { 'xess', 'Intel XeSS', 4 }, { 'fsrCustom', 'FSR (custom)', 5 }, { 'pssr', 'PSSR', 9 } }
+-- the lowest lighting quality has no depth and motion vectors for the temporal upscalers: the game refuses them there, so the row does not offer them
+local function lowestLighting()
+  return rawget(_G, 'settings') and settings.getValue and settings.getValue('GraphicLightingQuality') == 'Lowest'
+end
 function M.upscalerOptions(available)
   local out = { { id = 'off', label = 'Off' } }
   for _, m in ipairs(M.UPSCALER_MODES) do
-    if not available or available(m[3]) then out[#out + 1] = { id = m[1], label = m[2] } end
+    if not available or available(m[3]) then
+      out[#out + 1] = { id = m[1], label = m[2], hideIf = require('slrr/graphics').TEMPORAL_UPSCALERS[m[1]] and lowestLighting or nil }
+    end
   end
   return out
 end

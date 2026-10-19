@@ -38,7 +38,7 @@
             <div v-for="g in groups" :key="g.name" class="mm-group">
               <h4 v-if="g.name" class="mm-gtitle">{{ g.name }}</h4>
               <template v-for="f in g.fields" :key="f.id">
-                <SettingRow v-if="shown(f)" :class="{ locked: lockedWhy(f) }" :mod="mod" :field="f" :vertical="narrow" :panel="wide" @reload="openTab(tab, true)" @toast="toast" @info="(t, title) => (info2 = t ? { title, text: t } : null)" />
+                <SettingRow v-if="shown(f)" :class="{ locked: lockedWhy(f) }" :aria-disabled="lockedWhy(f) ? 'true' : undefined" :inert="lockedWhy(f) ? true : undefined" :mod="mod" :field="f" :vertical="narrow" :panel="wide" @reload="openTab(tab, true)" @toast="toast" @info="(t, title) => (info2 = t ? { title, text: t } : null)" />
                 <p v-if="shown(f) && lockedWhy(f)" class="mm-note mm-why">{{ lockedWhy(f) }}</p>
               </template>
             </div>

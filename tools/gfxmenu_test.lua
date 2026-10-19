@@ -55,6 +55,12 @@ local up = S.page(M.MOD, 'aa').fields
 local byid = {}
 for _, f in ipairs(up) do byid[f.id] = f end
 check('our anti-aliasing rows carry the lock rule', byid.aa_mode.disabledIf and byid.aa_mode.disabledIf.field == 'up_type' and byid.aa_spec.disabledIf and byid.up_sharp.disabledIf and byid.up_type.value == 'dlss')
+store.GraphicLightingQuality = 'Lowest'
+local function ids() local t = {} for _, f in ipairs(S.page(M.MOD, 'aa').fields) do if f.id == 'up_type' then for _, o in ipairs(f.options) do t[o.id] = true end end end return t end
+local lo = ids()
+check('Lowest lighting: temporal upscalers are not offered, FXAA and SMAA are', lo.off and lo.fxaa and lo.smaa and not lo.dlss and not lo.fsr3)
+store.GraphicLightingQuality = 'High'
+check('above Lowest they are back', ids().dlss == true)
 store.GraphicAntialias = 4
 check('with AA on, readOptions names the upscaler', G.readOptions(settings.getValue).upscaler == 'dlss')
 r = S.set(M.MOD, 'look_preset', 'cinematic')
