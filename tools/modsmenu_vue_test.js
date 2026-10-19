@@ -33,6 +33,15 @@ for (const name of files) {
     if (!script.includes(n)) { console.error(`${name} does not call ${n}`); process.exit(1); }
   }
 }
+// a dropdown pick must reach the registry. BngSmartSelect (more items than its threshold shows a dropdown) takes its model with defineModel: a parent that passes
+// :modelValue without listening to update:modelValue gets the model updated locally, and the component's own `change` then sees "no change" and never emits (0.40: a pick
+// of the Upscaler, a 7+ item list, did nothing). So every BngSmartSelect in these pages must listen to update:modelValue, and none to @change (both would set twice).
+for (const name of files) {
+  const src = fs.readFileSync(path.join(dir, name), 'utf8');
+  for (const m of src.matchAll(/<BngSmartSelect[^>]*>/g)) {
+    if (!/@update:modelValue="/.test(m[0]) || /@change=/.test(m[0])) { console.error(`${name}: a BngSmartSelect must use @update:modelValue (and not @change): ${m[0].slice(0, 120)}`); process.exit(1); }
+  }
+}
 // the entry point registers the route that the in-game check navigates to
 const entry = fs.readFileSync(path.join(dir, 'index.js'), 'utf8');
 require('acorn').parse(entry, { ecmaVersion: 2022, sourceType: 'module' });

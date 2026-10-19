@@ -33,7 +33,7 @@
           <BngButton aria-label="more" @click="change(field.value + 1)">+</BngButton>
         </div>
       </template>
-      <BngSmartSelect v-else-if="field.type === 'enum'" :modelValue="field.value" :items="items()" @change="change" />
+      <BngSmartSelect v-else-if="field.type === 'enum'" :modelValue="field.value" :items="items()" @update:modelValue="change" />
       <template v-else-if="field.type === 'color'">
         <div class="mm-color">
           <span class="mm-swatch" :style="{ background: css(field.value) }"></span>
