@@ -3,7 +3,7 @@
 ## 1.8.1
 
 Mods menu layout fixes, seen in the game by the tester (screenshots of every tab):
-- The help panel starts below the career HUD, has a title (the setting name) and an orange frame, and its text has its own scroll (overflow scrolling set in the style; scrolling by wheel not yet tried by a person).
+- The help panel starts below the career HUD, has a title (the setting name) and an orange frame, and its text has its own scroll (a long help overflowed by 25 px and scrolled to its last line when set through the page; scrolling with a real wheel not yet tried by a person).
 - Rows are about as wide as in Options, sliders sit beside their labels, one row height (a toggle a little shorter), groups are dark cards.
 - The page title is no longer hidden behind the HUD clock; the reset button is clear of the pause button; the background lets the game show faintly through.
 
