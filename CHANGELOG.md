@@ -5,7 +5,7 @@
 Works with BeamNG 0.40.
 
 - **Fixed:** long drop-down lists in the Mods menu didn't save your choice (the lists with seven or more entries, such as the anti-aliasing mode).
-- **New:** BeamNG 0.40 upscaling (DLSS, FSR, XeSS) on the Graphics page, with quality and sharpness, set through the game's own settings.
+- **New:** BeamNG 0.40 upscaling on the Graphics page, with quality and sharpness, set through the game's own settings. DLSS is tested; FSR and XeSS are listed when your card supports them but are not tested yet.
 - The details of the upscaling: the Anti-aliasing & sharpening page has an **Upscaling** group: Upscaler (only what your card supports: DLSS, FSR 3/4, XeSS, FSR custom, PSSR, SMAA T2x, SMAA, FXAA, Off), Quality (DLAA / Quality / Balanced / Performance / Ultra Performance), Render scale (Advanced) and Sharpness, all through the game's own settings, so Options > Graphics stays in sync. While a temporal upscaler is on, our FXAA HQ / SMAA Ultra / Temporal smoothing / shimmer reduction are switched off and greyed out, and our sharpener runs only as CAS with Sharpness 0. The "not available in mods" list now holds Frame Generation and Reflex (not in 0.40's Lua), FSR 1 and NIS upscaling, MSAA and supersampling beyond the screen. *(Built and tested offline; not yet seen in the game.)*
 - The Mods menu can grey a row out and say why (`disabledIf`).
 - The extension unload mode is set before each extension is loaded, so 0.40 does not warn.
