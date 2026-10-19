@@ -7,6 +7,7 @@ What is new since 1.7.0, for players.
 ### Built, not yet tested in game
 Built, with offline tests, but not yet seen working in the game. An item leaves this list only when the tester posts a pass.
 - **The Mods menu (ESC > Mods menu)** with the settings registry other mods use; Wrench Works' own settings are on it (money, delivery, garage, radio, catalog). The garage screen no longer has a Settings panel (the values are the same).
+- **Mods menu like Options:** each row is a title and a control on one line, the help text shows in a side panel (hover or keyboard/controller focus), tabs whose settings are all advanced show them, a note shows its text, the reset button is no longer under the career HUD, and the money button (Developer tab) asks for a second click. The side panel and the new row layout are not yet seen in the game; the earlier layout was seen working in a real-click pass: every tab of every mod changed one setting, stuck after reopening and restored exactly, the puddle count, Search and Quick setup presets too.
 - **Graphics and camera on the Mods menu:** anti-aliasing, sharpening, Look and the cinematic camera (the Options > Graphics groups are removed).
 - **Latch logging:** a door or boot latch that breaks is logged with its force and speed (to find why the pessima's rear latches break).
 
