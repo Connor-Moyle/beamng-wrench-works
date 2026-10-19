@@ -61,7 +61,7 @@ function M.schema()
       -- anti-aliasing
       field({ id = aa.preset, tab = 'aa', group = 'Preset', type = 'enum', label = 'Preset', key = gk.preset, default = gd.preset, options = options(G.PRESETS, gd, { mode = aa.mode, predication = aa.predication, temporal = aa.temporal, edgeAA = aa.edgeAA, spec = aa.spec, sharpener = aa.sharpener, strength = aa.strength }),
               tooltip = 'Picks the settings below in one go. Changing any of them afterwards makes it Custom. ' .. notes(G.PRESETS) }),
-      field({ id = aa.mode, tab = 'aa', group = 'Anti-aliasing', type = 'enum', label = 'Anti-aliasing mode', key = gk.mode, default = gd.mode, options = options(G.MODES, gd, {}),
+      field({ id = aa.mode, feature = true, offValue = 'game', tab = 'aa', group = 'Anti-aliasing', type = 'enum', label = 'Anti-aliasing mode', key = gk.mode, default = gd.mode, options = options(G.MODES, gd, {}),
               presets = { performance = 'fxaa', balanced = 'smaa', quality = 'smaaUltra', max = 'smaaUltraTemporal' },          -- Quick setup (the Mods menu's whole-pack presets)
               tooltip = 'Anything but Game\'s own takes over the game\'s Anti-aliasing and Anti-aliasing type settings while it is picked. ' .. notes(G.MODES) }),
       field({ id = aa.predication, tab = 'aa', group = 'Anti-aliasing', type = 'bool', label = 'Depth predication (SMAA Ultra)', key = gk.predication, default = gd.predication,
@@ -78,7 +78,7 @@ function M.schema()
               tooltip = 'How much sharpening. 0.4 is gentle; above 0.7 thin lines start to look etched. 0 is the same as off.' }),
       { id = 'aa_unavailable', tab = 'aa', type = 'note', label = G.unavailableText() },
       -- look
-      field({ id = 'look_preset', tab = 'look', group = 'Look', type = 'enum', label = 'Look', key = lk.preset, default = ld.preset, options = options(Lk.PRESETS, ld, look),
+      field({ id = 'look_preset', feature = true, tab = 'look', group = 'Look', type = 'enum', label = 'Look', key = lk.preset, default = ld.preset, options = options(Lk.PRESETS, ld, look),
               tooltip = 'A light colour grade on the finished picture. Off changes nothing. Changing any control below afterwards makes it Custom. ' .. notes(Lk.PRESETS) }),
       field({ id = look.contrast, tab = 'look', group = 'Grade', type = 'slider', label = 'Contrast', key = lk.contrast, default = ld.contrast, min = 0, max = 1, step = 0.05,
               tooltip = 'A gentle S-curve: deeper shadows, brighter highlights.' }),
@@ -91,7 +91,7 @@ function M.schema()
       field({ id = look.vignette, tab = 'look', group = 'Grade', type = 'slider', label = 'Vignette', key = lk.vignette, default = ld.vignette, min = 0, max = 1, step = 0.05,
               tooltip = 'Darkens the corners of the picture. The menus and the HUD are not touched.' }),
       -- cinematic camera
-      field({ id = 'cam_preset', tab = 'camera', group = 'Cinematic camera', type = 'enum', label = 'Cinematic camera', key = ck.preset, default = cd.preset, options = options(C.PRESETS, cd, cam),
+      field({ id = 'cam_preset', feature = true, tab = 'camera', group = 'Cinematic camera', type = 'enum', label = 'Cinematic camera', key = ck.preset, default = cd.preset, options = options(C.PRESETS, cd, cam),
               tooltip = 'Motion blur, depth of field and letterbox bars for replays and photos. Off leaves the game\'s own settings alone. Changing any control below afterwards makes it Custom. ' .. notes(C.PRESETS) }),
       field({ id = cam.blur, tab = 'camera', group = 'Effects', type = 'slider', label = 'Motion blur', key = ck.blur, default = cd.blur, min = 0, max = 2, step = 0.1, presets = { performance = 0 },
               tooltip = 'Strength of the game\'s motion blur. 0 leaves the game\'s own setting.' }),

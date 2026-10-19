@@ -295,13 +295,35 @@ local function publicField(f)
   return out
 end
 
+-- an enum tagged `feature = true` with an option that means off (offValue, default 'off') shows as a switch: on = anything but off; switching it on again restores the last
+-- value that was not off (kept while the game runs), else the field's default, else the first option that is not off
+local lastOn = {}
+local function offOf(f) return f.offValue or 'off' end
+local function isFeature(f)
+  if f.feature ~= true then return false end
+  if f.type == 'bool' then return true end
+  if f.type ~= 'enum' then return false end
+  for _, o in ipairs(f.options or {}) do if o.id == offOf(f) then return true end end
+  return false
+end
+local function onValueOf(f, key)
+  if lastOn[key] ~= nil then return lastOn[key] end
+  if f.default ~= nil and f.default ~= offOf(f) then return f.default end
+  for _, o in ipairs(f.options or {}) do if o.id ~= offOf(f) then return o.id end end
+end
 featureFields = function()
   local out = {}
   for _, id in ipairs(order) do
     local m = mods[id]
     for _, f in ipairs(m.fields) do
-      if f.feature == true and f.type == 'bool' then
+      if isFeature(f) then
         local p = publicField(f)
+        if f.type == 'enum' then
+          local cur = currentValue(f)
+          if cur ~= offOf(f) then lastOn[id .. SEP .. f.id] = cur end
+          p.type, p.options, p.default, p.value, p.alpha, p.none, p.thumbs = 'bool', nil, f.default ~= offOf(f), cur ~= offOf(f), nil, nil, nil
+          p.changed = p.value ~= p.default
+        end
         p.id, p.tab, p.group, p.tooltip, p.advanced, p.visibleIf, p.hasPresets = id .. SEP .. f.id, 'all', m.title, firstSentence(f.tooltip), nil, nil, nil
         out[#out + 1] = p
       end
@@ -312,7 +334,7 @@ end
 featureTarget = function(fieldId)
   local modId, id = tostring(fieldId):match('^(.-)' .. SEP .. '(.+)$')
   local f = modId and mods[modId] and mods[modId].byId[id]
-  if f and f.feature == true and f.type == 'bool' then return modId, id end
+  if f and isFeature(f) then return modId, id end
 end
 
 function M.page(modId, tabId)
@@ -325,9 +347,11 @@ function M.page(modId, tabId)
 end
 
 function M.get(modId, fieldId)
-  if modId == M.FEATURES then modId, fieldId = featureTarget(fieldId) if not modId then return nil end end
+  local asSwitch
+  if modId == M.FEATURES then modId, fieldId = featureTarget(fieldId) if not modId then return nil end asSwitch = mods[modId].byId[fieldId].type == 'enum' end
   local f = mods[modId] and mods[modId].byId[fieldId]
   if not f or not VALUE_TYPES[f.type] then return nil end
+  if asSwitch then return currentValue(f) ~= offOf(f) end
   return currentValue(f)      -- (not `and ... or nil`: a false setting is a value)
 end
 
@@ -342,6 +366,13 @@ function M.set(modId, fieldId, value)
   if modId == M.FEATURES then
     local m, id = featureTarget(fieldId)
     if not m then return { ok = false, error = 'no such setting' } end
+    local real = mods[m].byId[id]
+    if real.type == 'enum' then                       -- (a switch for an enum: on restores the last value that was not off)
+      local on = value == true
+      local r = M.set(m, id, on and onValueOf(real, m .. SEP .. id) or offOf(real))
+      if r.ok then r.value = currentValue(real) ~= offOf(real) end
+      return r
+    end
     modId, fieldId = m, id
   end
   local f = mods[modId] and mods[modId].byId[fieldId]
@@ -351,6 +382,7 @@ function M.set(modId, fieldId, value)
   M.env.log('I', 'set ' .. tostring(modId) .. '.' .. tostring(fieldId) .. ' = ' .. (type(clean) == 'table' and 'table' or tostring(clean)))
   writeStore(f, clean)
   runOnChange(f, clean)
+  if f.type == 'enum' and f.feature == true and clean ~= offOf(f) then lastOn[modId .. SEP .. fieldId] = clean end
   -- a preset: the chosen option of an enum can fill other fields of the mod (options[i].sets = { fieldId = value, ... })
   if f.type == 'enum' then
     for _, o in ipairs(f.options) do

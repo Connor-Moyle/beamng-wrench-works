@@ -206,6 +206,26 @@ do
   check('switching a row sets the real field', S.set('active_features', 'feat_one::sw_b', true).ok and st.b == true and S.get('feat_one', 'sw_b') == true and S.get('active_features', 'feat_one::sw_b') == true)
   check('an untagged or unknown id is refused', S.set('active_features', 'feat_one::plain', true).ok == false and S.set('active_features', 'nope::x', true).ok == false)
   check('reset on the page changes nothing', (function() S.reset('active_features', 'all') return st.b == true end)())
+  -- an enum with an Off option, tagged as a feature, is a switch that remembers the last value that was not off
+  local en = { m = 'high' }
+  S.register({ mod = 'feat_enum', title = 'Feat Enum', tabs = { { id = 't', title = 'T' } }, fields = {
+    { id = 'level', tab = 't', type = 'enum', label = 'Level', default = 'mid', feature = true, store = { kind = 'custom', get = function() return en.m end, set = function(v) en.m = v end },
+      options = { { id = 'off', label = 'Off' }, { id = 'low', label = 'Low' }, { id = 'mid', label = 'Mid' }, { id = 'high', label = 'High' } } },
+    { id = 'pack', tab = 't', type = 'enum', label = 'Pack', default = 'game', feature = true, offValue = 'game', store = { kind = 'custom', get = function() return en.p or 'game' end, set = function(v) en.p = v end },
+      options = { { id = 'game', label = 'Game' }, { id = 'ours', label = 'Ours' } } },
+    { id = 'noff', tab = 't', type = 'enum', label = 'No off option', default = 'a', feature = true, store = { kind = 'custom', get = function() return 'a' end, set = function() end },
+      options = { { id = 'a', label = 'A' }, { id = 'b', label = 'B' } } },
+  } })
+  local row = {}
+  for _, f in ipairs(S.page('active_features', 'all').fields) do row[f.id] = f end
+  check('an enum with an off option is a switch row, one without is not', row['feat_enum::level'] and row['feat_enum::level'].type == 'bool' and row['feat_enum::level'].value == true and row['feat_enum::pack'] and not row['feat_enum::noff'])
+  check('a switch row for an enum is off at its off value (the offValue may differ)', row['feat_enum::pack'].value == false)
+  check('switching it off sets the off value and says off', S.set('active_features', 'feat_enum::level', false).value == false and en.m == 'off' and S.get('active_features', 'feat_enum::level') == false)
+  check('switching it on restores the last value that was not off', S.set('active_features', 'feat_enum::level', true).value == true and en.m == 'high')
+  S.set('feat_enum', 'level', 'low'); S.set('active_features', 'feat_enum::level', false); S.set('active_features', 'feat_enum::level', true)
+  check('the value set on its own page is the one remembered', en.m == 'low')
+  check('with nothing remembered it is the default, else the first option that is not off', S.set('active_features', 'feat_enum::pack', true).ok and en.p == 'ours')
+  S.unregister('feat_enum')
   S.unregister('feat_one')
   local left = S.page('active_features', 'all').fields
   local gone = true
