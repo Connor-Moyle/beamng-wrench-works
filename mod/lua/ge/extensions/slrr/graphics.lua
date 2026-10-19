@@ -53,13 +53,30 @@ M.PRESETS = {
 
 -- things people ask for that a mod cannot do (shown as a list in the settings; the reasons are what the game's files show, see docs/AA_DESIGN.md)
 M.UNAVAILABLE = {
-  { name = 'NVIDIA DLSS, DLAA and Frame Generation', why = 'need NVIDIA\'s SDK inside the engine, a jittered camera and motion vectors; BeamNG has no hook for them.' },
-  { name = 'AMD FSR 2, 3, 4 and Frame Generation', why = 'temporal upscalers: they need a jittered camera that a mod cannot add. FSR 1\'s sharpener is offered as RCAS.' },
-  { name = 'FSR 1 and NIS upscaling', why = 'the game has no render-scale setting to upscale from. Their sharpeners are offered.' },
-  { name = 'TAA / TSR', why = 'same: no camera jitter. Temporal smoothing is the closest a mod can get.' },
+  { name = 'Frame Generation and Reflex', why = 'the Lua of BeamNG 0.40 has no setting for either.' },
+  { name = 'FSR 1 and NIS upscaling', why = 'BeamNG 0.40 has its own upscalers (DLSS, FSR 3/4, XeSS, PSSR) in Upscaling above; the FSR 1 and NIS sharpeners are still offered.' },
   { name = 'MSAA', why = 'not in the game\'s deferred renderer.' },
-  { name = 'Real supersampling', why = 'no render scale in the game. Use NVIDIA DSR / AMD VSR in the driver and choose the bigger resolution in the game.' },
+  { name = 'Supersampling beyond the screen size', why = 'the render scale tops out at 1 (native, DLAA). Use NVIDIA DSR / AMD VSR in the driver and choose the bigger resolution in the game.' },
 }
+
+-- BeamNG 0.40's own upscalers (settings GraphicAntialiasType; the engine renders them with a jittered camera): while one is on, ours stay out of its way
+M.TEMPORAL_UPSCALERS = { dlss = true, fsr3 = true, fsr4 = true, xess = true, fsrCustom = true, pssr = true, smaaT2x = true }
+-- the render scales the game's presets stand for (GraphicUpscalingQuality; 1 is native with the upscaler's own anti-aliasing: DLAA)
+M.UPSCALE_PRESETS = {
+  { id = 'dlaa', label = 'DLAA / native', scale = 1 },
+  { id = 'quality', label = 'Quality', scale = 1 / 1.5 },
+  { id = 'balanced', label = 'Balanced', scale = 1 / 1.7 },
+  { id = 'performance', label = 'Performance', scale = 0.5 },
+  { id = 'ultraPerformance', label = 'Ultra Performance', scale = 1 / 3 },
+}
+-- the preset a render scale is (anything else is custom)
+function M.upscalePreset(scale)
+  scale = tonumber(scale)
+  if scale then
+    for _, p in ipairs(M.UPSCALE_PRESETS) do if math.abs(p.scale - scale) < 0.005 then return p.id end end
+  end
+  return 'custom'
+end
 
 local function byId(list, id)
   for _, v in ipairs(list) do if v.id == id then return v end end
@@ -87,13 +104,15 @@ M.DEFAULT_TEMPORAL = 0.7
 -- What should be on, from the settings. opts = { mode, predication = bool, temporal = 0..1, sharpener, strength = 0..1 }
 function M.plan(opts)
   opts = opts or {}
-  local mode = byId(M.MODES, opts.mode) or M.MODES[1]
+  local up = M.TEMPORAL_UPSCALERS[opts.upscaler] and opts.upscaler or nil
+  local mode = up and M.MODES[1] or byId(M.MODES, opts.mode) or M.MODES[1]      -- (a temporal upscaler does the anti-aliasing: ours stay off)
   local strength = tonumber(opts.strength)
   if not strength then strength = M.DEFAULT_STRENGTH end
   strength = clamp01(strength)
   local sharpener = opts.sharpener
   if not byId(M.SHARPENERS, sharpener) then sharpener = 'off' end
   if strength <= 0 then sharpener = 'off' end
+  if up and not (sharpener == 'cas' and (tonumber(opts.upSharpness) or 0) <= 0) then sharpener = 'off' end      -- (only our CAS, and only when the upscaler's own sharpening is 0)
   local amount = tonumber(opts.temporal)
   if not amount then amount = M.DEFAULT_TEMPORAL end
   amount = clamp01(amount)
@@ -101,7 +120,7 @@ function M.plan(opts)
   return {
     mode = mode.id, base = p.base, hq = p.hq == true, ultra = p.ultra == true,
     predication = p.ultra == true and opts.predication ~= false,
-    edgeAA = opts.edgeAA == true, spec = clamp01(tonumber(opts.spec) or 0),
+    edgeAA = not up and opts.edgeAA == true, spec = up and 0 or clamp01(tonumber(opts.spec) or 0), upscaler = up,
     temporal = p.temporal == true, temporalWeight = 0.6 + 0.35 * amount,      -- weight of last frame's picture: 0.60 .. 0.95
     sharpener = sharpener, strength = strength,
   }
@@ -588,6 +607,7 @@ end
 M.KEYS = { preset = 'slrrGfxPreset', mode = 'slrrGfxMode', predication = 'slrrGfxPredication', temporal = 'slrrGfxTemporal',
            edgeAA = 'slrrGfxEdgeAA', spec = 'slrrGfxSpec', sharpener = 'slrrGfxSharpener', strength = 'slrrGfxStrength' }
 M.DEFAULTS = { preset = 'custom', mode = 'game', predication = true, temporal = M.DEFAULT_TEMPORAL, edgeAA = false, spec = 0, sharpener = 'off', strength = M.DEFAULT_STRENGTH }
+M.UP_KEY = 'slrrGfxUpPreset'
 local OPTION_NAMES = { 'preset', 'mode', 'predication', 'temporal', 'edgeAA', 'spec', 'sharpener', 'strength' }
 
 -- the options from a getter (key, default) -> value, e.g. settings.getValue
@@ -598,6 +618,9 @@ function M.readOptions(get)
     if v == nil then v = M.DEFAULTS[name] end
     o[name] = v
   end
+  local t, on = get('GraphicAntialiasType', nil), get('GraphicAntialias', nil)
+  if M.TEMPORAL_UPSCALERS[t] and on ~= false and tonumber(on) ~= 0 then o.upscaler = t end      -- the game's own upscaler is on
+  o.upSharpness = tonumber(get('GraphicUpscalingSharpness', nil)) or 0
   return o
 end
 
@@ -660,6 +683,8 @@ function M.onSettingsChanged()
     local match = M.matchPreset(o)
     if match ~= o.preset then lastPreset = match settings.setValue(M.KEYS.preset, match) o.preset = match end
   end
+  local up = M.upscalePreset(settings.getValue('GraphicUpscalingQuality'))      -- the Quality choice follows the render scale (the game's own page may change it)
+  if settings.getValue(M.UP_KEY) ~= up then settings.setValue(M.UP_KEY, up) end
   require('slrr/look').onSettingsChanged()
   require('slrr/camera').onSettingsChanged()
   return M.apply(o)

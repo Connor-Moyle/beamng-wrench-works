@@ -1,5 +1,7 @@
 # Anti-aliasing package: findings and plan (BeamNG 0.39)
 
+> **Update for BeamNG 0.40:** the findings below are for 0.39 and still hold for our own post effects. 0.40 itself added the upscalers this document calls impossible: `core/settings/graphic.lua` (about lines 965-1115) has `GraphicAntialiasType` (dlss, fsr3, fsr4, xess, fsrCustom, pssr, smaaT2x, smaa, fxaa; available per GPU through `RenderView.isUpscaleModeAvailable`, temporal ones refused at Lowest lighting), `GraphicUpscalingQuality` (render scale 0.33 to 1, 1 = native / DLAA) and `GraphicUpscalingSharpness` (0 to 1, RCAS). The engine jitters the camera and gives the upscaler depth and motion vectors; a mod only sets these three settings (`slrr/gfxMenu.lua` "Upscaling" group, through `settings.setValue` so the game's Options page agrees). While a temporal upscaler is on, `graphics.plan` switches our FXAA HQ, SMAA Ultra, temporal smoothing, shimmer reduction and edge pass off (and the page greys them out); our sharpener runs only as CAS with the upscaler's sharpness at 0. Still absent from 0.40's Lua (searched): Frame Generation and Reflex.
+
 Game source checked: `I:\SteamLibrary\steamapps\common\BeamNG.drive` (lua/, shaders/, Bin64 strings).
 
 ## 1. What the engine gives a mod

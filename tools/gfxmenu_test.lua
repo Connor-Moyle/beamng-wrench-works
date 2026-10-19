@@ -37,6 +37,26 @@ check('changing one makes it custom (graphics.onSettingsChanged ran)', store[G.K
 check('clamped', S.set(M.MOD, 'aa_strength', 5).value == 1)
 check('an unknown option is refused', S.set(M.MOD, 'aa_mode', 'nonsense').ok == false)
 
+-- the game's own upscalers (0.40): the choices are those the graphics card has, the Quality choice writes the render scale and follows it back
+local opts = M.upscalerOptions(function(mode) return mode == 8 or mode == 1 end)
+local have = {}
+for _, o in ipairs(opts) do have[o.id] = true end
+check('upscaler list: only what the GPU has', have.off and have.fxaa and have.smaa and have.dlss and not have.fsr4 and not have.xess and not have.pssr)
+check('no RenderView: the whole list', #M.upscalerOptions(nil) == 10)
+r = S.set(M.MOD, 'up_preset', 'performance')
+check('Performance writes the game render scale', r.ok and math.abs(store.GraphicUpscalingQuality - 0.5) < 1e-6, r.error)
+r = S.set(M.MOD, 'up_scale', 0.8)
+check('a hand-set scale makes the choice Custom', r.ok and store[G.UP_KEY] == 'custom', store[G.UP_KEY])
+r = S.set(M.MOD, 'up_scale', 1)
+check('scale 1 is DLAA', store[G.UP_KEY] == 'dlaa', store[G.UP_KEY])
+r = S.set(M.MOD, 'up_type', 'dlss')
+check('the upscaler is the AA type key of the game', r.ok and store.GraphicAntialiasType == 'dlss')
+local up = S.page(M.MOD, 'aa').fields
+local byid = {}
+for _, f in ipairs(up) do byid[f.id] = f end
+check('our anti-aliasing rows carry the lock rule', byid.aa_mode.disabledIf and byid.aa_mode.disabledIf.field == 'up_type' and byid.aa_spec.disabledIf and byid.up_sharp.disabledIf and byid.up_type.value == 'dlss')
+store.GraphicAntialias = 4
+check('with AA on, readOptions names the upscaler', G.readOptions(settings.getValue).upscaler == 'dlss')
 r = S.set(M.MOD, 'look_preset', 'cinematic')
 check('look preset filled', r.ok and math.abs(store[Lk.KEYS.contrast] - 0.35) < 1e-6 and math.abs(store[Lk.KEYS.vignette] - 0.35) < 1e-6 and store[Lk.KEYS.split] == 0.5)
 r = S.set(M.MOD, 'cam_preset', 'film')
