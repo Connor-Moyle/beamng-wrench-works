@@ -13,12 +13,12 @@ Built, with offline tests, but not yet seen working in the game. An item leaves 
 
 ### Graphics
 
-- **Look** (a tab of the Mods menu page "Wrench Works: graphics & camera", off by default): a light colour grade and vignette on the finished picture; presets Natural, Cinematic, Vivid, or your own Contrast, Saturation, Warmth, Colour split and Vignette. Off puts the game's picture back exactly.
-- **Cinematic camera** (a third tab of that page, off by default): for replays and photos. Motion blur strength and depth of field (the game's own effects, focus follows the car), and letterbox bars (2.39:1, 2:1, 1.85:1, top and bottom; none on a screen already that wide); presets Subtle, Film, Dramatic. Turning it off puts the game's own blur and depth of field back exactly; it keeps out of the way while photo mode is open.
+- **Look** (a tab of the Mods menu page "Wrench Works: graphics & camera", off by default): a light colour grade and vignette on the finished picture; presets Natural, Cinematic, Vivid, or your own Contrast, Saturation, Warmth, Colour split and Vignette. Off puts the game's picture back exactly. *(Built, not yet tested in game.)*
+- **Cinematic camera** (a third tab of that page, off by default): for replays and photos. Motion blur strength and depth of field (the game's own effects, focus follows the car), and letterbox bars (2.39:1, 2:1, 1.85:1, top and bottom; none on a screen already that wide); presets Subtle, Film, Dramatic. Turning it off puts the game's own blur and depth of field back exactly; it keeps out of the way while photo mode is open. *(Built, not yet tested in game.)*
 - **Anti-aliasing choices** (in the pause-menu Mods menu, ESC > Mods > Wrench Works: graphics & camera, "Game's own" by default, live, with a note under each): Off, FXAA, FXAA HQ, SMAA High, SMAA Ultra (own shader copies, colour edges, optional depth predication) and SMAA Ultra + Temporal smoothing (a blend with the previous frame through the game's motion vectors; calms shimmer, adds no detail). Switching back to "Game's own" restores the game's state exactly.
 - **Sharpening** (off by default): AMD CAS, AMD FSR 1 RCAS or NVIDIA NIS sharpen, with a strength slider.
-- **Temporal smoothing** now backs off on foliage, fences and wires (depth steps around the pixel, history from another surface, colour clamp) and there is an optional edge smoothing pass (the game's own, off by default).
-- **Specular shimmer reduction** slider (off by default) for sparkle on car paint and wet roads.
+- **Temporal smoothing** now backs off on foliage, fences and wires (depth steps around the pixel, history from another surface, colour clamp) and there is an optional edge smoothing pass (the game's own, off by default). *(Built, not yet tested in game.)*
+- **Specular shimmer reduction** slider (off by default) for sparkle on car paint and wet roads. *(Built, not yet tested in game.)*
 - **Presets:** Balanced, Smooth, Maximum. The settings also list what a mod cannot do (DLSS, DLAA, FSR 2/3/4, TAA, real supersampling) and why.
 
 ### Garage and cars
