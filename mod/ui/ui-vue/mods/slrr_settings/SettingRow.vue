@@ -117,8 +117,8 @@ async function press() {
 // the Options look comes from BngRow and the base controls; only what they lack is here
 .options-item { position: relative; display: block; padding: 0.125em; }
 // one row height for every control (a toggle a little shorter, as in Options)
-.options-item :deep(.options-item-row) { min-height: 2.9em; align-items: center; }
-.options-item.mm-toggle :deep(.options-item-row) { min-height: 2.5em; }
+.options-item :deep(.options-item-row) { min-height: 2.65em; align-items: center; }
+.options-item.mm-toggle :deep(.options-item-row) { min-height: 2.1em; }
 .options-item.changed :deep(.bng-row-label) { border-left: 3px solid var(--bng-orange-500); }
 .options-item-label { display: flex; align-items: center; flex-wrap: wrap; gap: 0.4em; width: 100%; }
 .mm-help { display: block; margin-top: 0.1em; font-size: 0.85em; color: var(--bng-cool-gray-100, #cfcbd8); }

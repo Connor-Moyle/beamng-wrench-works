@@ -166,7 +166,7 @@ onBeforeUnmount(() => watcher && watcher.disconnect())
 .narrow .mm-title { flex: 1 0 100%; margin: 0 0.2em 0.3em; }
 .narrow .options-category-side { margin: 0.1em; &.selected { --bng-bg-border-radius: var(--bng-corners-2); } &.selected :deep(.bng-background) { right: 0; } }
 .options-subcategories {
-  flex: 0 0 auto; display: flex; flex-direction: column; width: 12em; padding: 1em 0.25em; overflow-y: auto;
+  flex: 0 0 auto; display: flex; flex-direction: column; width: 12em; padding: 3.5em 0.25em 1em; overflow-y: auto;
   background: color-mix(in srgb, var(--bng-off-black) 90%, transparent); border-right: 0.125em solid var(--bng-orange-550);
 }
 .mm-title { margin: 0 0.4em 0.6em; font-size: 1.15em; font-weight: 600; color: var(--bng-off-white); }
@@ -176,12 +176,12 @@ onBeforeUnmount(() => watcher && watcher.disconnect())
   &.selected { --bng-bg-enabled: var(--bng-orange-550); --bng-bg-hover: var(--bng-orange-400); --bng-bg-border-radius: var(--bng-corners-2) 0 0 var(--bng-corners-2); }
   &.selected :deep(.bng-background) { right: -0.5em; }
 }
-.options-content-wrapper { flex: 1 1 auto; display: flex; min-width: 0; min-height: 0; background: color-mix(in srgb, var(--bng-off-black) 90%, transparent); }
+.options-content-wrapper { flex: 1 1 auto; display: flex; min-width: 0; min-height: 0; background: color-mix(in srgb, var(--bng-off-black) 75%, transparent); }
 .options-content-main { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden; }
-.options-head { flex: 0 0 auto; padding: 0.75em 0.75em 0.25em; }
-.options-content { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0.25em 0.75em 1em; }
+.options-head { flex: 0 0 auto; padding: 3.2em 0.75em 0.25em; }
+.options-content { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0.25em 0.75em 1em; max-width: 52em; }
 // the help panel: clear of the career HUD at the top (about 3.5 em), its own scroll for a long help, a title and a frame
-.mm-info { flex: 0 0 20em; align-self: stretch; min-height: 0; max-height: 100%; box-sizing: border-box; margin: 3.5em 0.5em 1em 0; padding: 0.6em 0.75em; font-size: 1.05em; font-weight: 300; line-height: 1.35; background: color-mix(in srgb, var(--bng-off-black) 70%, transparent); border: 1px solid var(--bng-orange-600); border-radius: var(--bng-corners-2); overflow-y: auto; }
+.mm-info { flex: 0 0 20em; align-self: stretch; min-height: 0; box-sizing: border-box; margin: 3.5em 0.5em 1em 0; max-height: calc(100vh - 6em); padding: 0.6em 0.75em; font-size: 1.05em; font-weight: 300; line-height: 1.35; background: color-mix(in srgb, var(--bng-off-black) 70%, transparent); border: 2px solid var(--bng-orange-500); border-radius: var(--bng-corners-2); overflow-y: auto; }
 .mm-info-title { margin: 0 0 0.4em; font-weight: 600; color: var(--bng-off-white); }
 .mm-desc { margin: 0 0 0.5em; color: var(--bng-cool-gray-100, #cfcbd8); }
 // (left-aligned: the career HUD sits over the top right corner)
