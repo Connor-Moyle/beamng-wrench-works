@@ -226,6 +226,14 @@ do
   check('the value set on its own page is the one remembered', en.m == 'low')
   check('with nothing remembered it is the default, else the first option that is not off', S.set('active_features', 'feat_enum::pack', true).ok and en.p == 'ours')
   S.unregister('feat_enum')
+  -- a store can refuse a value with error(text, 0): the row keeps its value and says why
+  local locked = { v = true }
+  S.register({ mod = 'feat_lock', title = 'Feat Lock', tabs = { { id = 't', title = 'T' } }, fields = {
+    { id = 'sw', tab = 't', type = 'bool', label = 'Locked', default = true, feature = true,
+      store = { kind = 'custom', get = function() return locked.v end, set = function(v) if v == false then error('Pay back the loan first', 0) end locked.v = v end } } } })
+  local rr = S.set('active_features', 'feat_lock::sw', false)
+  check('a refusing store keeps its value and says why', rr.ok == false and rr.error == 'Pay back the loan first' and rr.value == true and locked.v == true)
+  S.unregister('feat_lock')
   S.unregister('feat_one')
   local left = S.page('active_features', 'all').fields
   local gone = true

@@ -178,7 +178,7 @@ end
 local function writeStore(f, value)
   local s = f.store
   if s.kind == 'setting' then M.env.setSetting(s.key, value) return true end
-  if s.kind == 'custom' then return (pcall(s.set, value)) end
+  if s.kind == 'custom' then local ok, err = pcall(s.set, value) return ok, err end      -- (a store may refuse with error(text, 0): the row says why)
   local d = M.env.readJson(s.file)
   if type(d) ~= 'table' then d = {} end
   local keys, cur = splitPath(s.path), d
@@ -380,7 +380,8 @@ function M.set(modId, fieldId, value)
   local clean, why = coerce(f, value)
   if clean == nil then return { ok = false, error = why, value = currentValue(f) } end
   M.env.log('I', 'set ' .. tostring(modId) .. '.' .. tostring(fieldId) .. ' = ' .. (type(clean) == 'table' and 'table' or tostring(clean)))
-  writeStore(f, clean)
+  local wrote, why = writeStore(f, clean)
+  if wrote == false then return { ok = false, error = tostring(why or 'That value was not accepted.'), value = currentValue(f) } end
   runOnChange(f, clean)
   if f.type == 'enum' and f.feature == true and clean ~= offOf(f) then lastOn[modId .. SEP .. fieldId] = clean end
   -- a preset: the chosen option of an enum can fill other fields of the mod (options[i].sets = { fieldId = value, ... })
