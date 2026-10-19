@@ -185,4 +185,32 @@ do
   S.unregister('applyfail')
 end
 
+-- the Active features page: every bool tagged `feature` by any mod, grouped by mod, set through the field's own page
+do
+  local before = #S.mods()
+  local st = { a = true, b = false, c = 1 }
+  local function store(k) return { kind = 'custom', get = function() return st[k] end, set = function(v) st[k] = v end } end
+  S.register({ mod = 'feat_one', title = 'Feat One', tabs = { { id = 't', title = 'T' } }, fields = {
+    { id = 'sw_a', tab = 't', type = 'bool', label = 'Part A', tooltip = 'Part A does a thing. And a second sentence that is not shown.', default = true, store = store('a'), feature = true },
+    { id = 'sw_b', tab = 't', type = 'bool', label = 'Part B', default = false, store = store('b'), feature = true },
+    { id = 'plain', tab = 't', type = 'bool', label = 'Not a feature', default = false, store = store('b') },
+    { id = 'num', tab = 't', type = 'int', label = 'A number', min = 0, max = 5, default = 1, store = store('c'), feature = true },
+  } })
+  local mods = S.mods()
+  check('Active features is the first mod', mods[1].mod == 'active_features' and mods[1].tabs[1].id == 'all')
+  local page = S.page('active_features', 'all')
+  local ids = {}
+  for _, f in ipairs(page.fields) do ids[f.id] = f end
+  check('the tagged switches are listed under their mod, the untagged ones and the non-switches are not', ids['feat_one::sw_a'] and ids['feat_one::sw_b'] and not ids['feat_one::plain'] and not ids['feat_one::num'] and ids['feat_one::sw_a'].group == 'Feat One')
+  check('a row keeps its value and shows the first sentence of its note', ids['feat_one::sw_a'].value == true and ids['feat_one::sw_a'].tooltip == 'Part A does a thing.' and ids['feat_one::sw_b'].value == false)
+  check('switching a row sets the real field', S.set('active_features', 'feat_one::sw_b', true).ok and st.b == true and S.get('feat_one', 'sw_b') == true and S.get('active_features', 'feat_one::sw_b') == true)
+  check('an untagged or unknown id is refused', S.set('active_features', 'feat_one::plain', true).ok == false and S.set('active_features', 'nope::x', true).ok == false)
+  check('reset on the page changes nothing', (function() S.reset('active_features', 'all') return st.b == true end)())
+  S.unregister('feat_one')
+  local left = S.page('active_features', 'all').fields
+  local gone = true
+  for _, f in ipairs(left) do if f.id:find('^feat_one::') then gone = false end end
+  check('a mod that goes takes its rows with it', gone)
+end
+
 print('settings registry test passed')

@@ -1,5 +1,9 @@
 # Changelog: BeamNG Wrench Works (garage)
 
+## Unreleased
+
+- **Active features:** the first page of ESC > Mods lists every on/off switch of every installed mod, grouped by mod, one row each with a short description. A row is the same switch as on its own page. Mods tag a switch with `feature = true`, so new switches appear by themselves.
+
 ## 1.8.1
 
 Mods menu layout fixes, seen in the game by the tester (screenshots of every tab):

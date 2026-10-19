@@ -128,7 +128,7 @@ function M.fromDefs(defs, opts)
   end
   for _, d in ipairs(defs) do
     if not (opts.skip and opts.skip(d)) and type(d.key) == 'string' then
-      local f = { id = d.key, tab = tabFor(d), group = d.sub, label = d.title or d.key, tooltip = d.desc, default = d.default, advanced = d.advanced, apply = d.apply, presets = d.presets, requires = d.career and 'career' or nil }
+      local f = { id = d.key, tab = tabFor(d), group = d.sub, label = d.title or d.key, tooltip = d.desc, default = d.default, advanced = d.advanced, apply = d.apply, presets = d.presets, feature = d.feature, requires = d.career and 'career' or nil }
       f.store = { kind = 'custom', get = function() return opts.get(d.key) end, set = function(v) return opts.set(d.key, v) end }
       if d.type == 'bool' then f.type = 'bool'
       elseif d.type == 'range' or d.type == 'number' then
@@ -256,8 +256,23 @@ end
 
 -- ---- what the page asks ---------------------------------------------------------------------------------------------------------------------------------------
 
+-- ---- the Active features page: the first page of the menu, every on/off switch tagged `feature = true` by any mod, grouped by mod (nothing is stored here: a row is the
+-- field of its own page, found again by the id 'mod::field', so turning one off is the same as turning it off there). A mod that is not installed has no rows.
+M.FEATURES = 'active_features'
+local SEP = '::'
+local function firstSentence(t)
+  t = tostring(t or '')
+  local s = t:match('^(.-[%.%!%?])%s') or t
+  if #s > 160 then s = s:sub(1, 157) .. '...' end
+  return s
+end
+local featureFields, featureTarget      -- (defined after publicField)
+
 function M.mods()
   local out = {}
+  if next(featureFields()) then
+    out[1] = { mod = M.FEATURES, title = 'Active features', icon = 'wrench', tabs = { { id = 'all', title = 'All features', description = 'Every part of the mods you can switch on or off, one switch each, grouped by mod. The same switches are on the own pages of each mod. Switching a part off here is the same as switching it off there.' } } }
+  end
   for _, id in ipairs(order) do
     local m = mods[id]
     local tabs = {}
@@ -280,7 +295,28 @@ local function publicField(f)
   return out
 end
 
+featureFields = function()
+  local out = {}
+  for _, id in ipairs(order) do
+    local m = mods[id]
+    for _, f in ipairs(m.fields) do
+      if f.feature == true and f.type == 'bool' then
+        local p = publicField(f)
+        p.id, p.tab, p.group, p.tooltip, p.advanced, p.visibleIf, p.hasPresets = id .. SEP .. f.id, 'all', m.title, firstSentence(f.tooltip), nil, nil, nil
+        out[#out + 1] = p
+      end
+    end
+  end
+  return out
+end
+featureTarget = function(fieldId)
+  local modId, id = tostring(fieldId):match('^(.-)' .. SEP .. '(.+)$')
+  local f = modId and mods[modId] and mods[modId].byId[id]
+  if f and f.feature == true and f.type == 'bool' then return modId, id end
+end
+
 function M.page(modId, tabId)
+  if modId == M.FEATURES then return { mod = modId, tab = tabId, fields = featureFields() } end
   local m = mods[modId]
   if not m then return { fields = {}, error = 'no such mod' } end
   local fields = {}
@@ -289,6 +325,7 @@ function M.page(modId, tabId)
 end
 
 function M.get(modId, fieldId)
+  if modId == M.FEATURES then modId, fieldId = featureTarget(fieldId) if not modId then return nil end end
   local f = mods[modId] and mods[modId].byId[fieldId]
   if not f or not VALUE_TYPES[f.type] then return nil end
   return currentValue(f)      -- (not `and ... or nil`: a false setting is a value)
@@ -302,6 +339,11 @@ local function runOnChange(f, value)
 end
 
 function M.set(modId, fieldId, value)
+  if modId == M.FEATURES then
+    local m, id = featureTarget(fieldId)
+    if not m then return { ok = false, error = 'no such setting' } end
+    modId, fieldId = m, id
+  end
   local f = mods[modId] and mods[modId].byId[fieldId]
   if not f or not VALUE_TYPES[f.type] then return { ok = false, error = 'no such setting' } end
   local clean, why = coerce(f, value)
@@ -327,6 +369,7 @@ function M.set(modId, fieldId, value)
 end
 
 function M.reset(modId, tabId)
+  if modId == M.FEATURES then return M.page(modId, tabId) end      -- (the switches are reset on their own pages)
   local m = mods[modId]
   if not m then return { fields = {} } end
   for _, f in ipairs(m.fields) do

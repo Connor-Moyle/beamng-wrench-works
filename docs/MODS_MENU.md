@@ -144,6 +144,10 @@ M.onExtensionLoaded = M.onSlrrSettingsReady
 return M
 ```
 
+## Active features (the first page)
+
+Every on/off switch a mod tags with `feature = true` (a `bool` field; `fromDefs` passes the tag on from a def's `feature = true`) is listed on one page, `active_features` / tab `all`, grouped by the mod's title. The row is the real field: its id is `mod::field`, the registry routes `set` and `get` to that field's own store and `onChange`, so turning a row off is the same as turning it off on its own page. The first sentence of the field's tooltip is the short description. A mod that is not installed has no rows, and the page is not listed when no mod tags a switch. New switches appear by tagging them; nothing else to register. Resetting the page changes nothing (reset on each mod's own pages).
+
 ## Find a setting and Quick setup (on top of the mod pages)
 
 - **Find a setting** (a button in the Mods menu tab): `slrr_settings.search(query)` finds a setting of any mod when every word of the query is in its label, tooltip, group, tab or mod name. The result is shown with its mod and tab and can be changed right there (the page uses the same `SettingRow` component as the mod pages).
