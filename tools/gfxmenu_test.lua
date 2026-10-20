@@ -37,6 +37,20 @@ check('changing one makes it custom (graphics.onSettingsChanged ran)', store[G.K
 check('clamped', S.set(M.MOD, 'aa_strength', 5).value == 1)
 check('an unknown option is refused', S.set(M.MOD, 'aa_mode', 'nonsense').ok == false)
 
+-- the real schema on the Active features page: the three graphics enums with an off option are switches (bool rows, no options), the other rows are not listed
+do
+  local rows = {}
+  for _, f in ipairs(S.page('active_features', 'all').fields) do rows[f.id] = f end
+  local m = M.MOD .. '::'
+  check('Active features lists the anti-aliasing, look and camera enums as switches', rows[m .. 'aa_mode'] and rows[m .. 'aa_mode'].type == 'bool' and rows[m .. 'aa_mode'].options == nil
+    and rows[m .. 'look_preset'] and rows[m .. 'look_preset'].type == 'bool' and rows[m .. 'cam_preset'] and rows[m .. 'cam_preset'].type == 'bool')
+  check('and nothing else of the page: no slider, no plain dropdown', rows[m .. 'aa_strength'] == nil and rows[m .. 'up_type'] == nil and rows[m .. 'cam_blur'] == nil)
+  S.set('active_features', m .. 'aa_mode', false)
+  check('switching the anti-aliasing row off sets the setting of the game', store[G.KEYS.mode] == 'game')
+  S.set('active_features', m .. 'aa_mode', true)
+  check('switching it on restores a mode of ours', store[G.KEYS.mode] ~= 'game' and store[G.KEYS.mode] ~= nil)
+end
+
 -- the game's own upscalers (0.40): the choices are those the graphics card has, the Quality choice writes the render scale and follows it back
 local opts = M.upscalerOptions(function(mode) return mode == 8 or mode == 1 end)
 local have = {}

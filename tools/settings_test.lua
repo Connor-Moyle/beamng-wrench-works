@@ -234,6 +234,23 @@ do
   local rr = S.set('active_features', 'feat_lock::sw', false)
   check('a refusing store keeps its value and says why', rr.ok == false and rr.error == 'Pay back the loan first' and rr.value == true and locked.v == true)
   S.unregister('feat_lock')
+  -- the pause menu: Active features is the first button of the Mods menu tab, before Quick setup; with nothing tagged there is no such button
+  do
+    local buttons = {}
+    local old = rawget(_G, 'ui_pause_actions')
+    _G.ui_pause_actions = { registerModTab = function() end, registerModButton = function(b) buttons[#buttons + 1] = b end }
+    check('the menu registers', S.registerMenu() == true)
+    check('Active features is the first button, before Quick setup, and opens the features page', buttons[1] and buttons[1].id == 'slrr_settings_features' and buttons[1].label == 'Active features' and buttons[1].props.mod == 'active_features' and buttons[2].id == 'slrr_settings_quick')
+    S.unregister('feat_one')
+    local hasFeature = false
+    for _, f in ipairs(S.page('active_features', 'all').fields) do hasFeature = true end
+    if not hasFeature then
+      buttons = {}
+      S.registerMenu()
+      check('with no tagged switch there is no Active features button', buttons[1] and buttons[1].id == 'slrr_settings_quick')
+    end
+    _G.ui_pause_actions = old
+  end
   S.unregister('feat_one')
   local left = S.page('active_features', 'all').fields
   local gone = true

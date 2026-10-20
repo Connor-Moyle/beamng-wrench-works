@@ -533,6 +533,10 @@ local function registerMenu()
   if not (a and a.registerModTab and a.registerModButton) then return false end
   local ok = pcall(a.registerModTab, { id = M.TAB, label = 'Mods menu', icon = 'wrench' })
   if not ok then return false end
+  -- Active features first (Connor: the first page, the one the menu opens on): every switch of every mod, when any mod tags one
+  if next(featureFields()) then
+    pcall(a.registerModButton, { id = 'slrr_settings_features', tabId = M.TAB, label = 'Active features', icon = 'wrench', componentName = M.COMPONENT, props = { mod = M.FEATURES } })
+  end
   pcall(a.registerModButton, { id = 'slrr_settings_quick', tabId = M.TAB, label = 'Quick setup', icon = 'wrench', componentName = M.QUICK_COMPONENT })
   pcall(a.registerModButton, { id = 'slrr_settings_find', tabId = M.TAB, label = 'Find a setting', icon = 'wrench', componentName = M.FIND_COMPONENT })
   for _, id in ipairs(order) do
