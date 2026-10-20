@@ -1823,17 +1823,11 @@ local function applyAppearance()
   local want = { shirt = colour('driverShirt'), trousers = colour('driverTrousers'), scale = settings.get('driverScale'),
     helmet = settings.get('driverHelmet') == true, helmetColor = COLOURS[settings.get('driverHelmetColor')] or COLOURS.white }
   if skin and skin ~= '' then want.skin = skin end
-  local now = slrrDrivers.getAppearance and slrrDrivers.getAppearance() or {}
-  local same = true
-  for k, v in pairs(want) do
-    if type(v) == 'table' then
-      local n = now[k]
-      if type(n) ~= 'table' or math.abs((n[1] or n.r or -1) - v[1]) > 1e-3 or math.abs((n[2] or n.g or -1) - v[2]) > 1e-3 or math.abs((n[3] or n.b or -1) - v[3]) > 1e-3 then same = false end
-    elseif v == false then
-      if now[k] then same = false end
-    elseif now[k] ~= v then same = false end
-  end
-  if not same then slrrDrivers.setAppearance(nil, want) end
+  -- only what the player changed here is sent (a field of the module table: this file is at LuaJIT's limit of 200 locals)
+  local O = require('slrr/garageOutfits')
+  local delta = O.changes(M.appearanceSeen, want)
+  M.appearanceSeen = want
+  if delta then slrrDrivers.setAppearance(nil, delta) end
 end
 
 -- and the picture: the Graphics group (slrr/graphics), applied when it changes, at the start of a level and when the anti-aliasing type changes

@@ -47,4 +47,23 @@ function M.look(id, appearance)
   return nil
 end
 
+-- The Driver look settings of the garage are pushed to the Drivers mod only when the player changes one of them: the first call of a session just notes the values
+-- (Drivers keeps its own saved look, and its Mods page and the Active features page write only there, so pushing the garage's stale copy at every start wiped it).
+-- Returns the changed fields (a value of false clears one there), or nil when nothing changed or it is the first call (seen == nil).
+local function same(a, b)
+  if type(a) == 'table' and type(b) == 'table' then
+    for i = 1, 3 do if math.abs((a[i] or -1) - (b[i] or -1)) > 1e-3 then return false end end
+    return true
+  end
+  return a == b
+end
+function M.changes(seen, want)
+  if not seen then return nil end
+  local out
+  for k, v in pairs(want) do
+    if not same(seen[k], v) then out = out or {} out[k] = v end
+  end
+  return out
+end
+
 return M

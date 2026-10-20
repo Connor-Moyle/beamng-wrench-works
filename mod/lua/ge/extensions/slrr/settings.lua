@@ -534,9 +534,9 @@ local function registerMenu()
   local ok = pcall(a.registerModTab, { id = M.TAB, label = 'Mods menu', icon = 'wrench' })
   if not ok then return false end
   -- Active features first (Connor: the first page, the one the menu opens on): every switch of every mod, when any mod tags one
-  if next(featureFields()) then
-    pcall(a.registerModButton, { id = 'slrr_settings_features', tabId = M.TAB, label = 'Active features', icon = 'wrench', componentName = M.COMPONENT, props = { mod = M.FEATURES } })
-  end
+  -- (always registered, and first: the game lists buttons in the order they were first registered, and the other mods tag their switches after this extension loaded,
+  -- so registering only once a switch existed put the button behind Quick setup and Find a setting)
+  pcall(a.registerModButton, { id = 'slrr_settings_features', tabId = M.TAB, label = 'Active features', icon = 'wrench', componentName = M.COMPONENT, props = { mod = M.FEATURES } })
   pcall(a.registerModButton, { id = 'slrr_settings_quick', tabId = M.TAB, label = 'Quick setup', icon = 'wrench', componentName = M.QUICK_COMPONENT })
   pcall(a.registerModButton, { id = 'slrr_settings_find', tabId = M.TAB, label = 'Find a setting', icon = 'wrench', componentName = M.FIND_COMPONENT })
   for _, id in ipairs(order) do

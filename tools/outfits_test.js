@@ -22,6 +22,13 @@ check('the helmet click turns it on, then off', h.helmet == true and O.look('hel
 local r = O.look('outfit:Racing red', {})
 check('an outfit click gives the tints; Original clears them (false)', r.shirt[1] == 0.75 and r.trousers[3] == 0.12 and O.look('outfit:Original', {}).shirt == false and O.look('outfit:Original', {}).trousers == false)
 check('anything else is not an outfit click', O.look('driver:x', {}) == nil and O.look('outfit:Nonsense', {}) == nil and O.look(nil, {}) == nil)
+check('the first call of a session only notes the values (nothing is pushed over the Drivers setting)', O.changes(nil, { helmet = false, shirt = false }) == nil)
+local seen = { helmet = false, shirt = false, trousers = { 0.1, 0.25, 0.7 } }
+check('no change: nothing is sent', O.changes(seen, { helmet = false, shirt = false, trousers = { 0.1, 0.25, 0.7 } }) == nil)
+local d = O.changes(seen, { helmet = true, shirt = false, trousers = { 0.1, 0.25, 0.7 } })
+check('only the field the player changed is sent', d.helmet == true and d.shirt == nil and d.trousers == nil)
+local c = O.changes(seen, { helmet = false, shirt = { 0.75, 0.08, 0.08 }, trousers = false })
+check('a colour set and a colour cleared (false)', c.shirt[1] == 0.75 and c.trousers == false and c.helmet == nil)
 print('outfits test passed')
 `;
 if (lauxlib.luaL_dostring(L, to_luastring(test)) !== lua.LUA_OK) { console.error(to_jsstring(lua.lua_tostring(L, -1))); process.exit(1); }

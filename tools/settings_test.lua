@@ -234,7 +234,7 @@ do
   local rr = S.set('active_features', 'feat_lock::sw', false)
   check('a refusing store keeps its value and says why', rr.ok == false and rr.error == 'Pay back the loan first' and rr.value == true and locked.v == true)
   S.unregister('feat_lock')
-  -- the pause menu: Active features is the first button of the Mods menu tab, before Quick setup; with nothing tagged there is no such button
+  -- the pause menu: Active features is the first button of the Mods menu tab, before Quick setup; registered even with nothing tagged yet
   do
     local buttons = {}
     local old = rawget(_G, 'ui_pause_actions')
@@ -247,7 +247,7 @@ do
     if not hasFeature then
       buttons = {}
       S.registerMenu()
-      check('with no tagged switch there is no Active features button', buttons[1] and buttons[1].id == 'slrr_settings_quick')
+      check('with no tagged switch yet the button is still first (it keeps its place when the mods tag their switches later)', buttons[1] and buttons[1].id == 'slrr_settings_features' and buttons[2].id == 'slrr_settings_quick')
     end
     _G.ui_pause_actions = old
   end
