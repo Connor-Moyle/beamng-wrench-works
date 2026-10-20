@@ -46,7 +46,18 @@ for _, pr in ipairs(G.PRESETS) do
   end
 end
 check('preset values', G.presetValues('custom') == nil and G.presetValues('nope') == nil and G.presetValues('balanced').mode == 'smaaUltra')
-check('unavailable list', #G.UNAVAILABLE >= 5 and G.unavailableText():find('DLSS') ~= nil and G.unavailableText():find('FSR 2') ~= nil)
+check('unavailable list: only what 0.40 still lacks', #G.UNAVAILABLE >= 3 and G.unavailableText():find('Frame Generation') ~= nil and G.unavailableText():find('DLSS, FSR 3/4') ~= nil and not G.unavailableText():find('TAA'))
+-- a temporal upscaler of the game (0.40) does the anti-aliasing: our modes, smoothing and shimmer stay off, our sharpener only as CAS with the upscaler's own sharpening at 0
+local up = G.plan({ mode = 'smaaUltraTemporal', predication = true, spec = 0.7, edgeAA = true, sharpener = 'nis', strength = 0.5, upscaler = 'dlss', upSharpness = 0 })
+check('upscaler: ours off', up.mode == 'game' and up.base == nil and not up.temporal and not up.ultra and not up.predication and up.spec == 0 and not up.edgeAA and up.sharpener == 'off' and up.upscaler == 'dlss')
+check('upscaler: our CAS only at sharpness 0', G.plan({ sharpener = 'cas', strength = 0.5, upscaler = 'fsr4', upSharpness = 0 }).sharpener == 'cas' and G.plan({ sharpener = 'cas', strength = 0.5, upscaler = 'fsr4', upSharpness = 0.3 }).sharpener == 'off')
+check('no upscaler or a post-effect one: unchanged', G.plan({ mode = 'smaaUltra', upscaler = 'smaa' }).mode == 'smaaUltra' and G.plan({ mode = 'fxaa' }).base == 'fxaa')
+check('render scale names a preset', G.upscalePreset(1) == 'dlaa' and G.upscalePreset(1 / 1.5) == 'quality' and G.upscalePreset(0.5) == 'performance' and G.upscalePreset(1 / 3) == 'ultraPerformance' and G.upscalePreset(0.8) == 'custom' and G.upscalePreset(nil) == 'custom')
+local vals = { GraphicAntialiasType = 'dlss', GraphicAntialias = 4, GraphicUpscalingSharpness = 0.2 }
+local ro = G.readOptions(function(k, d) local v = vals[k] if v == nil then return d end return v end)
+check('readOptions: upscaler on', ro.upscaler == 'dlss' and ro.upSharpness == 0.2)
+vals.GraphicAntialias = 0
+check('readOptions: AA off means no upscaler', G.readOptions(function(k, d) local v = vals[k] if v == nil then return d end return v end).upscaler == nil)
 -- RCAS: full strength is AMD's sharpest (no attenuation), none at 0 is 2 stops down
 check('rcas lobe', near(G.rcasLobe(1), 1) and near(G.rcasLobe(0), 0.25) and near(G.rcasLobe(0.5), 0.5))
 -- NIS: NVSharpenUpdateConfig at the default 50 %

@@ -42,6 +42,31 @@ local function field(f)
   return f
 end
 
+-- the game's own upscalers/anti-aliasing types this GPU and the lighting quality allow (GraphicAntialiasType, BeamNG 0.40; core/settings/graphic.lua): the keys, as the game's own list
+-- of them names (an engine without the call lists them all, as the game does)
+M.UPSCALER_MODES = { { 'fxaa', 'FXAA', 8 }, { 'smaa', 'SMAA', 8 }, { 'smaaT2x', 'SMAA T2x', 7 }, { 'dlss', 'NVIDIA DLSS', 1 }, { 'fsr3', 'AMD FSR 3', 2 }, { 'fsr4', 'AMD FSR 4', 3 },
+                     { 'xess', 'Intel XeSS', 4 }, { 'fsrCustom', 'FSR (custom)', 5 }, { 'pssr', 'PSSR', 9 } }
+-- the lowest lighting quality has no depth and motion vectors for the temporal upscalers: the game refuses them there, so the row does not offer them
+local function lowestLighting()
+  return rawget(_G, 'settings') and settings.getValue and settings.getValue('GraphicLightingQuality') == 'Lowest'
+end
+function M.upscalerOptions(available)
+  local out = { { id = 'off', label = 'Off' } }
+  for _, m in ipairs(M.UPSCALER_MODES) do
+    if not available or available(m[3]) then
+      out[#out + 1] = { id = m[1], label = m[2], hideIf = require('slrr/graphics').TEMPORAL_UPSCALERS[m[1]] and lowestLighting or nil }
+    end
+  end
+  return out
+end
+local function gpuAvailable()
+  if not (RenderView and RenderView.isUpscaleModeAvailable) then return nil end
+  return function(mode) local ok, r = pcall(RenderView.isUpscaleModeAvailable, mode) return ok and r end
+end
+-- the upscaler values that do the anti-aliasing themselves (ours are greyed out while one of them is picked)
+local TEMPORAL = { 'dlss', 'fsr3', 'fsr4', 'xess', 'fsrCustom', 'pssr', 'smaaT2x' }
+local NO_SHARPEN = { 'off', 'fxaa', 'smaa', 'smaaT2x' }
+
 function M.schema()
   local G, Lk, C = require('slrr/graphics'), require('slrr/look'), require('slrr/camera')
   local gk, lk, ck = G.KEYS, Lk.KEYS, C.KEYS
@@ -58,19 +83,34 @@ function M.schema()
       { id = 'camera', title = CAM, description = 'Motion blur, depth of field and letterbox bars for replays and photos. Off leaves the game\'s own settings alone; photo mode keeps its own while it is open.' },
     },
     fields = {
+      -- the game's own upscalers (0.40): set through the game's settings, so Options > Graphics shows the same
+      { id = 'up_type', tab = 'aa', group = 'Upscaling (BeamNG 0.40)', type = 'enum', label = 'Upscaler', default = 'off', options = M.upscalerOptions(gpuAvailable()), onChange = changed,
+        store = { kind = 'setting', key = 'GraphicAntialiasType' },
+        tooltip = 'The game\'s own anti-aliasing type, the same setting as Options > Graphics: only the ones this graphics card supports are listed (the temporal ones also need the lighting quality above Lowest). DLSS, FSR, XeSS and PSSR render the picture smaller and rebuild it; they do the anti-aliasing themselves, so the anti-aliasing and shimmer settings below are switched off while one is picked.' },
+      { id = 'up_preset', tab = 'aa', group = 'Upscaling (BeamNG 0.40)', type = 'enum', label = 'Quality', default = 'quality', onChange = changed,
+        store = { kind = 'setting', key = G.UP_KEY },
+        options = (function() local o = {} for _, p in ipairs(G.UPSCALE_PRESETS) do o[#o + 1] = { id = p.id, label = p.label, sets = { up_scale = p.scale } } end o[#o + 1] = { id = 'custom', label = 'Custom' } return o end)(),
+        tooltip = 'How small the picture is rendered before the upscaler rebuilds it: DLAA / native renders at full size (best picture, the AA only), Quality about 2/3, Balanced 0.59, Performance half, Ultra Performance a third (fastest). Also applies to FXAA and SMAA, which then stretch the smaller picture.' },
+      { id = 'up_scale', tab = 'aa', group = 'Upscaling (BeamNG 0.40)', type = 'slider', label = 'Render scale', default = 1 / 1.5, min = 0.33, max = 1, step = 0.01, onChange = changed,
+        store = { kind = 'setting', key = 'GraphicUpscalingQuality' }, advanced = true,
+        tooltip = 'The exact render scale (the same setting as Options > Graphics): 1 is native, 0.5 renders half the width and height.' },
+      { id = 'up_sharp', tab = 'aa', group = 'Upscaling (BeamNG 0.40)', type = 'slider', label = 'Sharpness', default = 0, min = 0, max = 1, step = 0.05, onChange = changed,
+        store = { kind = 'setting', key = 'GraphicUpscalingSharpness' },
+        disabledIf = { field = 'up_type', oneOf = NO_SHARPEN, why = 'Upscaler sharpening only applies to DLSS, FSR, XeSS and PSSR.' },
+        tooltip = 'The upscaler\'s own sharpening after the rebuild. 0 is off; our sharpening below only runs when this is 0.' },
       -- anti-aliasing
-      field({ id = aa.preset, tab = 'aa', group = 'Preset', type = 'enum', label = 'Preset', key = gk.preset, default = gd.preset, options = options(G.PRESETS, gd, { mode = aa.mode, predication = aa.predication, temporal = aa.temporal, edgeAA = aa.edgeAA, spec = aa.spec, sharpener = aa.sharpener, strength = aa.strength }),
+      field({ id = aa.preset, tab = 'aa', disabledIf = { field = 'up_type', oneOf = TEMPORAL, why = 'The upscaler already handles this.' }, group = 'Preset', type = 'enum', label = 'Preset', key = gk.preset, default = gd.preset, options = options(G.PRESETS, gd, { mode = aa.mode, predication = aa.predication, temporal = aa.temporal, edgeAA = aa.edgeAA, spec = aa.spec, sharpener = aa.sharpener, strength = aa.strength }),
               tooltip = 'Picks the settings below in one go. Changing any of them afterwards makes it Custom. ' .. notes(G.PRESETS) }),
-      field({ id = aa.mode, feature = true, offValue = 'game', tab = 'aa', group = 'Anti-aliasing', type = 'enum', label = 'Anti-aliasing mode', key = gk.mode, default = gd.mode, options = options(G.MODES, gd, {}),
+      field({ id = aa.mode, feature = true, offValue = 'game', tab = 'aa', disabledIf = { field = 'up_type', oneOf = TEMPORAL, why = 'The upscaler already handles this.' }, group = 'Anti-aliasing', type = 'enum', label = 'Anti-aliasing mode', key = gk.mode, default = gd.mode, options = options(G.MODES, gd, {}),
               presets = { performance = 'fxaa', balanced = 'smaa', quality = 'smaaUltra', max = 'smaaUltraTemporal' },          -- Quick setup (the Mods menu's whole-pack presets)
               tooltip = 'Anything but Game\'s own takes over the game\'s Anti-aliasing and Anti-aliasing type settings while it is picked. ' .. notes(G.MODES) }),
-      field({ id = aa.predication, tab = 'aa', group = 'Anti-aliasing', type = 'bool', label = 'Depth predication (SMAA Ultra)', key = gk.predication, default = gd.predication,
+      field({ id = aa.predication, tab = 'aa', disabledIf = { field = 'up_type', oneOf = TEMPORAL, why = 'The upscaler already handles this.' }, group = 'Anti-aliasing', type = 'bool', label = 'Depth predication (SMAA Ultra)', key = gk.predication, default = gd.predication,
               tooltip = 'Lets SMAA Ultra use the depth: edges of objects are caught at full sensitivity and fine texture detail is not mistaken for edges.' }),
-      field({ id = aa.temporal, tab = 'aa', group = 'Anti-aliasing', type = 'slider', label = 'Temporal smoothing amount', key = gk.temporal, default = gd.temporal, min = 0, max = 1, step = 0.05, presets = { max = 0.7 },
+      field({ id = aa.temporal, tab = 'aa', disabledIf = { field = 'up_type', oneOf = TEMPORAL, why = 'The upscaler already handles this.' }, group = 'Anti-aliasing', type = 'slider', label = 'Temporal smoothing amount', key = gk.temporal, default = gd.temporal, min = 0, max = 1, step = 0.05, presets = { max = 0.7 },
               tooltip = 'For the Temporal smoothing mode: how much of the previous frame is kept. More calms shimmer more but can soften the picture while moving.' }),
-      field({ id = aa.edgeAA, tab = 'aa', group = 'Anti-aliasing', type = 'bool', label = 'Edge smoothing pass (game\'s own)', key = gk.edgeAA, default = gd.edgeAA, advanced = true,
+      field({ id = aa.edgeAA, tab = 'aa', disabledIf = { field = 'up_type', oneOf = TEMPORAL, why = 'The upscaler already handles this.' }, group = 'Anti-aliasing', type = 'bool', label = 'Edge smoothing pass (game\'s own)', key = gk.edgeAA, default = gd.edgeAA, advanced = true,
               tooltip = 'The game\'s own depth and normal edge blur. Its vertex shader fails to compile in BeamNG 0.39, so it does nothing there (kept for other versions).' }),
-      field({ id = aa.spec, tab = 'aa', group = 'Shimmer', type = 'slider', label = 'Specular shimmer reduction', key = gk.spec, default = gd.spec, min = 0, max = 1, step = 0.05,
+      field({ id = aa.spec, tab = 'aa', disabledIf = { field = 'up_type', oneOf = TEMPORAL, why = 'The upscaler already handles this.' }, group = 'Shimmer', type = 'slider', label = 'Specular shimmer reduction', key = gk.spec, default = gd.spec, min = 0, max = 1, step = 0.05,
               tooltip = 'Calms bright sparkle on glossy, bumpy surfaces (car paint, rain-wet roads). 0 is off; too much dulls real highlights. Works best with Temporal smoothing.' }),
       field({ id = aa.sharpener, tab = 'aa', group = 'Sharpening', type = 'enum', label = 'Sharpening', key = gk.sharpener, default = gd.sharpener, options = options(G.SHARPENERS, gd, {}), presets = { performance = 'off', balanced = 'off', quality = 'cas', max = 'cas' },
               tooltip = 'Brings back the detail anti-aliasing softens. Runs after the anti-aliasing. ' .. notes(G.SHARPENERS) }),

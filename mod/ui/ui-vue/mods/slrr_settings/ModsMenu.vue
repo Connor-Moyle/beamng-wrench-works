@@ -38,7 +38,8 @@
             <div v-for="g in groups" :key="g.name" class="mm-group">
               <h4 v-if="g.name" class="mm-gtitle">{{ g.name }}</h4>
               <template v-for="f in g.fields" :key="f.id">
-                <SettingRow v-if="shown(f)" :mod="mod" :field="f" :vertical="narrow" :panel="wide" @reload="openTab(tab, true)" @toast="toast" @info="(t, title) => (info2 = t ? { title, text: t } : null)" />
+                <SettingRow v-if="shown(f)" :class="{ locked: lockedWhy(f) }" :aria-disabled="lockedWhy(f) ? 'true' : undefined" :inert="lockedWhy(f) ? true : undefined" :mod="mod" :field="f" :vertical="narrow" :panel="wide" @reload="openTab(tab, true)" @toast="toast" @info="(t, title) => (info2 = t ? { title, text: t } : null)" />
+                <p v-if="shown(f) && lockedWhy(f)" class="mm-note mm-why">{{ lockedWhy(f) }}</p>
               </template>
             </div>
           </div>
@@ -94,6 +95,14 @@ function shown(f) {
   if (!f.visibleIf) return true
   const other = byId.value[f.visibleIf.field]
   return !other || other.value === f.visibleIf.equals
+}
+
+// greyed out (and the reason shown) while another field has one of the listed values: disabledIf = { field, oneOf = {...}, why }
+function lockedWhy(f) {
+  const d = f.disabledIf
+  if (!d) return ""
+  const other = byId.value[d.field]
+  return other && (d.oneOf || []).includes(other.value) ? d.why || "" : ""
 }
 
 function toast(text) {
@@ -159,6 +168,8 @@ onBeforeUnmount(() => watcher && watcher.disconnect())
 </script>
 
 <style lang="scss" scoped>
+.locked { opacity: 0.45; pointer-events: none; }
+.mm-why { margin-top: -0.4em; }
 // the look of the game's Options screen (OptionsBody.vue): a dark category column with an orange edge, an orange selected tab, a dark content column
 .options-container { display: flex; flex-direction: row; flex-wrap: nowrap; align-items: stretch; width: 100%; max-width: 100%; height: 100%; overflow: hidden; font-family: "Overpass", var(--fnt-defs); }
 .mm.narrow { flex-direction: column; }
