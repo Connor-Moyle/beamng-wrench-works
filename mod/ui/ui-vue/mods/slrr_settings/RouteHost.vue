@@ -1,13 +1,21 @@
 <template>
-  <!-- the whole Mods menu as one screen, laid out like Options: a column of pages (Quick setup, Find a setting, each mod), and the chosen page beside it -->
+  <!-- the whole Mods menu as one screen, laid out like Options: a column of pages (Active features, Quick setup, Find a setting, each mod), and the chosen page beside it -->
   <div class="rh options-container">
     <div class="rh-rail options-subcategories">
       <h3 class="rh-title">Mods menu</h3>
+      <Button
+        v-for="m in mods.filter((x) => x.mod === 'active_features')"
+        :key="m.mod"
+        class="options-category-side"
+        :class="{ selected: page === 'mod' && mod === m.mod }"
+        @pointerdown="show('mod', m.mod)"
+        @click="show('mod', m.mod)"
+      >{{ m.title }}</Button>
       <Button class="options-category-side" :class="{ selected: page === 'quick' }" @pointerdown="show('quick')" @click="show('quick')">Quick setup</Button>
       <Button class="options-category-side" :class="{ selected: page === 'find' }" @pointerdown="show('find')" @click="show('find')">Find a setting</Button>
       <div class="rh-divider"></div>
       <Button
-        v-for="m in mods"
+        v-for="m in mods.filter((x) => x.mod !== 'active_features')"
         :key="m.mod"
         class="options-category-side"
         :class="{ selected: page === 'mod' && mod === m.mod }"
