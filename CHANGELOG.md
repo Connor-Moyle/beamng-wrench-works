@@ -1,5 +1,14 @@
 # Changelog: BeamNG Wrench Works (garage)
 
+## 1.8.5
+
+Works with BeamNG 0.40.
+
+- **The driver's look, the Driver mode and the pedestrian options are set only on Pedestrians & Drivers' own page now.** Wrench Works kept a second copy of them and pushed it to that mod, which is what reset the helmet in 1.8.2. The copy is gone: the rows are no longer on any Wrench Works page (seen in the Mods menu), and the old `driver*` and `ped*` entries in your `settings/slrr_garage/settings.json` are ignored.
+- **The garage's Drivers panel saves your pick in the Drivers mod's own settings** (seen: the Drivers settings file changes, Wrench Works' does not). Before, a pick was kept for that car only and was lost at the next spawn. A driver you pick is now also the default driver for the cars that follow. **"No driver" now means no driver by default**, like "Who drives = none" on the Drivers page; it used to affect only that car.
+- Inside: the garage's drive routes, the dyno figures and the Drivers panel moved out of `garage.lua`, which was at LuaJIT's limit of 200 top-level locals (the next feature there would have broken it). No change in behaviour; a drive-in, a drive-out and a through-door hall were driven in the game with no error.
+- Built and tested offline, **not yet seen in the game:** that a panel pick, outfit or helmet survives a respawn, the helmet on the Drivers page after a restart, old settings files being ignored, the in-garage settings tab without the removed rows, and the Car info power graph with the pin button (it needs the Upgrades dyno feature; without it the panel shows figures only, as before).
+
 ## 1.8.4
 
 Works with BeamNG 0.40.
