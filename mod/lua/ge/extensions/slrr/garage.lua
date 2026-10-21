@@ -8,6 +8,9 @@
 -- This file is the conductor: it owns the state machine (idle -> film -> garage <-> catalog ->
 -- leaving, and idle <-> shop for the parts shops around the map) and wires the picker, the parts model, the camera, the damage keeper and the UI
 -- together.
+--
+-- LIMIT: this file is at LuaJIT's cap on top-level locals (it is checked at 180 by tools/locals_check.js, the cap is 200). Do not add a local here:
+-- split a block into its own slrr/garage*.lua module first (garageRoute, garageDrivers and garageDyno are examples), then add.
 
 local M = {}
 M.dependencies = { 'core_jobsystem', 'core_vehicle_manager', 'core_camera', 'core_input_actionFilter' }
