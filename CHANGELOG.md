@@ -1,8 +1,12 @@
 # Changelog: BeamNG Wrench Works (garage)
 
-## Unreleased
+## 1.8.3
 
-- **Active features:** the first page of ESC > Mods lists every on/off switch of every installed mod, grouped by mod, one row each with a short description. A row is the same switch as on its own page. Mods tag a switch with `feature = true`, so new switches appear by themselves.
+Works with BeamNG 0.40.
+
+- **Fixed:** the driver's helmet, shirt and trouser colours and size, set in the Mods menu, were put back to the defaults every time the game started. They now stay as you set them.
+- **New: Active features.** The first page of ESC > Mods lists every on/off switch of every installed mod, grouped by mod, one row each with a short description. A row is the same switch as on its own page. Mods tag a switch with `feature = true`, so new switches appear by themselves.
+- The Active features page is the first button of ESC > Mods, before Quick setup and Find a setting, and the menu opens on it.
 
 ## 1.8.2
 
