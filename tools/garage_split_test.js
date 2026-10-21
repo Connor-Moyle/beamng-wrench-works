@@ -89,12 +89,16 @@ check('pin makes the last run the baseline', written == 2 and store.f.pessima.ma
 
 -- the drivers: the display mode is sent only when it differs
 local calls = {}
-package.loaded['slrr/garageSettings'] = { defs = {}, get = function(k) return ({ driverMode = 'still' })[k] end }
-package.loaded['slrr/garageOutfits'] = { changes = function() return nil end }
-_G.slrrDrivers = { setDisplayMode = function(m) calls[#calls + 1] = m end, getDisplayMode = function() return 'full' end }
+package.loaded['slrr/garageSettings'] = { defs = {}, get = function(k) return ({ driverMode = 'still', driverHelmet = true, driverShirt = 'red', driverScale = 1.1 })[k] end }
+local appearance = 0
+_G.slrrDrivers = { setDisplayMode = function(m) calls[#calls + 1] = m end, getDisplayMode = function() return 'full' end,
+  setAppearance = function() appearance = appearance + 1 end }
 local Dr = dofile(dir .. '/garageDrivers.lua')
 Dr.apply()
 check('driver mode is changed when it differs', calls[1] == 'still')
+check('the old driver* look keys are ignored: Drivers.setAppearance is never called from here', appearance == 0)
+local src = ${JSON.stringify(fs.readFileSync(path.join(dir, 'garageDrivers.lua'), 'utf8'))}
+check('garageDrivers.lua does not mention setAppearance in code', not src:gsub('%-%-[^%c]*', ''):find('setAppearance'))
 slrrDrivers.getDisplayMode = function() return 'still' end
 Dr.apply()
 check('and not when it is the same', #calls == 1)

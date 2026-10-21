@@ -76,8 +76,8 @@ M.defs = {
   { key = 'injuryMode', group = 'Garage', title = 'Injuries', type = 'choice', default = 'injuries', needs = 'injury',
     options = { { id = 'off', label = 'Off' }, { id = 'injuries', label = 'Injuries' }, { id = 'full', label = 'Injuries and death' } },
     desc = 'Wrench Works: Drivers & Pedestrians: whether a crash hurts your driver, and whether it can kill them.' },
-  -- Wrench Works: Drivers & Pedestrians: how your driver looks (slrrDrivers.setAppearance; eight colours keep its
-  -- outfit combinations within what it loads at once)
+  -- Moved: the driver look is set on Pedestrians & Drivers' own page (Mods menu) and no longer applied from these keys. They stay here,
+  -- ignored, so that settings.json files from before do not error.
   { key = 'driverSkin', group = 'Driver look', title = 'Driver', type = 'choice', dynamic = true, default = '', needs = 'appearance',
     options = { { id = '', label = 'Default' } }, desc = 'Who sits behind the wheel of your cars.' },
   { key = 'driverShirt', group = 'Driver look', title = 'Shirt', type = 'choice', default = 'skin', needs = 'appearance', options = { { id = 'skin', label = 'As drawn' }, { id = 'black', label = 'Black' }, { id = 'white', label = 'White' }, { id = 'red', label = 'Red' }, { id = 'blue', label = 'Blue' }, { id = 'green', label = 'Green' }, { id = 'orange', label = 'Orange' }, { id = 'grey', label = 'Grey' } },
