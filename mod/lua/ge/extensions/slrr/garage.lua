@@ -23,13 +23,14 @@ local preview = require('slrr/garagePreview')
 local lift = require('slrr/garageLift')
 local settings = require('slrr/garageSettings')
 local music = require('slrr/garageMusic')
+local routes = require('slrr/garageRoute')
+local drivers = require('slrr/garageDrivers')
+local dyno = require('slrr/garageDyno')
 
 local im = ui_imgui
 
 local logTag = 'slrr_garage'
 local SOUND_DIR = '/art/sound/slrr_garage/'
-local FILM_SPEED = 5.2          -- m/s the car rolls in and out at
-local FILM_ACCEL = 2.4
 local FILM_START = -15          -- the drive-in starts no further out than this (metres along the axis)
 local FILM_TIMEOUT = 14
 local FADE_TIME = 0.22
@@ -417,44 +418,6 @@ end
 ----------------------------------------------------------------------------------------------
 -- entering
 
--- points: world positions the front of the car passes through. Returns a timed path for the
--- script AI (ease up to FILM_SPEED, ease down to a stop) and how long it takes.
-local function buildDrivePath(points)
-  local lengths, total = {}, 0
-  for i = 2, #points do
-    lengths[i] = (points[i] - points[i - 1]):length()
-    total = total + lengths[i]
-  end
-  local FILM_SPEED = FILM_SPEED * settings.get('driveSpeed')
-  local accelDist = FILM_SPEED * FILM_SPEED / (2 * FILM_ACCEL)
-  local function timeAt(s)
-    local a = FILM_ACCEL
-    local d1 = math.min(accelDist, total / 2)
-    if s <= d1 then return math.sqrt(2 * s / a) end
-    local t1 = math.sqrt(2 * d1 / a)
-    local vPeak = a * t1
-    local cruise = total - 2 * d1
-    if s <= d1 + cruise then return t1 + (s - d1) / vPeak end
-    local rem = math.max(0, total - s)
-    return t1 + cruise / vPeak + (t1 - math.sqrt(2 * rem / a))
-  end
-  local path = {}
-  local step, done = 0.75, 0
-  for i = 2, #points do
-    local len = lengths[i]
-    local s = 0
-    while s < len do
-      local p = points[i - 1] + (points[i] - points[i - 1]) * (s / len)
-      path[#path + 1] = { x = p.x, y = p.y, z = p.z, t = timeAt(done + s) }
-      s = s + step
-    end
-    done = done + len
-  end
-  local last = points[#points]
-  path[#path + 1] = { x = last.x, y = last.y, z = last.z, t = timeAt(total) }
-  return path, timeAt(total)
-end
-
 -- tell the UI which parts have no model, so it shows its icon for them instead
 local function sendPreview(partName, hasModel)
   if not hasModel then guihooks.trigger('slrrGaragePreview', { part = partName, none = true }) end
@@ -463,95 +426,6 @@ end
 -- ... and which previews are in place right now, so it opens a hole only over those
 local function sendPreviewLive(ids)
   guihooks.trigger('slrrGaragePreviewLive', { ids = ids })
-end
-
--- A garage has a front door on its axis and, most of them, a second one: at the side, reached
--- by a quarter turn to the left, or at the back, straight on. A visit comes in through one
--- and leaves through the other; with a single door the car backs out.
-local function leftOf(s) return vec3(-s.dir.y, s.dir.x, 0) end
-local function axisPoint(s, along, left) return s.spot + s.dir * along + leftOf(s) * left + vec3(0, 0, 0.3) end
-
--- where the front of the car goes between the parking spot and the forecourt of a side door
-local function sideRoute(half, farLeft)
-  local turn, radius = site.exitTurnAlong, site.exitRadius
-  local points = { axisPoint(site, half, 0) }
-  if turn > half + 0.5 then points[#points + 1] = axisPoint(site, turn, 0) end
-  for i = 1, 8 do
-    local a = (i / 8) * math.pi * 0.5
-    points[#points + 1] = axisPoint(site, turn + radius * math.sin(a), radius - radius * math.cos(a))
-  end
-  points[#points + 1] = axisPoint(site, turn + radius, farLeft)
-  return points
-end
-
--- the drive in: { points, startPos, startDir, parkDir }. It starts where the car is, in the doorway.
-local function entryRoute(half)
-  local left = leftOf(site)
-  local c = carCenter()
-  if viaSide and site.exit == 'side' then
-    -- in through the side door: round to the right, and stop facing the front door
-    local startLeft = clamp((c - site.spot):dot(left), site.sideDoorLeft + half - 1, site.exitLeft + 3)
-    local turn, radius = site.exitTurnAlong, site.exitRadius
-    local points = { axisPoint(site, turn + radius, startLeft - half) }
-    for i = 7, 0, -1 do
-      local a = (i / 8) * math.pi * 0.5
-      points[#points + 1] = axisPoint(site, turn + radius * math.sin(a), radius - radius * math.cos(a))
-    end
-    points[#points + 1] = axisPoint(site, -half, 0)
-    return { points = points, startPos = axisPoint(site, turn + radius, startLeft) - vec3(0, 0, 0.25), startDir = -left, parkDir = -site.dir }
-  elseif viaSide then
-    -- in through the back door, straight to the spot, facing the front door
-    local startAlong = clamp(sites.toAxis(site, c), site.backDoorDist + half - 1, site.backDoorDist + 12)
-    return {
-      points = { axisPoint(site, startAlong - half, 0), axisPoint(site, -half, 0) },
-      startPos = sites.point(site, startAlong, 0, 0.05), startDir = -site.dir, parkDir = -site.dir,
-    }
-  end
-  local startAlong = clamp(sites.toAxis(site, c), site.doorDist - 12, site.doorDist - half + 1)
-  return {
-    points = { axisPoint(site, startAlong + half, 0), axisPoint(site, half, 0) },
-    startPos = sites.point(site, startAlong, 0, 0.05), startDir = site.dir, parkDir = site.dir,
-  }
-end
-
--- the drive out: { points, isOutside(carCentre), endPos, endDir }
-local function exitRoute(half)
-  local left = leftOf(site)
-  if viaSide or site.exit == 'reverse' then
-    -- straight out of the front door: nose first for a car that came in the other way, backwards
-    -- for one that came in by this door (the script driver reverses towards points behind it)
-    local far = site.doorDist - 11
-    local backing = not viaSide
-    return {
-      points = { axisPoint(site, -half, 0), axisPoint(site, far, 0) },
-      isOutside = function(c) return (c - site.spot):dot(site.dir) < site.doorDist - 2.5 end,
-      endPos = sites.point(site, backing and (far - half) or (far + half), 0, 0.05), endDir = backing and site.dir or -site.dir,
-    }
-  elseif site.exit == 'through' then
-    local far = site.backDoorDist + 11
-    return {
-      points = { axisPoint(site, half, 0), axisPoint(site, far, 0) },
-      isOutside = function(c) return (c - site.spot):dot(site.dir) > site.backDoorDist + 2.5 end,
-      endPos = sites.point(site, far - half, 0, 0.05), endDir = site.dir,
-    }
-  end
-  local points = sideRoute(half, site.exitLeft)
-  return {
-    points = points,
-    isOutside = function(c) return (c - site.spot):dot(left) > site.exitClear end,
-    endPos = points[#points] - left * half - vec3(0, 0, 0.25), endDir = left,
-  }
-end
-
--- where the camera stands to film the drive in: across the room from the door the car uses
-local function filmSpot()
-  local side = math.min(site.halfWidth - 0.9, 2.4) * (site.filmSide or 1)
-  if viaSide and site.exit == 'side' then
-    return sites.point(site, site.exitTurnAlong - 0.6, side, 1.55)       -- right-hand wall, facing the side door
-  elseif viaSide then
-    return sites.point(site, math.max(site.doorDist + 1.4, -6.5), -side, 1.5)   -- on the front-door side, facing the back door
-  end
-  return sites.point(site, site.filmAlong or math.min(site.backDist - 0.6, 6.5), -side, 1.5)       -- on the far side, facing the front door
 end
 
 -- how far the underside of the car is off the floor, from its jbeam: lowest node of the body
@@ -678,7 +552,7 @@ local function enterJob(job)
   core_input_actionFilter.setGroup('slrrGarageBlocked', blockedActions)
   core_input_actionFilter.addAction(0, 'slrrGarageBlocked', true)
   v:queueLuaCommand('ai.scriptStop(true, true) ai.setMode("disabled") input.event("throttle", 0, FILTER_DIRECT) input.event("brake", 0, FILTER_DIRECT)')
-  local route = entryRoute(half)
+  local route = routes.entry(site, viaSide, half, carCenter())
 
   captureDamage(job)                      -- note the dents before anything rebuilds the car
   parts.setForeign(jobCars[vehId] == true)
@@ -703,10 +577,10 @@ local function enterJob(job)
     v:queueLuaCommand('input.event("parkingbrake", 0, FILTER_DIRECT)')
     placeCarAt(route.startPos, route.startDir)
     job.sleep(0.3)
-    camera.startFilm(filmSpot())
+    camera.startFilm(routes.filmSpot(site, viaSide))
     core_camera.setByName(0, 'slrrGarage', false)
     playSound('entergarage.wav')
-    local path, duration = buildDrivePath(route.points)
+    local path, duration = routes.buildDrivePath(route.points)
     v:queueLuaCommand('ai.startFollowing(' .. serialize({ path = path }) .. ', 0, 1, "neverReset")')
     job.sleep(0.1)
     setFade(0)
@@ -1033,7 +907,7 @@ local function leaveJob(job)
     if lv then lv:queueLuaCommand('if slrrGarageVeh then slrrGarageVeh.shutLatches() end') end
   end
 
-  local route = exitRoute(half)
+  local route = routes.exit(site, viaSide, half)
   local outside = false
   centreZOffset, restZ = nil, nil
   v = veh()
@@ -1042,7 +916,7 @@ local function leaveJob(job)
     v:queueLuaCommand('input.event("parkingbrake", 0, FILTER_DIRECT)')
     camera.startExit()
     job.sleep(0.9)
-    local path, duration = buildDrivePath(route.points)
+    local path, duration = routes.buildDrivePath(route.points)
     v:queueLuaCommand('ai.startFollowing(' .. serialize({ path = path }) .. ', 0, 1, "neverReset")')
     playSound('leavegarage.wav')
     setFade(0)
@@ -1804,59 +1678,16 @@ local function requestSettings()
   sendSettings()
 end
 
--- Wrench Works: Drivers & Pedestrians: the "Driver" setting picks how its drivers are shown
--- (hidden, not in first person, full, still); only with a version of the mod that has setDisplayMode
-local function driversCanDisplay() return slrrDrivers ~= nil and slrrDrivers.setDisplayMode ~= nil end
--- and its pedestrians: the World group's settings (each def's `ped` names the option), only when one differs
-local function applyPedestrians()
-  if not (slrrPedestrians and slrrPedestrians.setOptions) then return end
-  local now = slrrPedestrians.getOptions and slrrPedestrians.getOptions() or {}
-  local want, differs = {}, false
-  for _, d in ipairs(settings.defs) do
-    if d.ped then
-      want[d.ped] = settings.get(d.key)
-      if now[d.ped] ~= want[d.ped] then differs = true end
-    end
-  end
-  if differs then slrrPedestrians.setOptions(want) end
-end
-
--- and how the driver looks: the Driver look group, sent only when something differs
-local COLOURS = { black = { 0.05, 0.05, 0.06 }, white = { 0.9, 0.9, 0.9 }, red = { 0.75, 0.08, 0.08 }, blue = { 0.1, 0.25, 0.7 },
-  green = { 0.12, 0.45, 0.18 }, orange = { 0.95, 0.45, 0.05 }, grey = { 0.45, 0.45, 0.47 } }
-local function applyAppearance()
-  if not (slrrDrivers and slrrDrivers.setAppearance) then return end
-  local colour = function(key) return COLOURS[settings.get(key)] or false end
-  local skin = settings.get('driverSkin')
-  local want = { shirt = colour('driverShirt'), trousers = colour('driverTrousers'), scale = settings.get('driverScale'),
-    helmet = settings.get('driverHelmet') == true, helmetColor = COLOURS[settings.get('driverHelmetColor')] or COLOURS.white }
-  if skin and skin ~= '' then want.skin = skin end
-  -- only what the player changed here is sent (a field of the module table: this file is at LuaJIT's limit of 200 locals)
-  local O = require('slrr/garageOutfits')
-  local delta = O.changes(M.appearanceSeen, want)
-  M.appearanceSeen = want
-  if delta then slrrDrivers.setAppearance(nil, delta) end
-end
-
 -- and the picture: the Graphics group (slrr/graphics), applied when it changes, at the start of a level and when the anti-aliasing type changes
 -- (a field of the module table, not a local: this file is at LuaJIT's limit of 200 locals)
 M.applyGraphics = function()
   require('slrr/graphics').onSettingsChanged()
 end
 
-local function applyDriverAnimation()
-  applyPedestrians()
-  applyAppearance()
-  if not driversCanDisplay() then return end
-  local mode = settings.get('driverMode') or 'full'
-  -- only when it differs: setting it restarts every driver's animation and saves their settings file
-  if not slrrDrivers.getDisplayMode or slrrDrivers.getDisplayMode() ~= mode then slrrDrivers.setDisplayMode(mode) end
-end
-
 local function setSetting(key, value)
   if key == '__reset' then settings.reset() extensions.hook('onWrenchWorksSetting', key)
   elseif not settings.set(key, value) then extensions.hook('onWrenchWorksSetting', key, value) end   -- (another mod's setting)
-  if key == 'driverMode' or key == '__reset' or key:find('^ped') or key:find('^driver') then applyDriverAnimation() end
+  if key == 'driverMode' or key == '__reset' or key:find('^ped') or key:find('^driver') then drivers.apply() end
   if key == 'freeroamMoney' then parts.setWallet(settings.get('freeroamMoney')) end
   if (key == 'injuryMode' or key == '__reset') and slrrInjury and slrrInjury.setMode then slrrInjury.setMode(settings.get('injuryMode')) end
   if key == 'saveBetweenSessions' then parts.saveNow() end
@@ -2231,7 +2062,7 @@ local function onVehicleSpawned(id)
   -- every car gets the damage keeper while it is still new, so it knows what "undamaged" looks like
   local spawned = getObjectByID(id)
   if spawned then spawned:queueLuaCommand('extensions.load("slrrGarageVeh")') end
-  applyDriverAnimation()                                   -- (cheap; the drivers mod may have loaded after us)
+  drivers.apply()                                   -- (cheap; the drivers mod may have loaded after us)
   if id ~= vehId then return end
   if respawnWaiter then
     settleFrames = 3
@@ -2315,7 +2146,7 @@ end
 local function onExtensionLoaded()
   local current = getPlayerVehicle(0)
   if current then current:queueLuaCommand('extensions.load("slrrGarageVeh")') end
-  applyDriverAnimation()
+  drivers.apply()
   require('slrr/graphics').ensureDefaults()
   require('slrr/gfxMenu').removeOldGroups()      -- (earlier versions put groups into the game's Options page: taken out of the user-folder layout once)
   require('slrr/gfxMenu').register()
@@ -2363,39 +2194,9 @@ M.onClientEndMission = onClientEndMission
 M.onExtensionLoaded = onExtensionLoaded
 M.onExtensionUnloaded = onExtensionUnloaded
 M.onDamageCaptured = onDamageCaptured
--- the dyno's "before": the first run on a model (kept between visits), or the run pinned as baseline;
--- later runs are drawn over it
-local DYNO_FILE = '/settings/slrr_garage/dyno.json'
-local dynoBase, lastDyno
-local function modelOf(id) local v = getObjectByID(id) return v and v:getJBeamFilename() or nil end
-local function sendDyno()
-  if not lastDyno then return end
-  local out = shallowcopy(lastDyno.data)
-  if not parts.getFeatures().dyno then out.torque, out.power, out.noCurve = nil, nil, true end     -- (no dyno: the figures, no curve)
-  local base = dynoBase and dynoBase[lastDyno.model]
-  if base and base.maxPower and (base.maxPower ~= out.maxPower or base.maxTorque ~= out.maxTorque) then out.baseline = base end
-  guihooks.trigger('slrrGarageDyno', out)
-end
-M.onDyno = function(id, data)
-  extensions.hook('onWrenchWorksDyno', id, data)      -- other mods may want the figures (a career's tuning challenge)
-  if id ~= vehId or type(data) ~= 'table' then return end
-  local model = modelOf(id)
-  dynoBase = dynoBase or jsonReadFile(DYNO_FILE) or {}
-  if model and data.maxPower and not dynoBase[model] then
-    dynoBase[model] = data
-    jsonWriteFile(DYNO_FILE, dynoBase, true)
-  end
-  lastDyno = { model = model, data = data }
-  sendDyno()
-end
--- "Pin this run as baseline"
-M.pinDyno = function()
-  if not lastDyno or not lastDyno.model then return end
-  dynoBase = dynoBase or jsonReadFile(DYNO_FILE) or {}
-  dynoBase[lastDyno.model] = lastDyno.data
-  jsonWriteFile(DYNO_FILE, dynoBase, true)
-  sendDyno()
-end
+-- the dyno's figures (slrr/garageDyno)
+M.onDyno = function(id, data) dyno.onDyno(id, data, vehId) end
+M.pinDyno = function() dyno.pin() end
 
 M.enter = enterNearest
 M.enterWith = enterWith
@@ -2550,50 +2351,26 @@ end
 -- line in the console (the ~ key). It goes into settings/slrr_garage/sites.json and works at
 -- once. docs/adding_garages.md has the rest.
 
-local function slug(name)
-  return (tostring(name):lower():gsub('[^%w]+', '_'):gsub('^_+', ''):gsub('_+$', ''))
-end
-
-local function round3(x) return math.floor(x * 1000 + 0.5) / 1000 end
-
--- the floor under the player's car and the way it points
-local function standing()
-  local v = getPlayerVehicle(0)
-  if not v then return nil end
-  local c = v:getSpawnWorldOOBB():getCenter()
-  local drop = castRayStatic(c, vec3(0, 0, -1), 6)
-  local dir = vec3(v:getDirectionVector())
-  dir.z = 0
-  dir:normalize()
-  return vec3(c.x, c.y, c.z - math.min(drop, 6)), dir
-end
-
-local function tell(text)
-  log('I', logTag, text)
-  if ui_message then ui_message(text, 10, 'slrrGarage') end
-  return text
-end
-
 -- Park the car where it should stand in the garage, nose pointing in (away from the door).
 M.addGarageHere = function(name)
-  if phase ~= 'idle' then return tell('Leave the garage first.') end
-  local floor, dir = standing()
-  if not floor then return tell('There is no vehicle to take the place from.') end
+  if phase ~= 'idle' then return sites.tell('Leave the garage first.') end
+  local floor, dir = sites.standing()
+  if not floor then return sites.tell('There is no vehicle to take the place from.') end
   name = (type(name) == 'string' and name ~= '') and name or 'My Garage'
   local file = sites.saveUserEntry('garages', {
-    id = slug(name), name = name, spot = { round3(floor.x), round3(floor.y), round3(floor.z) }, dir = { round3(dir.x), round3(dir.y) },
+    id = sites.slug(name), name = name, spot = { sites.round3(floor.x), sites.round3(floor.y), sites.round3(floor.z) }, dir = { sites.round3(dir.x), sites.round3(dir.y) },
     doorDist = -7, halfWidth = 3.5, backDist = 5, ceiling = 4.5, exit = 'reverse',
   })
-  if not file then return tell('Could not save the garage: no map is loaded.') end
+  if not file then return sites.tell('Could not save the garage: no map is loaded.') end
   armed = false       -- the car standing in it is not a customer
-  return tell(string.format('"%s" added. Its door is taken to be 7 m behind the car; drive to the doorway and run slrr_garage.setDoorHere() to put it right. Saved in %s', name, file))
+  return sites.tell(string.format('"%s" added. Its door is taken to be 7 m behind the car; drive to the doorway and run slrr_garage.setDoorHere() to put it right. Saved in %s', name, file))
 end
 
 -- Stand in the doorway of a garage you added: its door is put there.
 M.setDoorHere = function(id)
-  if phase ~= 'idle' then return tell('Leave the garage first.') end
-  local floor = standing()
-  if not floor then return tell('There is no vehicle to take the place from.') end
+  if phase ~= 'idle' then return sites.tell('Leave the garage first.') end
+  local floor = sites.standing()
+  if not floor then return sites.tell('There is no vehicle to take the place from.') end
   local best, bestDist
   for _, s in ipairs(sites.getSites()) do
     if sites.getUserEntry('garages', s.id) and (not id or s.id == id) then
@@ -2601,35 +2378,35 @@ M.setDoorHere = function(id)
       if not bestDist or d < bestDist then best, bestDist = s, d end
     end
   end
-  if not best then return tell('None of your own garages is on this map. Add one with slrr_garage.addGarageHere("Name").') end
+  if not best then return sites.tell('None of your own garages is on this map. Add one with slrr_garage.addGarageHere("Name").') end
   local along = sites.toAxis(best, floor)
-  if along > -1.5 then return tell('The door has to be in front of the parking spot: this is ' .. round3(along) .. ' m along, it must be behind the car.') end
+  if along > -1.5 then return sites.tell('The door has to be in front of the parking spot: this is ' .. sites.round3(along) .. ' m along, it must be behind the car.') end
   local entry = sites.getUserEntry('garages', best.id)
-  entry.doorDist = round3(along)
+  entry.doorDist = sites.round3(along)
   sites.saveUserEntry('garages', entry)
   armed = false
-  return tell(string.format('The door of "%s" is now %.1f m from its parking spot.', best.name, -along))
+  return sites.tell(string.format('The door of "%s" is now %.1f m from its parking spot.', best.name, -along))
 end
 
 -- Stop where customers should stop. sells: a list of catalog chapters ("running/rims_f") or
 -- whole sections ("engine"); leave it out and the shop sells everything.
 M.addShopHere = function(name, trade, sells)
-  if phase ~= 'idle' then return tell('Leave the garage first.') end
-  local floor = standing()
-  if not floor then return tell('There is no vehicle to take the place from.') end
+  if phase ~= 'idle' then return sites.tell('Leave the garage first.') end
+  local floor = sites.standing()
+  if not floor then return sites.tell('There is no vehicle to take the place from.') end
   name = (type(name) == 'string' and name ~= '') and name or 'My Parts Shop'
   local file = sites.saveUserEntry('shops', {
-    id = slug(name), name = name, trade = type(trade) == 'string' and trade or 'Parts',
-    pos = { round3(floor.x), round3(floor.y), round3(floor.z) }, sells = type(sells) == 'table' and sells or nil,
+    id = sites.slug(name), name = name, trade = type(trade) == 'string' and trade or 'Parts',
+    pos = { sites.round3(floor.x), sites.round3(floor.y), sites.round3(floor.z) }, sells = type(sells) == 'table' and sells or nil,
   })
-  if not file then return tell('Could not save the shop: no map is loaded.') end
+  if not file then return sites.tell('Could not save the shop: no map is loaded.') end
   shopArmed = false
-  return tell(string.format('"%s" added. Saved in %s', name, file))
+  return sites.tell(string.format('"%s" added. Saved in %s', name, file))
 end
 
 M.reloadSites = function()
   sites.reload()
-  return tell(string.format('%d garages and %d shops on this map.', #sites.getSites(), #sites.getShops()))
+  return sites.tell(string.format('%d garages and %d shops on this map.', #sites.getSites(), #sites.getShops()))
 end
 
 M.uiSound = function(name) if type(name) == 'string' and name:match('^[%w_]+%.wav$') then playSound(name, 0.7) end end

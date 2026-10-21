@@ -292,4 +292,29 @@ function M.getUserEntry(kind, id)
   end
 end
 
+-- the console tools of garage.lua (addGarageHere, setDoorHere, addShopHere): their helpers live here because garage.lua is near LuaJIT's limit of 200 top-level locals
+function M.slug(name)
+  return (tostring(name):lower():gsub('[^%w]+', '_'):gsub('^_+', ''):gsub('_+$', ''))
+end
+
+function M.round3(x) return math.floor(x * 1000 + 0.5) / 1000 end
+
+-- the floor under the player's car and the way it points
+function M.standing()
+  local v = getPlayerVehicle(0)
+  if not v then return nil end
+  local c = v:getSpawnWorldOOBB():getCenter()
+  local drop = castRayStatic(c, vec3(0, 0, -1), 6)
+  local dir = vec3(v:getDirectionVector())
+  dir.z = 0
+  dir:normalize()
+  return vec3(c.x, c.y, c.z - math.min(drop, 6)), dir
+end
+
+function M.tell(text)
+  log('I', 'slrr_garage', text)
+  if ui_message then ui_message(text, 10, 'slrrGarage') end
+  return text
+end
+
 return M
