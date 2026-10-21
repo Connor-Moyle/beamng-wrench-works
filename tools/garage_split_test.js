@@ -87,24 +87,33 @@ check('another car is ignored', #sent == 2)
 D.pin()
 check('pin makes the last run the baseline', written == 2 and store.f.pessima.maxPower == 120 and #sent == 3 and sent[3].baseline == nil)
 
--- the drivers: the display mode is sent only when it differs
-local calls = {}
-package.loaded['slrr/garageSettings'] = { defs = {}, get = function(k) return ({ driverMode = 'still', driverHelmet = true, driverShirt = 'red', driverScale = 1.1 })[k] end }
-local appearance = 0
-_G.slrrDrivers = { setDisplayMode = function(m) calls[#calls + 1] = m end, getDisplayMode = function() return 'full' end,
-  setAppearance = function() appearance = appearance + 1 end }
+-- the drivers panel: a pick goes to Drivers' own saved store (the global look, the default driver), never to a per-car copy that a respawn loses
+local look, drv = {}, {}
+_G.slrrDrivers = {
+  setAppearance = function(vid, l) look[#look + 1] = { vid = vid, l = l } end,
+  setDriver = function(vid, d) drv[#drv + 1] = 'car:' .. tostring(vid) .. ':' .. tostring(d) end,
+  setDefaultDriver = function(d) drv[#drv + 1] = 'default:' .. tostring(d) end,
+}
 local Dr = dofile(dir .. '/garageDrivers.lua')
-Dr.apply()
-check('driver mode is changed when it differs', calls[1] == 'still')
-check('the old driver* look keys are ignored: Drivers.setAppearance is never called from here', appearance == 0)
-local src = ${JSON.stringify(fs.readFileSync(path.join(dir, 'garageDrivers.lua'), 'utf8'))}
-check('garageDrivers.lua does not mention setAppearance in code', not src:gsub('%-%-[^%c]*', ''):find('setAppearance'))
-slrrDrivers.getDisplayMode = function() return 'still' end
-Dr.apply()
-check('and not when it is the same', #calls == 1)
-_G.slrrDrivers = nil
-Dr.apply()
-check('without the drivers mod nothing happens', #calls == 1)
+Dr.pickOutfit({ helmet = true })
+check('an outfit pick is the global look (vehicle nil), saved by Drivers', #look == 1 and look[1].vid == nil and look[1].l.helmet == true)
+Dr.pickDriver(7, 'racer')
+check('a driver pick is for this car now and the saved default', drv[1] == 'car:7:racer' and drv[2] == 'default:racer')
+check('WW applies no look, mode or pedestrian options by itself any more', Dr.apply == nil and Dr.applyAppearance == nil)
+
+-- the settings the garage lists: the driver look, the driver mode and the pedestrian options are retired (hidden, keys kept so old files load)
+package.loaded['slrr/garageSettings'] = nil
+_G.jsonReadFile = function() return { driverHelmet = true, driverMode = 'still', pedAmount = 'high', driveSpeed = 1.5 } end
+_G.jsonWriteFile = function() end
+_G.deepcopy = function(t) if type(t) ~= 'table' then return t end local o = {} for k, v in pairs(t) do o[k] = _G.deepcopy(v) end return o end
+local S = dofile(dir .. '/garageSettings.lua')
+local listed = {}
+for _, d in ipairs(S.describe()) do
+  listed[d.key] = true
+  check('no retired setting is listed: ' .. d.key, d.group ~= 'Driver look' and d.key ~= 'driverMode' and d.ped == nil)
+end
+check('the other settings are still listed', listed.driveSpeed and listed.carRadio)
+check('old files still load: the retired keys exist and keep their values, the others too', S.get('driverHelmet') == true and S.get('pedAmount') == 'high' and S.get('driveSpeed') == 1.5)
 print('garage split test passed')
 `;
 if (lauxlib.luaL_dostring(L, to_luastring(test)) !== lua.LUA_OK) { console.error(to_jsstring(lua.lua_tostring(L, -1))); process.exit(1); }

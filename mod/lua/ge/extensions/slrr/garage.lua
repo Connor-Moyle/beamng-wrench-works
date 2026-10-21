@@ -296,17 +296,10 @@ end
 -- every setting with its value, the other mods' groups included (the settings screen, and another mod's own screen: the phone's Settings);
 -- ownOnly: Wrench Works' own settings (the Mods menu reads these). (One function: the file is at the limit of 200 locals.)
 local function settingsDefs(ownOnly)
-  -- settings for another mod (the driver) only when that mod is there and new enough
+  -- settings for another mod (the injuries) only when that mod is there and new enough (the driver and pedestrian ones moved to Pedestrians & Drivers' page)
   local defs = {}
   for _, d in ipairs(settings.describe()) do
-    local ok = (d.needs == nil) or (d.needs == 'drivers' and slrrDrivers and slrrDrivers.setDisplayMode)
-      or (d.needs == 'pedestrians' and slrrPedestrians and slrrPedestrians.setOptions)
-      or (d.needs == 'appearance' and slrrDrivers and slrrDrivers.setAppearance)
-      or (d.needs == 'injury' and slrrInjury and slrrInjury.setMode)
-    if ok and d.dynamic and d.key == 'driverSkin' then                  -- the drivers the mod has
-      d.options = { { id = '', label = 'Default' } }
-      for _, dr in ipairs(slrrDrivers.getDrivers and slrrDrivers.getDrivers() or {}) do d.options[#d.options + 1] = { id = dr.id, label = dr.name or dr.id } end
-    end
+    local ok = (d.needs == nil) or (d.needs == 'injury' and slrrInjury and slrrInjury.setMode)
     if ok then defs[#defs + 1] = d end
   end
   if ownOnly then return defs end
@@ -1690,7 +1683,6 @@ end
 local function setSetting(key, value)
   if key == '__reset' then settings.reset() extensions.hook('onWrenchWorksSetting', key)
   elseif not settings.set(key, value) then extensions.hook('onWrenchWorksSetting', key, value) end   -- (another mod's setting)
-  if key == 'driverMode' or key == '__reset' or key:find('^ped') or key:find('^driver') then drivers.apply() end
   if key == 'freeroamMoney' then parts.setWallet(settings.get('freeroamMoney')) end
   if (key == 'injuryMode' or key == '__reset') and slrrInjury and slrrInjury.setMode then slrrInjury.setMode(settings.get('injuryMode')) end
   if key == 'saveBetweenSessions' then parts.saveNow() end
@@ -2065,7 +2057,6 @@ local function onVehicleSpawned(id)
   -- every car gets the damage keeper while it is still new, so it knows what "undamaged" looks like
   local spawned = getObjectByID(id)
   if spawned then spawned:queueLuaCommand('extensions.load("slrrGarageVeh")') end
-  drivers.apply()                                   -- (cheap; the drivers mod may have loaded after us)
   if id ~= vehId then return end
   if respawnWaiter then
     settleFrames = 3
@@ -2149,7 +2140,6 @@ end
 local function onExtensionLoaded()
   local current = getPlayerVehicle(0)
   if current then current:queueLuaCommand('extensions.load("slrrGarageVeh")') end
-  drivers.apply()
   require('slrr/graphics').ensureDefaults()
   require('slrr/gfxMenu').removeOldGroups()      -- (earlier versions put groups into the game's Options page: taken out of the user-folder layout once)
   require('slrr/gfxMenu').register()
@@ -2281,7 +2271,7 @@ M.service = function(id)
   id = tostring(id)
   local outfit = slrrDrivers and slrrDrivers.setAppearance and require('slrr/garageOutfits').look(id, slrrDrivers.getAppearance and slrrDrivers.getAppearance(vehId))
   if outfit then
-    slrrDrivers.setAppearance(vehId, outfit)
+    drivers.pickOutfit(outfit)
     core_jobsystem.create(function(job) job.sleep(0.2) sendState() end)
     sendState()
     return
@@ -2289,7 +2279,7 @@ M.service = function(id)
   local driver = id:match('^driver:(.+)$')
   if driver and slrrDrivers and slrrDrivers.setDriver then
     if driver == 'none' then driver = nil end
-    slrrDrivers.setDriver(vehId, driver)
+    drivers.pickDriver(vehId, driver)
     extensions.hook('onWrenchWorksDriverChanged', vehId, driver)
     core_jobsystem.create(function(job) job.sleep(0.2) sendState() end)   -- the driver changes a frame later: show it then
   else

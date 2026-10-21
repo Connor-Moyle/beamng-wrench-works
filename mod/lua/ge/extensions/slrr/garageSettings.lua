@@ -183,13 +183,19 @@ function M.reset()
   jsonWriteFile(FILE, values, true)
 end
 
+-- The driver look, the driver mode and the pedestrian options moved to Pedestrians & Drivers' own page (its only store). Their keys stay in M.defs so
+-- old settings.json files load, but they are ignored and no screen lists them.
+local function retired(def) return def.group == 'Driver look' or def.key == 'driverMode' or def.ped ~= nil end
+
 -- definitions with their current values, for the settings screen
 function M.describe()
   local out = {}
   for _, def in ipairs(M.defs) do
+    if retired(def) then goto continue end
     local d = deepcopy(def)
     d.value = values[def.key]
     out[#out + 1] = d
+    ::continue::
   end
   return out
 end
