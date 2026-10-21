@@ -1,5 +1,12 @@
 # Changelog: BeamNG Wrench Works (garage)
 
+## 1.8.4
+
+Works with BeamNG 0.40.
+
+- **Fixed:** a garage visit the career refuses (for example "You need 175 reputation to use Industrial Garage.") now says why on screen, also when you drive up to the door with no garage screen open. Before, the reason was only written to a screen that was not up, so nothing showed.
+- `slrr_garage.enter()` and `slrr_garage.enterWith()` now return `false` and the reason when the visit does not start (busy, no garage here, refused by the career), and `true` when it does. They returned `true` or nothing. Seen in the game at the Alder Dragway drive-in, the on-foot panel, the Belasco refusal on screen, and `false` with no car.
+
 ## 1.8.3
 
 Works with BeamNG 0.40.
