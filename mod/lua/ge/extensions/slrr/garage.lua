@@ -807,10 +807,17 @@ local function enterJob(job)
   entryMode = nil
 end
 
+-- Starts a visit. Returns true when it began; false and a reason when it did not (busy, or the career refuses this garage). A refusal is also shown on screen: the garage screen is
+-- not up while the phase is 'idle', so say() alone is not seen.
 local function startEnter(_site, id, side, wantMode)
-  if phase ~= 'idle' then return end
+  if phase ~= 'idle' then return false, 'The garage is busy.' end
   local open, why = parts.providerGarage(_site.id)
-  if not open then say(why or gs('say.not_yet'), 5) return end
+  if not open then
+    why = why or gs('say.not_yet')
+    say(why, 5)
+    if ui_message then ui_message(why, 5, 'slrrGarage') end
+    return false, why
+  end
   entryMode = wantMode
   site = _site
   viaSide = side == true
@@ -820,6 +827,7 @@ local function startEnter(_site, id, side, wantMode)
   core_gamestate.setGameState('slrrGarage', 'slrrGarage', 'freeroam')
   sendState()
   core_jobsystem.create(enterJob)
+  return true
 end
 
 -- On foot the doorway leads to the same garage, with nothing on the lift: a place to start a
@@ -1913,8 +1921,9 @@ local function enterNearest()
   if best and v:getJBeamFilename() == 'unicycle' then
     if parts.providerAllows('walkIn') then startLot(best) end
   elseif best then
-    startEnter(best, v:getID(), second)
+    return startEnter(best, v:getID(), second)
   end
+  return false, 'No garage here.'
 end
 
 -- the garage (site) whose doors are within 50 m of a point, for another mod's screen ("is this car at that garage?")
@@ -1944,8 +1953,7 @@ local function enterWith(id, wantMode)
   if not player or player:getID() ~= car:getID() then
     if gameplay_walk and gameplay_walk.getInVehicle then gameplay_walk.getInVehicle(car) else be:enterVehicle(0, car) end
   end
-  startEnter(at, car:getID(), false, wantMode)
-  return true
+  return startEnter(at, car:getID(), false, wantMode)
 end
 
 ----------------------------------------------------------------------------------------------
@@ -2063,6 +2071,7 @@ local function updateIdle(dt)
           if armed and distance < 3.5 then
             armed = false
             say(why or gs('say.not_yet'), 6)
+            if ui_message then ui_message(why or gs('say.not_yet'), 6, 'slrrGarage') end      -- (the garage screen is not up out here: say() alone is not seen)
           end
           if distance < 12 then nearDoor = true end
           goto nextDoor
