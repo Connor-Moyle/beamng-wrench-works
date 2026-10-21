@@ -1,5 +1,11 @@
 # Changelog: BeamNG Wrench Works (garage)
 
+## 1.8.6
+
+Works with BeamNG 0.40.
+
+- **One start warning fewer:** the log at game start carried "Please make sure to call setExtensionUnloadMode("ui_pause_actions", "manual")" from this mod's script; the Mods menu now sets that before it loads the pause menu's extension. Not yet seen in the game (a cold start with this build is the check). Tested offline: the mode is set first, then the load.
+
 ## 1.8.5
 
 Works with BeamNG 0.40.

@@ -250,6 +250,15 @@ do
       check('with no tagged switch yet the button is still first (it keeps its place when the mods tag their switches later)', buttons[1] and buttons[1].id == 'slrr_settings_features' and buttons[2].id == 'slrr_settings_quick')
     end
     _G.ui_pause_actions = old
+    -- not loaded yet: the unload mode is set first, then the extension loaded (0.40 warns at game start otherwise)
+    local order = {}
+    local oldExt, oldMode = _G.extensions, _G.setExtensionUnloadMode
+    _G.ui_pause_actions = nil
+    _G.setExtensionUnloadMode = function(n, m) order[#order + 1] = 'mode:' .. n .. ':' .. m end
+    _G.extensions = { load = function(n) order[#order + 1] = 'load:' .. n _G.ui_pause_actions = { registerModTab = function() end, registerModButton = function() end } end }
+    S.registerMenu()
+    check('ui_pause_actions: unload mode manual first, then the load', table.concat(order, ',') == 'mode:ui_pause_actions:manual,load:ui_pause_actions', table.concat(order, ','))
+    _G.extensions, _G.setExtensionUnloadMode, _G.ui_pause_actions = oldExt, oldMode, old
   end
   S.unregister('feat_one')
   local left = S.page('active_features', 'all').fields

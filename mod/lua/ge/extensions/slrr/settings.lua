@@ -529,7 +529,10 @@ end
 
 local function registerMenu()
   local a = rawget(_G, 'ui_pause_actions')
-  if not a and extensions and extensions.load then pcall(extensions.load, 'ui_pause_actions') a = rawget(_G, 'ui_pause_actions') end
+  if not a and extensions and extensions.load then
+    if setExtensionUnloadMode then pcall(setExtensionUnloadMode, 'ui_pause_actions', 'manual') end      -- before the load: 0.40 warns at start otherwise
+    pcall(extensions.load, 'ui_pause_actions') a = rawget(_G, 'ui_pause_actions')
+  end
   if not (a and a.registerModTab and a.registerModButton) then return false end
   local ok = pcall(a.registerModTab, { id = M.TAB, label = 'Mods menu', icon = 'wrench' })
   if not ok then return false end
